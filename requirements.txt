@@ -1,0 +1,24 @@
+# LLM
+ollama>=0.3.0
+anthropic>=0.40.0
+
+# Telegram
+python-telegram-bot>=21.0
+
+# Database
+psycopg2-binary>=2.9
+pgvector>=0.3.0
+
+# Web Search
+duckduckgo-search>=6.0
+
+# Dashboard
+fastapi>=0.110
+uvicorn>=0.29
+
+# Utilities
+python-dotenv>=1.0
+asyncio-throttle>=1.0
+psutil>=5.9
+httpx>=0.27
+numpy>=1.26

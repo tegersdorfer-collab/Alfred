@@ -1,0 +1,22 @@
+# Secrets – NIEMALS committen
+.env
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+
+# Logs & Laufzeit
+*.log
+/tmp/
+data/
+*.old
+*.pid
+
+# OS / Editor
+.DS_Store
+.idea/
+.vscode/
+.claude/

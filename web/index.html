@@ -1,0 +1,508 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#0a0f1e">
+<link rel="manifest" href="/manifest.json">
+<title>Jarvis</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<style>
+  :root { --bg:#0a0f1e; --card:#121a2e; --card2:#1a2540; --line:#1f2c4a; --accent:#3b82f6; --accent2:#8b5cf6; --muted:#7c8db5; }
+  * { -webkit-tap-highlight-color:transparent; box-sizing:border-box; }
+  body { background:radial-gradient(1200px 700px at 50% -10%, #16213f 0%, var(--bg) 55%); color:#e8eefc;
+         font-family:-apple-system,BlinkMacSystemFont,'SF Pro Display',system-ui,sans-serif; margin:0; overscroll-behavior:none; }
+  .card { background:linear-gradient(160deg,var(--card) 0%,#0f1729 100%); border:1px solid var(--line); border-radius:20px; }
+  .soft { background:rgba(26,37,64,.35); border:none; border-radius:18px; }
+  .glass { backdrop-filter:blur(20px); background:rgba(10,15,30,.82); }
+  .grad-text { background:linear-gradient(120deg,#60a5fa,#a78bfa);-webkit-background-clip:text;background-clip:text;color:transparent; }
+  .btn { background:linear-gradient(120deg,var(--accent),var(--accent2));color:#fff;border:none;border-radius:14px;padding:11px 16px;font-weight:600;font-size:14px;transition:.15s;cursor:pointer; }
+  .btn:active{transform:scale(.96);}
+  .btn-ghost{background:var(--card2);color:#c7d2fe;border:none;cursor:pointer;}
+  .chip{background:var(--card2);border:1px solid var(--line);border-radius:999px;padding:3px 10px;font-size:11px;color:#a5b4fc;}
+  .jring{transform:rotate(-90deg);box-shadow:none!important;}
+  input,textarea,select{background:var(--card2);border:1px solid var(--line);border-radius:12px;color:#e8eefc;padding:11px 13px;font-size:15px;width:100%;outline:none;}
+  input:focus,textarea:focus,select:focus{border-color:var(--accent);}
+  ::-webkit-scrollbar{width:0;height:0;}
+  .fade{animation:fade .35s ease;}@keyframes fade{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+  .pill-h{height:8px;border-radius:999px;background:var(--card2);overflow:hidden;}
+  .pill-f{height:100%;background:linear-gradient(90deg,var(--accent),var(--accent2));border-radius:999px;transition:width .5s;}
+  .heat{width:11px;height:11px;border-radius:3px;background:#1a2540;}
+  .msg{max-width:80%;padding:10px 14px;border-radius:18px;font-size:14px;line-height:1.45;white-space:pre-wrap;word-wrap:break-word;}
+  .msg-u{background:linear-gradient(120deg,var(--accent),#2563eb);color:#fff;border-bottom-right-radius:5px;margin-left:auto;}
+  .msg-a{background:var(--card2);color:#e8eefc;border-bottom-left-radius:5px;}
+
+  /* Layout */
+  .shell{display:flex;min-height:100vh;}
+  .sidebar{display:none;}
+  .main{flex:1;min-width:0;}
+  .app{max-width:560px;margin:0 auto;padding-bottom:96px;}
+  .header{position:sticky;top:0;z-index:40;padding:14px 18px;padding-top:max(14px,env(safe-area-inset-top));border-bottom:1px solid var(--line);}
+  .nav{position:fixed;bottom:0;left:0;right:0;z-index:50;}
+  .nav-inner{max-width:560px;margin:0 auto;display:flex;justify-content:space-around;align-items:center;padding:8px 8px calc(8px + env(safe-area-inset-bottom));border-top:1px solid var(--line);}
+  .nav-btn{display:flex;flex-direction:column;align-items:center;gap:3px;font-size:10px;color:#5b6b8c;background:none;border:none;padding:4px 10px;cursor:pointer;}
+  .nav-btn.active{color:#fff;}
+  .nav-btn.active .ni{background:linear-gradient(120deg,var(--accent),var(--accent2));box-shadow:0 4px 14px rgba(59,130,246,.5);}
+  .ni{width:42px;height:30px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:18px;transition:.2s;}
+  .sheet{position:fixed;inset:0;z-index:60;display:none;}
+  .sheet.open{display:block;}
+  .sheet-bg{position:absolute;inset:0;background:rgba(0,0,0,.55);}
+  .sheet-card{position:absolute;bottom:0;left:0;right:0;max-width:560px;margin:0 auto;border-radius:24px 24px 0 0;background:var(--card);border-top:1px solid var(--line);padding:20px 18px calc(20px + env(safe-area-inset-bottom));animation:up .25s;max-height:88vh;overflow-y:auto;}
+  @keyframes up{from{transform:translateY(100%)}to{transform:none}}
+  .tabbar{display:flex;gap:6px;margin-bottom:14px;}
+  .tab{flex:1;text-align:center;padding:8px;border-radius:12px;background:var(--card2);color:var(--muted);font-size:13px;cursor:pointer;}
+  .tab.active{background:linear-gradient(120deg,var(--accent),var(--accent2));color:#fff;}
+
+  /* Desktop */
+  @media(min-width:900px){
+    .app{max-width:1100px;padding:0 28px 40px;}
+    .nav{display:none;}
+    .sidebar{display:flex;flex-direction:column;width:230px;flex-shrink:0;border-right:1px solid var(--line);
+             padding:20px 14px;position:sticky;top:0;height:100vh;gap:4px;}
+    .side-btn{display:flex;align-items:center;gap:12px;padding:11px 14px;border-radius:13px;color:#9fb0d6;background:none;border:none;font-size:14px;cursor:pointer;text-align:left;width:100%;}
+    .side-btn:hover{background:var(--card2);}
+    .side-btn.active{background:linear-gradient(120deg,rgba(59,130,246,.25),rgba(139,92,246,.2));color:#fff;}
+    .header{border-bottom:none;padding-top:24px;}
+    .grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:start;}
+    .grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;align-items:start;}
+    .chat-wrap{max-width:760px;}
+    .sheet-card{max-width:560px;border-radius:24px;bottom:auto;top:50%;left:50%;right:auto;transform:translate(-50%,-50%);}
+    @keyframes up{from{opacity:0}to{opacity:1}}
+  }
+</style>
+</head>
+<body>
+<div class="shell">
+  <!-- Desktop Sidebar -->
+  <aside class="sidebar">
+    <div style="display:flex;align-items:center;gap:11px;padding:6px 10px 18px">
+      <div style="width:38px;height:38px;border-radius:12px;background:linear-gradient(135deg,var(--accent),var(--accent2));display:flex;align-items:center;justify-content:center;font-size:19px">🤖</div>
+      <div><div style="font-weight:700">Jarvis</div><div id="sideStatus" style="font-size:11px;color:var(--muted)">…</div></div>
+    </div>
+    <div id="sideNav" style="flex:1;overflow-y:auto"></div>
+  </aside>
+
+  <div class="main">
+    <div class="app">
+      <div class="header glass" id="topHeader">
+        <div style="display:flex;align-items:center;justify-content:space-between">
+          <div style="display:flex;align-items:center;gap:11px">
+            <div class="hmob" style="width:40px;height:40px;border-radius:13px;background:linear-gradient(135deg,var(--accent),var(--accent2));display:flex;align-items:center;justify-content:center;font-size:20px">🤖</div>
+            <div><div style="font-weight:700;font-size:18px" id="hello">Jarvis</div><div style="font-size:11px;color:var(--muted)" id="sub">verbinde…</div></div>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px">
+            <span id="dot" style="width:9px;height:9px;border-radius:50%;background:#475569"></span>
+            <span id="clock" style="font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums"></span>
+          </div>
+        </div>
+      </div>
+      <div id="view" style="padding:16px 0"></div>
+    </div>
+  </div>
+</div>
+
+<!-- Bottom Nav (mobile) -->
+<div class="nav glass">
+  <div class="nav-inner">
+    <button class="nav-btn" data-v="home"><div class="ni">🏠</div>Home</button>
+    <button class="nav-btn" data-v="chat"><div class="ni">💬</div>Chat</button>
+    <button class="nav-btn" data-v="body"><div class="ni">💪</div>Körper</button>
+    <button class="nav-btn" data-v="habits"><div class="ni">🔥</div>Habits</button>
+    <button class="nav-btn" data-v="more"><div class="ni">⋯</div>Mehr</button>
+  </div>
+</div>
+
+<div class="sheet" id="sheet"><div class="sheet-bg" onclick="closeSheet()"></div><div class="sheet-card" id="sheetCard"></div></div>
+
+<script>
+const API=location.origin; let CUR='home'; let charts={};
+const NAV=[['home','🏠','Home'],['chat','💬','Chat'],['body','💪','Körper'],['habits','🔥','Habits'],
+  ['tasks','✅','Aufgaben'],['calendar','📅','Kalender'],['nutrition','🍽️','Ernährung'],
+  ['journal','📖','Journal'],['goals','🎯','Ziele'],['memory','🧠','Gedächtnis'],
+  ['mind','🌌','Jarvis Mind'],['analytics','📊','Analytics'],['settings','⚙️','Einstellungen']];
+
+const $=(s,r=document)=>r.querySelector(s);
+const el=(h)=>{const d=document.createElement('div');d.innerHTML=h.trim();return d.firstChild;};
+const view=()=>$('#view');
+async function api(p,o){const r=await fetch(API+p,o);return r.json();}
+async function post(p,b){return api(p,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(b||{})});}
+async function del(p){return api(p,{method:'DELETE'});}
+function esc(s){return(s||'').replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));}
+function md(s){return esc(s).replace(/\*\*(.+?)\*\*/g,'<b>$1</b>').replace(/\*(.+?)\*/g,'<i>$1</i>').replace(/`(.+?)`/g,'<code style="background:#0b1220;padding:1px 5px;border-radius:5px">$1</code>');}
+function toast(t){const x=el(`<div style="position:fixed;bottom:110px;left:50%;transform:translateX(-50%);background:var(--card2);border:1px solid var(--line);color:#e8eefc;padding:10px 18px;border-radius:14px;z-index:90;font-size:13px;box-shadow:0 8px 24px rgba(0,0,0,.4)">${esc(t)}</div>`);document.body.appendChild(x);setTimeout(()=>x.remove(),1900);}
+function confirmAction(text,onyes){sheet(`<div style="width:40px;height:4px;background:#33415a;border-radius:99px;margin:0 auto 16px"></div><div style="font-size:16px;margin-bottom:18px;text-align:center">${esc(text)}</div><div style="display:flex;gap:10px"><button class="btn-ghost" style="flex:1;padding:12px;border-radius:13px" onclick="closeSheet()">Abbrechen</button><button class="btn" style="flex:1;background:linear-gradient(120deg,#ef4444,#dc2626)" id="cfYes">Löschen</button></div>`);$('#cfYes').onclick=()=>{closeSheet();onyes();};}
+function ring(pct,size=64,stroke=7,color='#3b82f6'){const r=(size-stroke)/2,c=2*Math.PI*r,off=c*(1-Math.min(1,pct||0));return `<svg width="${size}" height="${size}" class="jring"><circle cx="${size/2}" cy="${size/2}" r="${r}" stroke="#1a2540" stroke-width="${stroke}" fill="none"/><circle cx="${size/2}" cy="${size/2}" r="${r}" stroke="${color}" stroke-width="${stroke}" fill="none" stroke-linecap="round" stroke-dasharray="${c}" stroke-dashoffset="${off}"/></svg>`;}
+function sheet(h){$('#sheetCard').innerHTML=h;$('#sheet').classList.add('open');}
+function closeSheet(){$('#sheet').classList.remove('open');}
+
+setInterval(()=>{$('#clock').textContent=new Date().toLocaleTimeString('de-DE',{hour:'2-digit',minute:'2-digit'});},1000);
+async function status(){try{const s=await api('/api/status');$('#dot').style.background=s.running?'#22c55e':'#ef4444';const t=`${s.running?'Online':'Offline'} · ${s.model} · ${s.tools} Tools`;$('#sub').textContent=t;const ss=$('#sideStatus');if(ss)ss.textContent=t;const h=new Date().getHours();$('#hello').textContent=h<11?'Guten Morgen':h<18?'Hallo Timo':'Guten Abend';}catch(e){}}
+status();setInterval(status,8000);
+
+// Build sidebar
+function buildSidebar(){const c=$('#sideNav');c.innerHTML=NAV.map(i=>`<button class="side-btn" data-v="${i[0]}"><span style="font-size:17px">${i[1]}</span> ${i[2]}</button>`).join('');c.querySelectorAll('.side-btn').forEach(b=>b.onclick=()=>go(b.dataset.v));}
+buildSidebar();
+
+const VIEWS={};
+function go(v){
+  if(v==='more'){openMore();return;}
+  CUR=v;
+  document.querySelectorAll('.nav-btn').forEach(b=>b.classList.toggle('active',b.dataset.v===v));
+  document.querySelectorAll('.side-btn').forEach(b=>b.classList.toggle('active',b.dataset.v===v));
+  view().innerHTML='';const root=el('<div class="fade"></div>');view().appendChild(root);
+  (VIEWS[v]||(()=>{}))(root);
+}
+document.querySelectorAll('.nav-btn').forEach(b=>b.onclick=()=>go(b.dataset.v));
+function openMore(){const items=NAV.slice(4);sheet(`<div style="width:40px;height:4px;background:#33415a;border-radius:99px;margin:0 auto 16px"></div><div style="font-weight:700;font-size:18px;margin-bottom:14px">Mehr</div><div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px">${items.map(i=>`<button class="soft" style="padding:18px 8px;display:flex;flex-direction:column;gap:8px;align-items:center;cursor:pointer" onclick="closeSheet();go('${i[0]}')"><span style="font-size:26px">${i[1]}</span><span style="font-size:12px;color:#c7d2fe">${i[2]}</span></button>`).join('')}</div>`);}
+function feedIcon(t){return {thought:'💭',action:'⚡',tool:'🔧',reflection:'🪞',briefing:'☀️',review:'🌙',reminder:'⏰',health:'🩺',system:'⚙️'}[t]||'•';}
+
+// ════════ HOME (clean, kein Box-Rahmen-Overkill) ════════
+VIEWS.home=async(root)=>{
+  root.innerHTML=`<div id="h-top"></div>
+    <div id="h-rings" style="margin-top:18px"></div>
+    <div id="h-quick" style="margin-top:18px"></div>
+    <div class="grid2"><div id="h-left"></div><div id="h-right"></div></div>`;
+  const ov=await api('/api/overview');
+  // Wetter – nahtlos, ohne Box
+  try{const w=await api('/api/weather');if(!w.error){const n=w.now,f=w.forecast||[];
+    $('#h-top').appendChild(el(`<div style="display:flex;align-items:center;justify-content:space-between;padding:4px 6px">
+      <div><div style="font-size:13px;color:var(--muted)">${w.city}</div><div style="font-size:38px;font-weight:800;line-height:1">${Math.round(n.temp)}°</div><div style="font-size:13px;color:#a5b4fc">${n.desc}, gefühlt ${Math.round(n.feels)}°</div></div>
+      <div style="text-align:right;font-size:12px;color:var(--muted);line-height:1.7">${f.slice(0,3).map(d=>`<div>${new Date(d.date).toLocaleDateString('de',{weekday:'short'})} &nbsp;${Math.round(d.min)}–${Math.round(d.max)}° &nbsp;💧${d.rain_prob??0}%</div>`).join('')}</div>
+    </div>`));}}catch(e){}
+  // Rings – nahtlos
+  const hd=(ov.health&&ov.health[0])||{};
+  $('#h-rings').appendChild(el(`<div style="display:flex;justify-content:space-around;text-align:center">
+    ${ringStat(Math.min(1,(hd.steps||0)/10000),'👟',(hd.steps||0).toLocaleString('de'),'#3b82f6')}
+    ${ringStat(Math.min(1,(hd.sleep||0)/8),'😴',hd.sleep?hd.sleep.toFixed(1)+'h':'–','#8b5cf6')}
+    ${ringStat(hd.hrv?Math.min(1,hd.hrv/80):0,'❤️',hd.resting_hr||'–','#22c55e')}
+  </div>`));
+  // Quick add – flache Buttons
+  $('#h-quick').appendChild(el(`<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px">
+    ${['Aufgabe','addTask','＋'].length?'':''}
+    <button class="soft" style="padding:13px 4px;font-size:11px;cursor:pointer" onclick="addTask()">＋ Aufgabe</button>
+    <button class="soft" style="padding:13px 4px;font-size:11px;cursor:pointer" onclick="addMeal()">＋ Mahlzeit</button>
+    <button class="soft" style="padding:13px 4px;font-size:11px;cursor:pointer" onclick="go('body')">＋ Training</button>
+    <button class="soft" style="padding:13px 4px;font-size:11px;cursor:pointer" onclick="addJournal()">＋ Journal</button>
+  </div>`));
+  const L=$('#h-left'),R=$('#h-right');
+  // Habits
+  if(ov.habits&&ov.habits.length){const done=ov.habits.filter(h=>h.today_done).length;
+    L.appendChild(el(`<div style="margin-top:22px;padding:0 2px"><div style="display:flex;justify-content:space-between;margin-bottom:10px"><b>Gewohnheiten</b><span class="chip">${done}/${ov.habits.length}</span></div><div style="display:flex;gap:8px;flex-wrap:wrap">${ov.habits.map(h=>`<button onclick="toggleHabit(${h.id},${h.today_done})" class="${h.today_done?'':'soft'}" style="border:none;border-radius:12px;padding:8px 11px;font-size:13px;cursor:pointer;${h.today_done?'background:linear-gradient(120deg,#22c55e,#16a34a);color:#fff':''}">${h.emoji} ${esc(h.name)} <span style="opacity:.7;font-size:11px">🔥${h.streak}</span></button>`).join('')}</div></div>`));}
+  // Tasks
+  if(ov.tasks&&ov.tasks.length){
+    L.appendChild(el(`<div style="margin-top:22px;padding:0 2px"><div style="display:flex;justify-content:space-between;margin-bottom:8px"><b>Aufgaben</b><span class="chip">${ov.tasks.length}</span></div>${ov.tasks.slice(0,5).map(t=>taskRow(t,true)).join('')}</div>`));}
+  // Events
+  if(ov.events&&ov.events.length){
+    R.appendChild(el(`<div style="margin-top:22px;padding:0 2px"><b>Termine</b>${ov.events.slice(0,5).map(e=>`<div style="display:flex;gap:10px;padding:7px 0;align-items:center"><span class="chip" style="color:#60a5fa">${e.start}</span><span style="font-size:14px">${esc(e.title)}</span></div>`).join('')}</div>`));}
+  // Goals
+  if(ov.goals&&ov.goals.length){
+    R.appendChild(el(`<div style="margin-top:22px;padding:0 2px"><b>Ziele</b>${ov.goals.slice(0,4).map(g=>`<div style="margin-top:10px"><div style="display:flex;justify-content:space-between;font-size:13px"><span>${esc(g.title)}</span><span style="color:#a5b4fc">${g.progress_pct}%</span></div><div class="pill-h" style="margin-top:5px"><div class="pill-f" style="width:${g.progress_pct}%"></div></div></div>`).join('')}</div>`));}
+  // Feed
+  try{const m=await api('/api/mind');R.appendChild(el(`<div style="margin-top:22px;padding:0 2px"><b>Jarvis Aktivität</b>${(m.events||[]).slice(0,6).map(e=>`<div style="display:flex;gap:8px;padding:5px 0;font-size:12px;color:#9fb0d6"><span>${feedIcon(e.type)}</span><span style="flex:1">${esc(e.summary)}</span></div>`).join('')||'<div style="color:#5b6b8c;font-size:13px;margin-top:8px">Noch ruhig…</div>'}</div>`));}catch(e){}
+};
+function ringStat(p,icon,val,col){return `<div style="position:relative;border:none!important;background:none!important;outline:none!important;box-shadow:none!important">${ring(p,76,8,col)}<div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center"><div style="font-size:16px">${icon}</div><div style="font-size:13px;font-weight:700">${val}</div></div></div>`;}
+function taskRow(t,compact){const pr={high:'🔴',medium:'🟡',low:'🟢'};const hasSub=t.subtasks&&t.subtasks.length;return `<div style="display:flex;align-items:center;gap:10px;padding:7px 0"><button onclick="event.stopPropagation();completeTask(${t.id})" style="width:20px;height:20px;border-radius:6px;border:2px solid #3b5;background:none;cursor:pointer;flex-shrink:0"></button><div style="flex:1;min-width:0"><div style="font-size:14px">${esc(t.title)} ${hasSub?`<span class="chip" style="font-size:10px">${t.progress_pct}%</span>`:''}</div>${hasSub&&!compact?`<div class="pill-h" style="margin-top:5px"><div class="pill-f" style="width:${t.progress_pct}%"></div></div>`:''}</div>${t.due?`<span class="chip">${fmtDue(t.due)}</span>`:''}<span>${pr[t.priority]||''}</span></div>`;}
+function fmtDue(d){try{return new Date(d).toLocaleDateString('de',{day:'2-digit',month:'2-digit'});}catch(e){return '';}}
+
+// ════════ CHAT (mobil-fix: eigenes Flex-Layout) ════════
+VIEWS.chat=async(root)=>{
+  root.innerHTML=`<div class="chat-wrap" style="display:flex;flex-direction:column;height:calc(100vh - 150px);max-height:calc(100vh - 150px)">
+    <div id="cmsgs" style="flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:10px;padding:4px 2px 12px"></div>
+    <div style="display:flex;gap:8px;padding:8px 0 4px;background:var(--bg)">
+      <textarea id="cin" rows="1" placeholder="Schreib Jarvis…" style="flex:1;resize:none;max-height:120px" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendChat();}"></textarea>
+      <button class="btn" onclick="sendChat()" style="padding:0 18px">➤</button>
+    </div></div>`;
+  const box=$('#cmsgs');
+  const hist=await api('/api/chat/history?limit=40');
+  hist.forEach(m=>box.appendChild(chatBubble(m.role,m.content)));
+  box.scrollTop=box.scrollHeight;
+  const ta=$('#cin');ta.addEventListener('input',()=>{ta.style.height='auto';ta.style.height=Math.min(120,ta.scrollHeight)+'px';});
+};
+function chatBubble(role,content){return el(`<div class="msg ${role==='user'?'msg-u':'msg-a'}">${md(content)}</div>`);}
+async function sendChat(){
+  const inp=$('#cin');const text=inp.value.trim();if(!text)return;inp.value='';inp.style.height='auto';
+  const box=$('#cmsgs');box.appendChild(chatBubble('user',text));
+  const a=chatBubble('assistant','…');box.appendChild(a);box.scrollTop=box.scrollHeight;
+  try{
+    const es=new EventSource(`${API}/api/chat/stream?text=${encodeURIComponent(text)}`);
+    es.onmessage=(ev)=>{const d=JSON.parse(ev.data);
+      if(d.partial){a.innerHTML=md(d.partial);}
+      if('done' in d){a.innerHTML=md(d.done);if(d.tools&&d.tools.length){a.appendChild(el(`<div style="margin-top:6px;display:flex;gap:4px;flex-wrap:wrap">${d.tools.map(t=>`<span class="chip">🔧 ${t}</span>`).join('')}</div>`));}es.close();}
+      box.scrollTop=box.scrollHeight;};
+    es.onerror=()=>es.close();
+  }catch(e){a.innerHTML='Fehler.';}
+}
+
+// ════════ BODY (Health + Gym ausgebaut) ════════
+VIEWS.body=async(root)=>{
+  root.innerHTML=`<div id="b-cards"></div>
+    <div class="grid2">
+      <div class="card" style="padding:16px;margin-top:14px"><b>Schlaf (14T)</b><div style="position:relative;height:120px;margin-top:8px"><canvas id="cSleep"></canvas></div></div>
+      <div class="card" style="padding:16px;margin-top:14px"><b>Gewicht</b><div style="position:relative;height:120px;margin-top:8px"><canvas id="cWeight"></canvas></div></div>
+    </div>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-top:18px"><b style="font-size:17px">Training</b>
+      <div style="display:flex;gap:8px"><button class="btn-ghost" onclick="importWorkout()" style="padding:8px 12px;font-size:13px">📋 Import</button><button class="btn" onclick="addWorkout()" style="padding:8px 12px;font-size:13px">＋ Manuell</button></div></div>
+    <div class="grid2">
+      <div id="b-muscle" style="margin-top:10px"></div>
+      <div id="b-volchart" style="margin-top:10px"></div>
+    </div>
+    <div id="b-wo" style="margin-top:14px"></div>`;
+  const h=await api('/api/health?days=14');const last=h[0]||{};
+  const card=(i,l,v,u)=>`<div class="soft" style="padding:13px;text-align:center"><div style="font-size:18px">${i}</div><div style="font-size:18px;font-weight:700;margin-top:3px">${v??'–'}<span style="font-size:11px;color:var(--muted)">${u||''}</span></div><div style="font-size:11px;color:var(--muted)">${l}</div></div>`;
+  $('#b-cards').appendChild(el(`<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px">${card('😴','Schlaf',last.sleep?last.sleep.toFixed(1):'–','h')}${card('👟','Schritte',(last.steps||0).toLocaleString('de'),'')}${card('❤️','Ruhepuls',last.resting_hr,'bpm')}${card('📊','HRV',last.hrv?Math.round(last.hrv):'–','')}${card('🔥','Aktiv',last.active_calories,'kcal')}${card('⚖️','Gewicht',last.weight,'kg')}</div>`));
+  const rev=[...h].reverse();
+  lineChart('cSleep',rev.map(x=>x.date?.slice(5)),[{label:'Schlaf',data:rev.map(x=>x.sleep),color:'#8b5cf6'}]);
+  lineChart('cWeight',rev.filter(x=>x.weight).map(x=>x.date?.slice(5)),[{label:'kg',data:rev.filter(x=>x.weight).map(x=>x.weight),color:'#3b82f6'}]);
+  // Muscle body
+  const mus=await api('/api/fitness/muscles?days=7');
+  $('#b-muscle').appendChild(el(`<div class="card" style="padding:16px"><b>Muskelgruppen (7T)</b>${muscleBody(mus)}</div>`));
+  // Volume chart
+  $('#b-volchart').appendChild(el(`<div class="card" style="padding:16px"><b>Trainingsvolumen (14T)</b><div style="position:relative;height:160px;margin-top:8px"><canvas id="cVol"></canvas></div></div>`));
+  const vol=await api('/api/fitness/volume_by_day?days=14');
+  barChart('cVol',vol.map(x=>x.date.slice(5)),vol.map(x=>x.mins||x.km*6||x.n*20));
+  // Recent workouts with sets
+  const wo=await api('/api/workouts?limit=10');
+  $('#b-wo').appendChild(el(`<div class="card" style="padding:16px"><b>Letzte Trainings</b>${wo.length?wo.map(w=>`<div style="padding:9px 0;border-bottom:1px solid var(--line)"><div style="display:flex;justify-content:space-between"><div style="font-weight:600">${esc(w.title)}</div><span class="chip">${fmtDue(w.date)}</span></div><div style="font-size:11px;color:var(--muted)">${w.type}${w.distance_km?' · '+w.distance_km+'km':''}${w.duration_min?' · '+w.duration_min+'min':''}</div>${(w.sets&&w.sets.length)?`<div style="font-size:12px;color:#9fb0d6;margin-top:4px">${w.sets.map(s=>`${esc(s.exercise||'?')} ${s.reps||''}×${s.weight_kg||''}kg`).join(' · ')}</div>`:''}</div>`).join(''):'<div style="color:#5b6b8c;font-size:13px;margin-top:8px">Noch keine Trainings.</div>'}</div>`));
+};
+function muscleBody(m){
+  const max=Math.max(1,...Object.values(m));
+  const col=(g)=>{const v=(m[g]||0)/max;if(!m[g])return '#1c2742';const a=0.35+v*0.65;return `rgba(99,140,255,${a})`;};
+  const grp=(g,label,emoji)=>`<div style="display:flex;align-items:center;gap:7px;padding:3px 0"><span style="width:14px;text-align:center">${emoji}</span><div style="flex:1"><div style="display:flex;justify-content:space-between;font-size:11px"><span>${label}</span><span style="color:#7c8db5">${m[g]||0}</span></div><div class="pill-h" style="margin-top:3px;height:5px"><div class="pill-f" style="width:${Math.round((m[g]||0)/max*100)}%"></div></div></div></div>`;
+  // Stilisierter Front-Körper (weiche Formen, Glow auf trainierten Gruppen)
+  const svg=`<svg viewBox="0 0 130 230" width="118" style="display:block;margin:4px auto;filter:drop-shadow(0 4px 12px rgba(0,0,0,.4))">
+    <defs><linearGradient id="bodyG" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#1a2540"/><stop offset="1" stop-color="#131c33"/></linearGradient></defs>
+    <!-- Outline body -->
+    <path d="M65 8 q12 0 12 14 q0 9 -4 13 q14 4 16 16 l4 26 q1 8 -5 9 l-3 -1 l-3 -20 l-2 34 q0 6 2 16 l5 44 q1 7 -6 8 q-6 1 -8 -6 l-7 -40 l-7 40 q-2 7 -8 6 q-7 -1 -6 -8 l5 -44 q2 -10 2 -16 l-2 -34 l-3 20 l-3 1 q-6 -1 -5 -9 l4 -26 q2 -12 16 -16 q-4 -4 -4 -13 q0 -14 12 -14 z" fill="url(#bodyG)" stroke="#2c3c63" stroke-width="1.2"/>
+    <!-- Shoulders -->
+    <ellipse cx="44" cy="62" rx="9" ry="7" fill="${col('shoulders')}"/><ellipse cx="86" cy="62" rx="9" ry="7" fill="${col('shoulders')}"/>
+    <!-- Chest -->
+    <path d="M52 66 q13 -6 26 0 q1 12 -13 13 q-14 -1 -13 -13 z" fill="${col('chest')}"/>
+    <!-- Arms -->
+    <path d="M34 66 q-6 2 -7 10 l-3 22 q3 3 7 1 l5 -30 z" fill="${col('arms')}"/>
+    <path d="M96 66 q6 2 7 10 l3 22 q-3 3 -7 1 l-5 -30 z" fill="${col('arms')}"/>
+    <!-- Core -->
+    <rect x="54" y="84" width="22" height="34" rx="7" fill="${col('core')}"/>
+    <!-- Legs -->
+    <path d="M52 122 q6 -3 11 0 l3 46 q-1 6 -7 6 q-6 0 -7 -6 z" fill="${col('legs')}"/>
+    <path d="M67 122 q5 -3 11 0 l0 46 q-1 6 -7 6 q-6 0 -7 -6 z" fill="${col('legs')}"/>
+    <ellipse cx="65" cy="22" rx="12" ry="13" fill="#1a2540" stroke="#2c3c63"/>
+  </svg>`;
+  return `<div style="display:flex;gap:12px;align-items:center;margin-top:6px"><div>${svg}</div><div style="flex:1">${grp('chest','Brust','🫀')}${grp('back','Rücken','🔙')}${grp('shoulders','Schultern','🤸')}${grp('arms','Arme','💪')}${grp('legs','Beine','🦵')}${grp('core','Core','🧱')}${grp('cardio','Cardio','🏃')}</div></div>`;
+}
+
+// ════════ HABITS (toggle, delete, commit graph) ════════
+VIEWS.habits=async(root)=>{
+  root.innerHTML=`<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px"><b style="font-size:18px">Gewohnheiten</b><button class="btn" onclick="addHabit()" style="padding:8px 14px;font-size:13px">＋ Neu</button></div>
+    <div class="card" style="padding:16px;margin-bottom:14px"><div style="display:flex;justify-content:space-between"><b>Commitment</b><span class="chip" id="commitAvg"></span></div><div id="commitGraph" style="margin-top:10px"></div></div>
+    <div id="hl"></div>`;
+  // Commit graph
+  const cm=await api('/api/habits/commit?days=30');
+  if(cm.length){const avg=Math.round(cm.reduce((a,b)=>a+b.pct,0)/cm.length);$('#commitAvg').textContent=avg+'% Ø';
+    $('#commitGraph').appendChild(el(`<div style="display:flex;gap:3px;align-items:flex-end;height:60px">${cm.map(d=>`<div title="${d.date}: ${d.pct}%" style="flex:1;height:${Math.max(4,d.pct*0.58)}px;border-radius:3px 3px 0 0;background:${d.pct>=100?'linear-gradient(180deg,#22c55e,#16a34a)':d.pct>=50?'#3b82f6':d.pct>0?'#3b5b8c':'#1a2540'}"></div>`).join('')}</div>`));}
+  const hs=await api('/api/habits');
+  if(!hs.length){$('#hl').innerHTML='<div class="card" style="padding:24px;text-align:center;color:#5b6b8c">Noch keine Gewohnheiten 🔥</div>';return;}
+  hs.forEach(h=>{
+    const days=[];const today=new Date();
+    for(let i=29;i>=0;i--){const d=new Date(today);d.setDate(d.getDate()-i);days.push(h.done_dates?.includes(d.toISOString().slice(0,10)));}
+    $('#hl').appendChild(el(`<div class="card" style="padding:16px;margin-bottom:12px">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <div style="display:flex;align-items:center;gap:10px"><span style="font-size:22px">${h.emoji}</span><div><div style="font-weight:600">${esc(h.name)}</div><div style="font-size:11px;color:var(--muted)">🔥 ${h.streak} Tage</div></div></div>
+        <div style="display:flex;gap:8px;align-items:center">
+          <button onclick="toggleHabit(${h.id},${h.today_done})" class="${h.today_done?'':'soft'}" style="border:none;border-radius:12px;padding:9px 14px;cursor:pointer;${h.today_done?'background:linear-gradient(120deg,#22c55e,#16a34a);color:#fff':''}">${h.today_done?'✓ Heute':'Abhaken'}</button>
+          <button onclick="deleteHabit(${h.id},'${esc(h.name)}')" class="soft" style="border:none;border-radius:12px;padding:9px 11px;cursor:pointer;color:#ef6b6b">🗑</button>
+        </div>
+      </div>
+      <div style="display:flex;gap:3px;margin-top:12px;flex-wrap:wrap">${days.map(d=>`<div class="heat" style="${d?'background:linear-gradient(120deg,#22c55e,#16a34a)':''}"></div>`).join('')}</div>
+    </div>`));
+  });
+};
+
+// ════════ TASKS (Arten, Unteraufgaben, Fortschritt, Archiv) ════════
+let taskFilter='open';
+VIEWS.tasks=async(root)=>{
+  root.innerHTML=`<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px"><b style="font-size:18px">Aufgaben</b><button class="btn" onclick="addTask()" style="padding:8px 14px;font-size:13px">＋ Neu</button></div>
+    <div class="tabbar"><div class="tab ${taskFilter==='open'?'active':''}" onclick="setTaskFilter('open')">Offen</div><div class="tab ${taskFilter==='done'?'active':''}" onclick="setTaskFilter('done')">Erledigt</div><div class="tab ${taskFilter==='archived'?'active':''}" onclick="setTaskFilter('archived')">Archiv</div></div>
+    <div id="tl"></div>`;
+  const ts=await api('/api/tasks?status='+taskFilter);
+  if(!ts.length){$('#tl').innerHTML='<div class="card" style="padding:24px;text-align:center;color:#5b6b8c">Nichts hier 🎉</div>';return;}
+  const kindIcon={task:'',project:'📁 ',checklist:'☑️ '};
+  ts.forEach(t=>{
+    const subs=t.subtasks||[];
+    const node=el(`<div class="card" style="padding:15px;margin-bottom:10px">
+      <div style="display:flex;align-items:center;gap:11px">
+        ${taskFilter==='open'?`<button onclick="completeTask(${t.id})" style="width:24px;height:24px;border-radius:7px;border:2px solid #3b5;background:none;cursor:pointer;flex-shrink:0"></button>`:''}
+        <div style="flex:1;min-width:0"><div style="font-size:15px;font-weight:600">${kindIcon[t.kind]||''}${esc(t.title)}</div>
+          ${subs.length?`<div style="font-size:11px;color:var(--muted);margin-top:3px">${subs.filter(s=>s.status==='done').length}/${subs.length} erledigt · ${t.progress_pct}%</div><div class="pill-h" style="margin-top:5px"><div class="pill-f" style="width:${t.progress_pct}%"></div></div>`:''}
+        </div>
+        <span>${({high:'🔴',medium:'🟡',low:'🟢'})[t.priority]||''}</span>
+        <button onclick="taskMenu(${t.id},'${esc(t.title)}','${taskFilter}')" class="soft" style="border:none;border-radius:10px;padding:6px 9px;cursor:pointer">⋯</button>
+      </div>
+      ${subs.length?`<div style="margin-top:10px;padding-left:8px;border-left:2px solid var(--line)">${subs.map(s=>`<div style="display:flex;align-items:center;gap:9px;padding:4px 0"><button onclick="completeTask(${s.id})" style="width:18px;height:18px;border-radius:5px;border:2px solid #3b5;background:${s.status==='done'?'#22c55e':'none'};cursor:pointer"></button><span style="font-size:13px;${s.status==='done'?'text-decoration:line-through;color:#5b6b8c':''}">${esc(s.title)}</span></div>`).join('')}</div>`:''}
+      ${(t.kind==='project'&&taskFilter==='open')?`<button onclick="addSubtask(${t.id})" class="soft" style="border:none;border-radius:10px;padding:6px 11px;font-size:12px;margin-top:8px;cursor:pointer">＋ Unteraufgabe</button>`:''}
+    </div>`);
+    $('#tl').appendChild(node);
+  });
+};
+function setTaskFilter(f){taskFilter=f;go('tasks');}
+function taskMenu(id,title,filter){
+  const opts=[];
+  if(filter!=='archived')opts.push(`<button class="soft" style="border:none;padding:13px;border-radius:12px;width:100%;text-align:left;cursor:pointer;margin-bottom:8px" onclick="closeSheet();setProgress(${id},'${esc(title)}')">📊 Fortschritt setzen</button>`);
+  if(filter==='open')opts.push(`<button class="soft" style="border:none;padding:13px;border-radius:12px;width:100%;text-align:left;cursor:pointer;margin-bottom:8px" onclick="closeSheet();archiveTask(${id})">📦 Archivieren</button>`);
+  opts.push(`<button class="soft" style="border:none;padding:13px;border-radius:12px;width:100%;text-align:left;cursor:pointer;color:#ef6b6b" onclick="closeSheet();deleteTask(${id},'${esc(title)}')">🗑 Löschen</button>`);
+  sheet(`<div style="width:40px;height:4px;background:#33415a;border-radius:99px;margin:0 auto 16px"></div><div style="font-weight:700;margin-bottom:14px">${esc(title)}</div>${opts.join('')}`);
+}
+
+// ════════ CALENDAR ════════
+VIEWS.calendar=async(root)=>{
+  root.innerHTML=`<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px"><b style="font-size:18px">Kalender</b><button class="btn" onclick="addEvent()" style="padding:8px 14px;font-size:13px">＋ Termin</button></div><div id="cl"></div>`;
+  const es=await api('/api/calendar?days=21');
+  if(!es.length){$('#cl').innerHTML='<div class="card" style="padding:24px;text-align:center;color:#5b6b8c">Keine Termine.</div>';return;}
+  es.forEach(e=>$('#cl').appendChild(el(`<div class="card" style="padding:14px;margin-bottom:10px;display:flex;gap:12px;align-items:center"><div style="min-width:54px;text-align:center"><div style="font-size:12px;color:#60a5fa">${e.start}</div></div><div style="flex:1"><div style="font-size:15px;font-weight:600">${esc(e.title)}</div>${e.location?`<div style="font-size:12px;color:var(--muted)">📍 ${esc(e.location)}</div>`:''}</div>${e.calendar?`<span class="chip">${esc(e.calendar)}</span>`:''}</div>`)));
+};
+
+// ════════ NUTRITION (chart, makros, AI-Hinweis, cleaner) ════════
+VIEWS.nutrition=async(root)=>{
+  root.innerHTML=`<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px"><b style="font-size:18px">Ernährung</b><button class="btn" onclick="addMeal()" style="padding:8px 14px;font-size:13px">＋ Mahlzeit</button></div>
+    <div id="nt"></div>
+    <div class="card" style="padding:16px;margin-top:14px"><b>Verlauf (14T)</b><div style="position:relative;height:130px;margin-top:8px"><canvas id="cNut"></canvas></div></div>
+    <div class="soft" style="padding:13px;margin-top:12px;font-size:13px;color:#a5b4fc">💡 Sag im Chat einfach „ich hatte zwei Marmeladentoasts" – Jarvis schätzt die Makros und trägt sie ein.</div>
+    <div id="nl" style="margin-top:14px"></div>`;
+  const d=await api('/api/nutrition');const t=d.totals||{};
+  const macro=(l,v,c)=>`<div style="text-align:center"><div style="font-size:20px;font-weight:700;color:${c}">${Math.round(v||0)}</div><div style="font-size:11px;color:var(--muted)">${l}</div></div>`;
+  $('#nt').appendChild(el(`<div class="card" style="padding:18px"><div style="text-align:center;margin-bottom:14px"><div style="font-size:34px;font-weight:800">${Math.round(t.kcal||0)}</div><div style="font-size:12px;color:var(--muted)">kcal heute</div></div><div style="display:flex;justify-content:space-around">${macro('Protein',t.protein,'#3b82f6')}${macro('Carbs',t.carbs,'#f59e0b')}${macro('Fett',t.fat,'#ec4899')}</div></div>`));
+  const hist=await api('/api/nutrition/history?days=14');
+  lineChart('cNut',hist.map(x=>x.date.slice(5)),[{label:'kcal',data:hist.map(x=>x.kcal),color:'#3b82f6'}]);
+  $('#nl').appendChild(el(`<div class="card" style="padding:14px"><b>Heute</b>${(d.meals||[]).length?d.meals.map(m=>`<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--line)"><div><div style="font-size:14px">${esc(m.description)}</div><div style="font-size:11px;color:var(--muted)">${m.meal_type}${m.protein_g?' · '+Math.round(m.protein_g)+'g P':''}${m.carbs_g?' · '+Math.round(m.carbs_g)+'g C':''}${m.fat_g?' · '+Math.round(m.fat_g)+'g F':''}</div></div>${m.calories?`<span class="chip">${m.calories} kcal</span>`:''}</div>`).join(''):'<div style="color:#5b6b8c;font-size:13px;margin-top:8px">Heute noch nichts.</div>'}</div>`));
+};
+
+// ════════ JOURNAL ════════
+VIEWS.journal=async(root)=>{
+  root.innerHTML=`<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px"><b style="font-size:18px">Journal</b><button class="btn" onclick="addJournal()" style="padding:8px 14px;font-size:13px">＋ Eintrag</button></div><div class="card" style="padding:16px;margin-bottom:14px"><b>Stimmung & Energie</b><div style="position:relative;height:120px;margin-top:8px"><canvas id="cMood"></canvas></div></div><div id="jl"></div>`;
+  const mood=await api('/api/journal/mood?days=21');
+  lineChart('cMood',mood.map(x=>x.date?.slice(5)),[{label:'Stimmung',data:mood.map(x=>x.mood),color:'#22c55e'},{label:'Energie',data:mood.map(x=>x.energy),color:'#f59e0b'}]);
+  const js=await api('/api/journal?limit=30');const emo=['','😞','😕','😐','🙂','😄'];
+  $('#jl').innerHTML=js.length?js.map(j=>`<div class="card" style="padding:14px;margin-bottom:10px"><div style="display:flex;justify-content:space-between;font-size:11px;color:var(--muted)"><span>${new Date(j.date).toLocaleDateString('de')}</span><span>${j.mood?emo[j.mood]:''} ${j.energy?'⚡'+j.energy:''}</span></div><div style="font-size:14px;margin-top:6px">${esc(j.content)}</div></div>`).join(''):'<div class="card" style="padding:24px;text-align:center;color:#5b6b8c">Noch keine Einträge.</div>';
+};
+
+// ════════ GOALS ════════
+VIEWS.goals=async(root)=>{
+  root.innerHTML=`<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px"><b style="font-size:18px">Ziele</b><button class="btn" onclick="addGoal()" style="padding:8px 14px;font-size:13px">＋ Ziel</button></div><div id="gl"></div>`;
+  const gs=await api('/api/goals');
+  if(!gs.length){$('#gl').innerHTML='<div class="card" style="padding:24px;text-align:center;color:#5b6b8c">Noch keine Ziele.</div>';return;}
+  const ic={fitness:'💪',career:'💼',finance:'💰',personal:'🌱',general:'🎯'};
+  gs.forEach(g=>$('#gl').appendChild(el(`<div class="card" style="padding:16px;margin-bottom:12px;cursor:pointer" onclick="updateGoal(${g.id},'${esc(g.title)}')"><div style="display:flex;justify-content:space-between"><div style="display:flex;gap:8px"><span>${ic[g.category]||'🎯'}</span><b>${esc(g.title)}</b></div><span style="color:#a5b4fc">${g.progress_pct}%</span></div>${g.target_value?`<div style="font-size:12px;color:var(--muted);margin-top:4px">${g.current_value||0} / ${g.target_value} ${g.unit||''}</div>`:''}<div class="pill-h" style="margin-top:10px"><div class="pill-f" style="width:${g.progress_pct}%"></div></div></div>`)));
+};
+
+// ════════ MEMORY (delete confirm) ════════
+VIEWS.memory=async(root)=>{
+  root.innerHTML=`<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px"><b style="font-size:18px">Gedächtnis</b><button class="btn" onclick="addMemory()" style="padding:8px 14px;font-size:13px">＋ Merken</button></div><div id="ml"></div>`;
+  const ms=await api('/api/memories');const col={fact:'#60a5fa',goal:'#4ade80',pattern:'#c084fc',preference:'#f472b6',correction:'#fb923c',context:'#67e8f9'};
+  $('#ml').innerHTML=ms.length?ms.map(m=>`<div class="card" style="padding:13px;margin-bottom:9px"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px"><span class="chip" style="color:${col[m.category]||'#9fb0d6'}">${m.category}</span><div style="display:flex;gap:10px;align-items:center"><span style="font-size:11px;color:var(--muted)">${Math.round(m.confidence*100)}%</span><button onclick="askDelMemory(${m.id})" style="background:none;border:none;color:#ef6b6b;font-size:15px;cursor:pointer">✕</button></div></div><div style="font-size:14px">${esc(m.content)}</div></div>`).join(''):'<div class="card" style="padding:24px;text-align:center;color:#5b6b8c">Noch keine Erinnerungen.</div>';
+};
+function askDelMemory(id){confirmAction('Diese Erinnerung wirklich löschen?',async()=>{await del('/api/memories/'+id);toast('Gelöscht');go('memory');});}
+
+// ════════ MIND ════════
+VIEWS.mind=async(root)=>{
+  root.innerHTML=`<b style="font-size:18px">Jarvis Mind 🌌</b>
+    <div class="grid2">
+      <div class="card" style="padding:16px;margin-top:12px"><b>Gelernt über dich</b><div id="mNotes" style="margin-top:8px"></div></div>
+      <div class="card" style="padding:16px;margin-top:12px"><b>Reflexionen</b><div id="mRef" style="margin-top:8px"></div></div>
+    </div>
+    <div class="card" style="padding:16px;margin-top:12px"><b>Live-Aktivität</b><div id="mFeed" style="margin-top:8px;max-height:340px;overflow-y:auto"></div></div>`;
+  const m=await api('/api/mind');
+  $('#mNotes').innerHTML=(m.notes||[]).length?m.notes.map(n=>`<div style="font-size:13px;color:#c7d2fe;padding:4px 0">• ${esc(n)}</div>`).join(''):'<span style="color:#5b6b8c;font-size:13px">Lernt noch…</span>';
+  $('#mRef').innerHTML=(m.reflections||[]).length?m.reflections.map(r=>`<div style="font-size:13px;padding:6px 0;border-bottom:1px solid var(--line)">🪞 ${esc(r.content)}</div>`).join(''):'<span style="color:#5b6b8c;font-size:13px">Noch keine.</span>';
+  const feed=$('#mFeed');feed.innerHTML=(m.events||[]).map(e=>`<div style="display:flex;gap:8px;padding:4px 0;font-size:12px;color:#9fb0d6"><span>${feedIcon(e.type)}</span><span style="flex:1">${esc(e.summary)}</span></div>`).join('');
+  try{const es=new EventSource(`${API}/api/feed/stream`);es.onmessage=ev=>{if(CUR!=='mind'){es.close();return;}const e=JSON.parse(ev.data);feed.prepend(el(`<div style="display:flex;gap:8px;padding:4px 0;font-size:12px;color:#9fb0d6"><span>${feedIcon(e.type)}</span><span style="flex:1">${esc(e.summary)}</span></div>`));};}catch(e){}
+};
+
+// ════════ ANALYTICS ════════
+VIEWS.analytics=async(root)=>{
+  root.innerHTML=`<b style="font-size:18px">Analytics 📊</b>
+    <div class="grid2">
+      <div class="card" style="padding:16px;margin-top:12px"><b>Schlaf & HRV (30T)</b><div style="position:relative;height:150px;margin-top:8px"><canvas id="aHealth"></canvas></div></div>
+      <div class="card" style="padding:16px;margin-top:12px"><b>Schritte (30T)</b><div style="position:relative;height:150px;margin-top:8px"><canvas id="aSteps"></canvas></div></div>
+    </div>
+    <div class="card" style="padding:16px;margin-top:12px"><b>Gewohnheiten-Konsistenz (30T)</b><div id="aHabits" style="margin-top:8px"></div></div>`;
+  const a=await api('/api/analytics');const h=[...(a.health||[])].reverse();
+  lineChart('aHealth',h.map(x=>x.date?.slice(5)),[{label:'Schlaf',data:h.map(x=>x.sleep),color:'#8b5cf6'},{label:'HRV',data:h.map(x=>x.hrv),color:'#22c55e',y1:true}]);
+  barChart('aSteps',h.map(x=>x.date?.slice(5)),h.map(x=>x.steps));
+  $('#aHabits').innerHTML=(a.habits||[]).map(x=>`<div style="margin-top:8px"><div style="display:flex;justify-content:space-between;font-size:13px"><span>${x.emoji} ${esc(x.name)}</span><span style="color:#a5b4fc">${x.done_count}/30</span></div><div class="pill-h" style="margin-top:4px"><div class="pill-f" style="width:${Math.round(x.done_count/30*100)}%"></div></div></div>`).join('')||'<span style="color:#5b6b8c;font-size:13px">Keine Daten.</span>';
+};
+
+// ════════ SETTINGS ════════
+VIEWS.settings=async(root)=>{
+  const s=await api('/api/settings');const tools=await api('/api/tools');const cats={};tools.forEach(t=>(cats[t.category]=cats[t.category]||[]).push(t));
+  root.innerHTML=`<b style="font-size:18px">Einstellungen ⚙️</b>
+    <div class="card" style="padding:16px;margin-top:12px"><label style="font-size:13px;color:var(--muted)">Wetter-Stadt</label><input id="setCity" value="${esc(s.weather_city||'')}" style="margin-top:6px"><button class="btn" onclick="saveSettings()" style="margin-top:10px;width:100%">Speichern</button></div>
+    <div class="card" style="padding:16px;margin-top:12px"><b>Fähigkeiten (${tools.length} Tools)</b>${Object.entries(cats).map(([c,ts])=>`<div style="margin-top:10px"><div class="chip" style="display:inline-block;margin-bottom:6px">${c}</div><div style="font-size:12px;color:#9fb0d6">${ts.map(t=>esc(t.name)).join(' · ')}</div></div>`).join('')}</div>`;
+};
+async function saveSettings(){await post('/api/settings',{weather_city:$('#setCity').value});toast('Gespeichert ✓');}
+
+// ════════ Charts ════════
+function lineChart(id,labels,series){const ctx=document.getElementById(id);if(!ctx)return;if(charts[id])charts[id].destroy();charts[id]=new Chart(ctx,{type:'line',data:{labels,datasets:series.map(s=>({label:s.label,data:s.data,borderColor:s.color,backgroundColor:s.color+'22',tension:.4,fill:true,pointRadius:0,borderWidth:2,yAxisID:s.y1?'y1':'y'}))},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{color:'#9fb0d6',boxWidth:10,font:{size:10}}}},scales:{x:{ticks:{color:'#5b6b8c',font:{size:9},maxTicksLimit:7},grid:{display:false}},y:{ticks:{color:'#5b6b8c',font:{size:9}},grid:{color:'#16203a'}},y1:series.some(s=>s.y1)?{position:'right',ticks:{color:'#5b6b8c',font:{size:9}},grid:{display:false}}:{display:false}}}});}
+function barChart(id,labels,data){const ctx=document.getElementById(id);if(!ctx)return;if(charts[id])charts[id].destroy();charts[id]=new Chart(ctx,{type:'bar',data:{labels,datasets:[{data,backgroundColor:'#3b82f6aa',borderRadius:4}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{color:'#5b6b8c',font:{size:9},maxTicksLimit:8},grid:{display:false}},y:{ticks:{color:'#5b6b8c',font:{size:9}},grid:{color:'#16203a'}}}}});}
+
+// ════════ Forms ════════
+function formSheet(title,fields,onsave){sheet(`<div style="width:40px;height:4px;background:#33415a;border-radius:99px;margin:0 auto 16px"></div><div style="font-weight:700;font-size:18px;margin-bottom:14px">${title}</div><div style="display:flex;flex-direction:column;gap:10px">${fields}</div><button class="btn" id="fsave" style="width:100%;margin-top:16px">Speichern</button>`);$('#fsave').onclick=onsave;}
+function addTask(){formSheet('Neue Aufgabe',`<input id="f1" placeholder="Titel"><select id="fk"><option value="task">Aufgabe</option><option value="project">Projekt (mit Unteraufgaben)</option><option value="checklist">Checkliste</option></select><select id="f2"><option value="medium">Mittel</option><option value="high">Hoch</option><option value="low">Niedrig</option></select><input id="f3" placeholder="Fällig (optional, z.B. morgen 9:00)">`,async()=>{await post('/api/tasks',{title:$('#f1').value,kind:$('#fk').value,priority:$('#f2').value,due:$('#f3').value});closeSheet();toast('Erstellt ✓');if(CUR==='tasks'||CUR==='home')go(CUR);});}
+function addSubtask(pid){formSheet('Unteraufgabe',`<input id="f1" placeholder="Titel">`,async()=>{await post('/api/tasks',{title:$('#f1').value,parent_id:pid});closeSheet();toast('Hinzugefügt ✓');go('tasks');});}
+function addEvent(){formSheet('Neuer Termin',`<input id="f1" placeholder="Titel"><input id="f2" placeholder="Start (z.B. morgen 14:00)"><input id="f3" placeholder="Ort (optional)">`,async()=>{await post('/api/calendar',{title:$('#f1').value,start:$('#f2').value,location:$('#f3').value});closeSheet();toast('Erstellt ✓');if(CUR==='calendar')go(CUR);});}
+function addMeal(){formSheet('Mahlzeit',`<input id="f1" placeholder="Beschreibung"><select id="f2"><option value="breakfast">Frühstück</option><option value="lunch">Mittag</option><option value="dinner">Abend</option><option value="snack">Snack</option></select><div style="display:flex;gap:8px"><input id="f3" type="number" placeholder="kcal"><input id="f4" type="number" placeholder="Protein g"></div><div style="display:flex;gap:8px"><input id="f5" type="number" placeholder="Carbs g"><input id="f6" type="number" placeholder="Fett g"></div>`,async()=>{await post('/api/nutrition',{description:$('#f1').value,meal_type:$('#f2').value,calories:+$('#f3').value||null,protein_g:+$('#f4').value||null,carbs_g:+$('#f5').value||null,fat_g:+$('#f6').value||null});closeSheet();toast('Erfasst ✓');if(CUR==='nutrition'||CUR==='home')go(CUR);});}
+function addWorkout(){formSheet('Training (manuell)',`<input id="f1" placeholder="Titel"><select id="f2"><option value="strength">Kraft</option><option value="run">Lauf</option><option value="mobility">Mobility</option><option value="other">Andere</option></select><div style="display:flex;gap:8px"><input id="f3" type="number" placeholder="Dauer min"><input id="f4" type="number" step="0.1" placeholder="km"></div>`,async()=>{await post('/api/workouts',{title:$('#f1').value,type:$('#f2').value,duration_min:+$('#f3').value||null,distance_km:+$('#f4').value||null});closeSheet();toast('Erfasst ✓');if(CUR==='body')go(CUR);});}
+function importWorkout(){
+  formSheet('Training importieren',
+    `<div style="font-size:13px;color:var(--muted)">Lade eine Datei hoch (Text/CSV/JSON-Export deiner Gym-App) ODER füge den Text direkt ein – Jarvis parst Übungen & Sätze automatisch.</div>
+     <label class="soft" style="display:flex;align-items:center;justify-content:center;gap:8px;padding:16px;border-radius:14px;cursor:pointer;border:1px dashed var(--line)">📎 Datei wählen<input id="ffile" type="file" accept=".txt,.csv,.json,.md,.log,text/*" style="display:none"></label>
+     <div id="ffname" style="font-size:12px;color:#a5b4fc;text-align:center"></div>
+     <div style="text-align:center;font-size:11px;color:var(--muted)">– oder –</div>
+     <textarea id="f1" rows="6" placeholder="Push Day\nBankdrücken 5x5 @80kg\nSchrägbank KH 3x10 @28kg\nDips 3x12"></textarea>`,
+    async()=>{
+      const btn=$('#fsave');let text=$('#f1').value.trim();
+      const f=$('#ffile').files[0];
+      if(f && !text){ text=await f.text(); }
+      if(!text){toast('Bitte Datei oder Text angeben');return;}
+      btn.textContent='Parse…';btn.disabled=true;
+      const r=await post('/api/fitness/import',{text});
+      closeSheet();if(r.error)toast('Fehler: '+r.error);else toast('Importiert ✓');if(CUR==='body')go(CUR);
+    });
+  $('#ffile').addEventListener('change',e=>{const f=e.target.files[0];if(f)$('#ffname').textContent='✓ '+f.name;});
+}
+const HABIT_EMOJIS=['📚','🏃','🧘','💪','💧','🥗','😴','🚭','🧠','✍️','🎯','🪥','☀️','💊','🚿','🎸','💰','🙏','📵','🌱'];
+function addHabit(){
+  formSheet('Neue Gewohnheit',
+    `<input id="f1" placeholder="Name (z.B. Lesen)">
+     <input id="f2" type="hidden" value="📚">
+     <div style="font-size:12px;color:var(--muted)">Emoji wählen</div>
+     <div id="emojiGrid" style="display:grid;grid-template-columns:repeat(7,1fr);gap:6px">
+       ${HABIT_EMOJIS.map((e,i)=>`<button type="button" class="emojiBtn soft" data-e="${e}" style="border:none;border-radius:11px;padding:9px 0;font-size:20px;cursor:pointer;${i===0?'outline:2px solid var(--accent)':''}">${e}</button>`).join('')}
+     </div>`,
+    async()=>{const name=$('#f1').value.trim();if(!name){toast('Name fehlt');return;}await post('/api/habits',{name,emoji:$('#f2').value});closeSheet();toast('Angelegt ✓');go('habits');});
+  document.querySelectorAll('.emojiBtn').forEach(b=>b.onclick=()=>{$('#f2').value=b.dataset.e;document.querySelectorAll('.emojiBtn').forEach(x=>x.style.outline='none');b.style.outline='2px solid var(--accent)';});
+}
+function addJournal(){formSheet('Journal-Eintrag',`<textarea id="f1" rows="4" placeholder="Was beschäftigt dich?"></textarea><label style="font-size:12px;color:var(--muted)">Stimmung: <span id="mv">3</span></label><input id="f2" type="range" min="1" max="5" value="3" oninput="document.getElementById('mv').textContent=this.value"><label style="font-size:12px;color:var(--muted)">Energie: <span id="ev">3</span></label><input id="f3" type="range" min="1" max="5" value="3" oninput="document.getElementById('ev').textContent=this.value">`,async()=>{await post('/api/journal',{content:$('#f1').value,mood:+$('#f2').value,energy:+$('#f3').value});closeSheet();toast('Gespeichert ✓');if(CUR==='journal')go(CUR);});}
+function addGoal(){formSheet('Neues Ziel',`<input id="f1" placeholder="Titel"><select id="f2"><option value="fitness">Fitness</option><option value="career">Karriere</option><option value="finance">Finanzen</option><option value="personal">Persönlich</option><option value="general">Allgemein</option></select><div style="display:flex;gap:8px"><input id="f3" type="number" placeholder="Zielwert"><input id="f4" placeholder="Einheit"></div><input id="f5" placeholder="Deadline (optional)">`,async()=>{await post('/api/goals',{title:$('#f1').value,category:$('#f2').value,target_value:+$('#f3').value||null,unit:$('#f4').value,deadline:$('#f5').value});closeSheet();toast('Angelegt ✓');if(CUR==='goals')go(CUR);});}
+function addMemory(){formSheet('Etwas merken',`<textarea id="f1" rows="3" placeholder="Was soll Jarvis sich merken?"></textarea><select id="f2"><option value="fact">Fakt</option><option value="preference">Vorliebe</option><option value="goal">Ziel</option><option value="context">Kontext</option></select>`,async()=>{await post('/api/memories',{content:$('#f1').value,category:$('#f2').value});closeSheet();toast('Gemerkt ✓');if(CUR==='memory')go(CUR);});}
+function updateGoal(id,title){
+  formSheet(title,
+    `<label style="font-size:12px;color:var(--muted)">Fortschritt %: <span id="pv">50</span></label><input id="f1" type="range" min="0" max="100" value="50" oninput="document.getElementById('pv').textContent=this.value"><select id="f2"><option value="active">Aktiv</option><option value="done">Erledigt</option><option value="paused">Pausiert</option></select>
+     <button type="button" class="soft" style="border:none;border-radius:13px;padding:12px;color:#ef6b6b;cursor:pointer;margin-top:4px" onclick="closeSheet();deleteGoal(${id},'${esc(title)}')">🗑 Ziel löschen</button>`,
+    async()=>{await post(`/api/goals/${id}/progress`,{progress_pct:+$('#f1').value,status:$('#f2').value});closeSheet();toast('Aktualisiert ✓');go('goals');});}
+function deleteGoal(id,title){confirmAction(`Ziel „${title}" wirklich löschen?`,async()=>{await del('/api/goals/'+id);toast('Gelöscht');go('goals');});}
+function setProgress(id,title){formSheet(title,`<label style="font-size:12px;color:var(--muted)">Fortschritt %: <span id="pv">50</span></label><input id="f1" type="range" min="0" max="100" value="50" oninput="document.getElementById('pv').textContent=this.value">`,async()=>{await post(`/api/tasks/${id}/progress`,{progress_pct:+$('#f1').value});closeSheet();toast('✓');go('tasks');});}
+
+// ════════ Actions ════════
+async function toggleHabit(id,done){if(done){await post(`/api/habits/${id}/unlog`);toast('Zurückgesetzt');}else{await post(`/api/habits/${id}/log`,{});toast('🔥 Abgehakt');}go(CUR);}
+async function deleteHabit(id,name){confirmAction(`Gewohnheit „${name}" löschen?`,async()=>{await del('/api/habits/'+id);toast('Gelöscht');go('habits');});}
+async function completeTask(id){await post(`/api/tasks/${id}/complete`);toast('✓ Erledigt');go(CUR);}
+async function archiveTask(id){await post(`/api/tasks/${id}/archive`);toast('Archiviert');go('tasks');}
+async function deleteTask(id,title){confirmAction(`„${title}" löschen?`,async()=>{await del('/api/tasks/'+id);toast('Gelöscht');go('tasks');});}
+
+if('serviceWorker' in navigator){navigator.serviceWorker.register('/sw.js').catch(()=>{});}
+go('home');
+</script>
+</body>
+</html>
