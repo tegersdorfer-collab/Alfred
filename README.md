@@ -4,7 +4,7 @@ Persönlicher, autonomer AI-Concierge — läuft lokal auf einem Mac (Apple Sili
 spricht über Telegram und ein eigenes mobil-first Dashboard.
 
 ## Features
-- **Agentischer Kern** mit nativem Tool-Calling (Qwen3 via Ollama) – 25+ Tools
+- **Agentischer Kern** mit nativem Tool-Calling (Qwen3.5 via Ollama) – 25+ Tools
 - **Autopilot**: Morgen-Briefing, Abend-Review, Health-Anomalie-Erkennung, proaktive Nachrichten
 - **Selbst-Verbesserung**: Reflexion, Meta-Gedächtnis, Verhaltensanpassung
 - **Gedächtnis**: Kurzzeit (KZG) + Langzeit (pgvector) mit Komprimierung & Konsolidierung
