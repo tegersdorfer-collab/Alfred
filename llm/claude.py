@@ -28,6 +28,7 @@ class ClaudeProvider(LLMProvider):
         system: str | None = None,
         temperature: float = 0.7,
         max_tokens: int = 1024,
+        format: str | dict | None = None,
     ) -> str:
         kwargs: dict = dict(
             model=self._model,
@@ -36,6 +37,9 @@ class ClaudeProvider(LLMProvider):
         )
         if system:
             kwargs["system"] = system
+        if format:                       # Claude: JSON-Ausgabe per System-Hinweis erbitten
+            sys_extra = "\n\nAntworte ausschließlich mit validem JSON, ohne Text drumherum."
+            kwargs["system"] = (kwargs.get("system", "") + sys_extra).strip()
         response = await self._client.messages.create(**kwargs)
         return response.content[0].text
 

@@ -26,8 +26,10 @@ class LLMProvider(ABC):
         system: str | None = None,
         temperature: float = 0.7,
         max_tokens: int = 1024,
+        format: str | dict | None = None,
     ) -> str:
-        """Einmalige Antwort generieren."""
+        """Einmalige Antwort generieren.
+        format='json' (oder ein JSON-Schema-dict) erzwingt valide JSON-Ausgabe."""
         ...
 
     @abstractmethod

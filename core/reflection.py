@@ -97,13 +97,15 @@ class Reflection:
             f"Interaktionen:\n{convo}\n\nJSON:"
         )
         try:
+            from core.jsonutil import extract_json
             raw = await self.llm.chat(messages=[{"role": "user", "content": prompt}],
-                                      temperature=0.4, max_tokens=300)
-            s, e = raw.find("{"), raw.rfind("}") + 1
-            data = json.loads(raw[s:e]) if s >= 0 else {}
+                                      temperature=0.4, max_tokens=300, format="json")
+            data = extract_json(raw, default={})
         except Exception as ex:
             log.debug(f"Tages-Reflexion JSON-Fehler: {ex}")
             return None
+        if not isinstance(data, dict):
+            data = {}
 
         insight = (data.get("insight") or "").strip()
         adjustment = (data.get("behavior_adjustment") or "").strip()

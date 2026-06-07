@@ -204,11 +204,12 @@ class Autopilot:
             f"{self.identity}\n\n"
             "Erstelle ein kurzes, energetisches Morgen-Briefing für Timo auf Deutsch. "
             "Max 5-6 Zeilen. Konkret, motivierend, kein Smalltalk. "
-            "Beginne mit 'Guten Morgen'. Hebe das Wichtigste hervor und gib einen klaren Fokus für den Tag.\n\n"
+            "Beginne mit 'Guten Morgen'. Hebe das Wichtigste hervor und gib einen klaren Fokus für den Tag. "
+            "Schreibe jeden Punkt nur EINMAL. Keine Wiederholungen, keine Selbstkorrekturen.\n\n"
             f"Daten von heute:\n{facts}\n\nBriefing:"
         )
         text = await self.llm.chat(messages=[{"role": "user", "content": prompt}],
-                                   temperature=0.7, max_tokens=400)
+                                   temperature=0.6, max_tokens=300)
         await self._send("☀️ " + text.strip(), kind="briefing")
         log.info("☀️ Morgen-Briefing gesendet")
 
@@ -241,14 +242,14 @@ class Autopilot:
         facts = "\n".join(lines) if lines else "Wenig Daten erfasst."
         prompt = (
             f"{self.identity}\n\n"
-            "Erstelle einen kurzen Abend-Review für Timo auf Deutsch. Max 5 Zeilen. "
-            "Würdige kurz was lief, sprich offen an was liegen blieb (direkt, nicht weichgespült), "
-            "und stelle EINE konkrete Frage zum Tag (Stimmung/Erkenntnis). "
-            "Schlage bei Bedarf einen Fokus für morgen vor.\n\n"
+            "Erstelle einen kurzen Abend-Review für Timo auf Deutsch. Max 4-5 Zeilen. "
+            "Würdige kurz was lief, sprich offen an was liegen blieb (direkt, respektvoll). "
+            "Stelle GENAU EINE konkrete Frage zum Tag. "
+            "Schreibe jeden Punkt nur EINMAL. Keine Wiederholungen, keine Entschuldigungen.\n\n"
             f"Tagesdaten:\n{facts}\n\nReview:"
         )
         text = await self.llm.chat(messages=[{"role": "user", "content": prompt}],
-                                   temperature=0.7, max_tokens=400)
+                                   temperature=0.6, max_tokens=300)
         await self._send("🌙 " + text.strip(), kind="review")
         log.info("🌙 Abend-Review gesendet")
 
@@ -281,10 +282,11 @@ class Autopilot:
             return None
         prompt = (
             f"{self.identity}\n\n"
-            "Formuliere einen kurzen, direkten Hinweis (2-3 Sätze) zu Timos Gesundheit. "
-            "Sachlich, kein Alarmismus, ein konkreter Vorschlag.\n\n"
+            "Formuliere einen kurzen Hinweis (2-3 Sätze) zu Timos Gesundheit. "
+            "Sachlich, kein Alarmismus, ein konkreter Vorschlag. "
+            "Schreibe jeden Satz nur EINMAL.\n\n"
             f"Auffälligkeiten: {'; '.join(flags)}\n\nHinweis:"
         )
         text = await self.llm.chat(messages=[{"role": "user", "content": prompt}],
-                                   temperature=0.6, max_tokens=200)
+                                   temperature=0.5, max_tokens=150)
         return "🩺 " + text.strip()

@@ -1,7 +1,7 @@
 """
-Schneller Hilfs-LLM (llama3.2:3b) für günstige Entscheidungen:
+Schneller Hilfs-LLM für günstige Entscheidungen:
 Klassifikation, Ja/Nein-Urteile, kurze Zusammenfassungen.
-Viel schneller als das 14B-Hauptmodell.
+Nutzt AGENT_MODEL_FAST (qwen3.5:4b) – kein drittes Modell im RAM.
 """
 import logging
 
@@ -18,7 +18,7 @@ async def ask(prompt: str, max_tokens: int = 20, temperature: float = 0.1) -> st
     try:
         async with GATE:
             resp = await _client.chat(
-                model=config.OLLAMA_FAST_MODEL,
+                model=config.AGENT_MODEL_FAST,
                 messages=[{"role": "user", "content": prompt}],
                 options={"temperature": temperature, "num_predict": max_tokens,
                          "keep_alive": config.OLLAMA_KEEP_ALIVE},
@@ -37,10 +37,10 @@ async def yes_no(question: str) -> bool:
 async def warmup() -> None:
     try:
         await _client.chat(
-            model=config.OLLAMA_FAST_MODEL,
+            model=config.AGENT_MODEL_FAST,
             messages=[{"role": "user", "content": "ok"}],
             options={"num_predict": 1, "keep_alive": config.OLLAMA_KEEP_ALIVE},
         )
-        log.info(f"🔥 Schnellmodell {config.OLLAMA_FAST_MODEL} aufgewärmt")
+        log.info(f"🔥 Schnellmodell {config.AGENT_MODEL_FAST} aufgewärmt")
     except Exception as e:
         log.debug(f"Fast-Warmup fehlgeschlagen: {e}")

@@ -4,6 +4,8 @@ Schnell, kein LLM-Call nötig: keyword-basiert + einfache Heuristiken.
 """
 import re
 
+import config
+
 # Suchanfragen: aktuelle Infos, Fakten, News, Preise etc.
 SEARCH_PATTERNS = [
     r"\bwetter\b",
@@ -66,3 +68,33 @@ def needs_news(text: str) -> bool:
 def needs_claude(text: str) -> bool:
     text_lower = text.lower()
     return any(re.search(p, text_lower) for p in COMPLEX_PATTERNS)
+
+
+# ── Agent-Modell-Routing (schnell ↔ stark) ───────────────────────────────────
+
+# Signale, die das starke Modell rechtfertigen: Analyse, Beratung, Reflexion,
+# Meinungsfragen – also alles, wo Reasoning-Tiefe & saubere Prosa zählen.
+STRONG_PATTERNS = COMPLEX_PATTERNS + [
+    r"\bwarum\b", r"\bwieso\b", r"\bweshalb\b",
+    r"\bsoll ich\b", r"\bsollte ich\b", r"\bwas denkst du\b", r"\bdeine meinung\b",
+    r"\brat\b", r"\bberat", r"\bentscheid", r"\breflekt", r"\büberzeug",
+    r"\bdilemma\b", r"\berklär", r"\bbegründ",
+]
+
+
+def needs_strong(text: str) -> bool:
+    """Heuristik: braucht diese Anfrage das starke Modell? (kein LLM-Call)"""
+    t = text.lower()
+    if len(text) > 280:                       # lange, ausführliche Nachrichten
+        return True
+    return any(re.search(p, t) for p in STRONG_PATTERNS)
+
+
+def pick_model(text: str) -> tuple[str, str]:
+    """Wählt (Modell, keep_alive) für eine Anfrage. Routing via LLM_ROUTING abschaltbar.
+    Einfach/Tool-Aktion → schnelles Modell; komplex → starkes Modell (kurz warm)."""
+    if not config.LLM_ROUTING:
+        return config.OLLAMA_MODEL, config.OLLAMA_KEEP_ALIVE
+    if needs_strong(text):
+        return config.AGENT_MODEL_STRONG, config.OLLAMA_KEEP_ALIVE_STRONG
+    return config.AGENT_MODEL_FAST, config.OLLAMA_KEEP_ALIVE

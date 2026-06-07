@@ -35,6 +35,24 @@ class KZG:
     def get_messages(self) -> list[Message]:
         return [Message(role=t.role, content=t.content) for t in self._turns]
 
+    def recent_messages(self, max_tokens: int = 3000, min_turns: int = 4) -> list[Message]:
+        """
+        Jüngste Turns innerhalb eines Token-Budgets (4 Zeichen ≈ 1 Token).
+        Passt sich an Nachrichtenlänge an statt hart auf N Turns zu schneiden.
+        Ältere Fakten gehen nicht verloren – der Compressor destilliert sie ins LZG,
+        von wo die Memory-Suche sie bei Bedarf zurückholt.
+        """
+        selected: list[Turn] = []
+        budget = max_tokens
+        for t in reversed(self._turns):
+            cost = len(t.content) // 4 + 1
+            if selected and budget - cost < 0 and len(selected) >= min_turns:
+                break
+            selected.append(t)
+            budget -= cost
+        selected.reverse()
+        return [Message(role=t.role, content=t.content) for t in selected]
+
     def get_turns(self) -> list[Turn]:
         return list(self._turns)
 

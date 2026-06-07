@@ -67,21 +67,11 @@ class Compressor:
                 messages=[Message(role="user", content=prompt)],
                 temperature=0.3,
                 max_tokens=1024,
+                format="json",
             )
 
-            # JSON aus Antwort extrahieren
-            raw = response.strip()
-            if "```json" in raw:
-                raw = raw.split("```json")[1].split("```")[0].strip()
-            elif "```" in raw:
-                raw = raw.split("```")[1].split("```")[0].strip()
-
-            start = raw.find("[")
-            end = raw.rfind("]") + 1
-            if start == -1 or end == 0:
-                return 0
-
-            entries = json.loads(raw[start:end])
+            from core.jsonutil import extract_json
+            entries = extract_json(response, default=[])
             if not isinstance(entries, list) or len(entries) == 0:
                 return 0
 
@@ -122,18 +112,26 @@ class Compressor:
 
             return saved
 
-        except Exception as e:
-            log.warning(f"Komprimierung fehlgeschlagen: {e}")
+        except (ValueError, KeyError, TypeError) as e:
+            # Parsing-/Datenfehler → kein Retry sinnvoll, einfach nichts extrahiert
+            log.debug(f"Komprimierung ohne Ergebnis: {e}")
             return 0
+        # LLM-/DB-/Netzwerkfehler propagieren absichtlich → Retry in _compress_silent
 
     async def compress_async(self) -> None:
         """Startet Komprimierung im Hintergrund ohne zu blockieren."""
         asyncio.create_task(self._compress_silent())
 
-    async def _compress_silent(self) -> None:
-        try:
-            count = await self.compress()
-            if count > 0:
-                log.info(f"💾 {count} Erinnerungen ins LZG komprimiert")
-        except Exception as e:
-            log.warning(f"Komprimierung (silent) fehlgeschlagen: {e}")
+    async def _compress_silent(self, retries: int = 1) -> None:
+        for attempt in range(retries + 1):
+            try:
+                count = await self.compress()
+                if count > 0:
+                    log.info(f"💾 {count} Erinnerungen ins LZG komprimiert")
+                return
+            except Exception as e:
+                if attempt < retries:
+                    log.debug(f"Komprimierung Versuch {attempt+1} fehlgeschlagen ({e}) – Retry in 3s")
+                    await asyncio.sleep(3)
+                else:
+                    log.warning(f"Komprimierung endgültig fehlgeschlagen: {e}")

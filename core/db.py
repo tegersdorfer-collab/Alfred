@@ -317,6 +317,55 @@ MIGRATIONS = [
     );
     """,
 
+    # Health (jarvis-nativ, gespeist aus iCloud Health.json – unabhängig von ai-dashboard)
+    """
+    CREATE TABLE IF NOT EXISTS health_data (
+        date             DATE PRIMARY KEY,
+        steps            INT,
+        active_calories  INT,
+        exercise_minutes INT,
+        stand_hours      INT,
+        distance         DOUBLE PRECISION,
+        weight           DOUBLE PRECISION,
+        body_fat         DOUBLE PRECISION,
+        bmi              DOUBLE PRECISION,
+        resting_hr       INT,
+        hrv              DOUBLE PRECISION,
+        vo2max           DOUBLE PRECISION,
+        sleep_duration   DOUBLE PRECISION,
+        sleep_deep       DOUBLE PRECISION,
+        sleep_rem        DOUBLE PRECISION,
+        sleep_core       DOUBLE PRECISION,
+        sleep_awake      DOUBLE PRECISION,
+        blood_oxygen     DOUBLE PRECISION,
+        body_temp        DOUBLE PRECISION,
+        calories         INT,
+        protein          DOUBLE PRECISION,
+        carbs            DOUBLE PRECISION,
+        fat              DOUBLE PRECISION,
+        water            DOUBLE PRECISION,
+        updated_at       TIMESTAMPTZ DEFAULT NOW()
+    );
+    """,
+
+    # Kalender (jarvis-erstellte Events; gelesene Events kommen live aus ICS)
+    """
+    CREATE TABLE IF NOT EXISTS calendar_events (
+        id          SERIAL PRIMARY KEY,
+        uid         TEXT UNIQUE,
+        title       TEXT NOT NULL,
+        start_ts    TIMESTAMPTZ NOT NULL,
+        end_ts      TIMESTAMPTZ,
+        all_day     BOOLEAN DEFAULT FALSE,
+        location    TEXT,
+        notes       TEXT,
+        source      TEXT DEFAULT 'jarvis',
+        created_at  TIMESTAMPTZ DEFAULT NOW()
+    );
+    """,
+    "CREATE INDEX IF NOT EXISTS health_date_idx ON health_data(date DESC);",
+    "CREATE INDEX IF NOT EXISTS calevents_start_idx ON calendar_events(start_ts);",
+
     # Settings (Key-Value, fürs Dashboard-Konfigurieren)
     """
     CREATE TABLE IF NOT EXISTS settings (

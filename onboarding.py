@@ -132,20 +132,18 @@ class Onboarding:
 
     async def _compress_answer(self, answer: str, category: str) -> None:
         """Extrahiert Fakten aus Antwort und speichert sie in LZG."""
-        import json
+        from core.jsonutil import extract_json
         prompt = COMPRESS_PROMPT_PREFIX.replace("{category}", category) + answer + "\n\nJSON:"
         try:
             response = await self.llm.chat(
                 messages=[Message(role="user", content=prompt)],
                 temperature=0.2,
                 max_tokens=512,
+                format="json",
             )
-            raw = response.strip()
-            start = raw.find("[")
-            end   = raw.rfind("]") + 1
-            if start == -1 or end == 0:
+            entries = extract_json(response, default=[])
+            if not isinstance(entries, list):
                 return
-            entries = json.loads(raw[start:end])
             saved = 0
             for entry in entries:
                 if not isinstance(entry, dict):

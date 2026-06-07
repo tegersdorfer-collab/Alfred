@@ -1,38 +1,23 @@
 """
-Memory-Konsolidierung – findet ähnliche Memories und merged sie via LLM.
-Läuft periodisch im Hintergrund.
+Memory-Konsolidierung – findet sehr ähnliche Memories und behält nur die beste.
+Kein LLM-Merge mehr → kein Halluzinationsrisiko.
+
+Logik:
+  - Alle Memories paarweise per Kosinus-Distanz vergleichen
+  - Paare unter SIMILARITY_THRESHOLD: schwächere (niedrigere Confidence) löschen
+  - Keine Inhalte erfinden oder zusammenführen
 """
 import asyncio
-import json
 import logging
 
 import numpy as np
 
-from llm.base import LLMProvider, Message
-from memory.lzg import LZG, Memory
+from llm.base import LLMProvider
+from memory.lzg import LZG
 
 log = logging.getLogger(__name__)
 
-SIMILARITY_THRESHOLD = 0.35  # Distanz unter der Memories als ähnlich gelten
-
-MERGE_PROMPT_PREFIX = """Du konsolidierst zwei Erinnerungen über Timo die dasselbe Thema betreffen.
-
-Erstelle EINE kombinierte, präzisere Erinnerung die alle Informationen beider enthält.
-Antworte NUR mit der neuen Erinnerung als JSON-Objekt:
-{"category": "...", "content": "...", "confidence": 0.0}
-
-Regeln:
-- Kategorie: die spezifischere der beiden wählen
-- Konfidenz: Maximum beider + 0.02 (Bestätigung)
-- Inhalt: alle Details beider zusammenführen, keine Wiederholungen
-
-Erinnerung 1 (Kategorie: {cat1}, Konfidenz: {conf1}):
-{content1}
-
-Erinnerung 2 (Kategorie: {cat2}, Konfidenz: {conf2}):
-{content2}
-
-JSON:"""
+SIMILARITY_THRESHOLD = 0.20  # Kosinus-Distanz < 0.20 = semantisch fast identisch
 
 
 class Consolidator:
@@ -42,10 +27,10 @@ class Consolidator:
 
     async def consolidate(self) -> int:
         """
-        Findet ähnliche Memory-Paare und merged sie.
-        Gibt Anzahl der Merges zurück.
+        Findet nahezu identische Memory-Paare und löscht die schwächere.
+        Gibt Anzahl der gelöschten Einträge zurück.
         """
-        memories = self.lzg.get_all(limit=100)
+        memories = self.lzg.get_all(limit=200)
         if len(memories) < 2:
             return 0
 
@@ -58,69 +43,45 @@ class Consolidator:
             except Exception:
                 pass
 
-        # Ähnliche Paare finden
-        merged_ids: set[int] = set()
-        merge_count = 0
+        deleted_ids: set[int] = set()
+        delete_count = 0
 
         for i, (m1, e1) in enumerate(embeddings):
-            if m1.id in merged_ids:
+            if m1.id in deleted_ids:
                 continue
             for j, (m2, e2) in enumerate(embeddings):
-                if i >= j or m2.id in merged_ids or m1.id in merged_ids:
+                if i >= j or m2.id in deleted_ids or m1.id in deleted_ids:
                     continue
-                dist = float(1 - np.dot(e1, e2) / (np.linalg.norm(e1) * np.linalg.norm(e2)))
+
+                norm1 = np.linalg.norm(e1)
+                norm2 = np.linalg.norm(e2)
+                if norm1 == 0 or norm2 == 0:
+                    continue
+                dist = float(1 - np.dot(e1, e2) / (norm1 * norm2))
+
                 if dist < SIMILARITY_THRESHOLD:
-                    log.info(f"🔀 Merge (dist={dist:.3f}): '{m1.content[:40]}' + '{m2.content[:40]}'")
-                    merged = await self._merge(m1, m2)
-                    if merged:
-                        # Alte löschen, neue speichern
-                        self.lzg.delete(m1.id)
-                        self.lzg.delete(m2.id)
-                        new_emb = await self.llm.embed(merged["content"])
-                        self.lzg.save(
-                            content=merged["content"],
-                            embedding=new_emb,
-                            category=merged["category"],
-                            confidence=merged["confidence"],
-                        )
-                        merged_ids.add(m1.id)
-                        merged_ids.add(m2.id)
-                        merge_count += 1
-                        break  # m1 ist jetzt gemerged, nächste Memory
+                    # Schwächere löschen, stärkere behalten + Confidence leicht erhöhen
+                    keep, drop = (m1, m2) if m1.confidence >= m2.confidence else (m2, m1)
+                    new_conf = min(0.99, keep.confidence + 0.02)
+                    self.lzg.update_confidence(keep.id, new_conf)
+                    self.lzg.delete(drop.id)
+                    deleted_ids.add(drop.id)
+                    delete_count += 1
+                    log.info(
+                        f"🗑️ Duplikat gelöscht (dist={dist:.3f}): '{drop.content[:60]}' "
+                        f"→ behalte '{keep.content[:60]}'"
+                    )
+                    break
 
-        if merge_count:
-            log.info(f"🔀 {merge_count} Memories konsolidiert")
-        return merge_count
-
-    async def _merge(self, m1: Memory, m2: Memory) -> dict | None:
-        prompt = MERGE_PROMPT_PREFIX \
-            .replace("{cat1}", m1.category).replace("{conf1}", str(m1.confidence)) \
-            .replace("{content1}", m1.content) \
-            .replace("{cat2}", m2.category).replace("{conf2}", str(m2.confidence)) \
-            .replace("{content2}", m2.content)
-        try:
-            response = await self.llm.chat(
-                messages=[Message(role="user", content=prompt)],
-                temperature=0.2,
-                max_tokens=200,
-            )
-            raw = response.strip()
-            start = raw.find("{")
-            end   = raw.rfind("}") + 1
-            if start == -1:
-                return None
-            result = json.loads(raw[start:end])
-            result["confidence"] = min(0.99, float(result.get("confidence", 0.85)))
-            return result
-        except Exception as e:
-            log.warning(f"Merge fehlgeschlagen: {e}")
-            return None
+        if delete_count:
+            log.info(f"🗑️ {delete_count} doppelte Memories entfernt")
+        return delete_count
 
     async def consolidate_silent(self) -> None:
         """Läuft im Hintergrund ohne zu blockieren."""
         try:
             count = await self.consolidate()
             if count == 0:
-                log.debug("Konsolidierung: keine ähnlichen Memories gefunden")
+                log.debug("Konsolidierung: keine Duplikate gefunden")
         except Exception as e:
             log.warning(f"Konsolidierung fehlgeschlagen: {e}")

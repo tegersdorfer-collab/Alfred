@@ -15,6 +15,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 import config
 from core import db, tools as T
+from core.status import BUS
 from domains import habits, fitness, nutrition, journal, goals, weather, tasks as tasks_d
 
 log = logging.getLogger("jarvis.api")
@@ -35,8 +36,15 @@ def create_app(orch=None) -> FastAPI:
             os.kill(pid, 0); running = True
         except Exception:
             pass
+        # Zeige das tatsächlich aktive Modell (aus .env, nicht den alten Fallback)
+        active_model = config.OLLAMA_MODEL
+        if orch is not None:
+            try:
+                active_model = orch.llm.model_name
+            except Exception:
+                pass
         return {"running": running or orch is not None, "pid": pid,
-                "model": config.OLLAMA_MODEL, "tools": len(T.REGISTRY),
+                "model": active_model, "tools": len(T.REGISTRY),
                 "time": datetime.now().strftime("%H:%M:%S")}
 
     @app.get("/api/overview")
@@ -208,14 +216,24 @@ def create_app(orch=None) -> FastAPI:
 
     @app.post("/api/fitness/import")
     async def import_workout(req: Request):
-        """Text-Dump eines Trainings → KI parst in strukturierte Workouts/Sätze."""
+        """Trainings-Import. Strukturierter Gym-App-Export → deterministischer Parser;
+        freier Text → KI-Parsing."""
         d = await req.json()
         dump = d.get("text", "").strip()
         if not dump:
             return JSONResponse({"error": "kein Text"}, 400)
+
+        # Strukturiertes Gym-App-CSV erkennen (kein LLM nötig, schnell)
+        if "#;KG;REPS" in dump or "#;KM;" in dump or "#;KG;SECS" in dump:
+            try:
+                res = await asyncio.to_thread(fitness.import_workout_csv, dump)
+                return {"ok": True, **res}
+            except Exception as e:
+                return JSONResponse({"error": f"CSV-Parsing fehlgeschlagen: {e}"}, 422)
+
         if not orch:
             return JSONResponse({"error": "kein Kern"}, 503)
-        import json as _json
+        from core.jsonutil import extract_json
         prompt = (
             "Parse diesen Trainings-Dump in JSON. Format:\n"
             '{"title":"...","type":"strength|run|mobility","duration_min":null,'
@@ -223,12 +241,10 @@ def create_app(orch=None) -> FastAPI:
             "Nur JSON, kein Text drumherum.\n\nDump:\n" + dump + "\n\nJSON:"
         )
         raw = await orch.llm.chat(messages=[{"role": "user", "content": prompt}],
-                                  temperature=0.2, max_tokens=900)
-        try:
-            s, e = raw.find("{"), raw.rfind("}") + 1
-            data = _json.loads(raw[s:e])
-        except Exception as ex:
-            return JSONResponse({"error": f"Parsing fehlgeschlagen: {ex}", "raw": raw[:300]}, 422)
+                                  temperature=0.2, max_tokens=900, format="json")
+        data = extract_json(raw, default=None)
+        if not isinstance(data, dict):
+            return JSONResponse({"error": "Parsing fehlgeschlagen", "raw": raw[:300]}, 422)
         flat = []
         for ex in data.get("exercises", []):
             for i, st in enumerate(ex.get("sets", []), 1):
@@ -411,15 +427,51 @@ def create_app(orch=None) -> FastAPI:
         return StreamingResponse(gen(), media_type="text/event-stream",
                                  headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})
 
+    # ── Live Status-Stream (SSE) ──────────────────────────────────────────────────
+    @app.get("/api/status/stream")
+    async def status_stream():
+        """SSE-Stream mit Echtzeit-Status-Updates von Jarvis."""
+        q = BUS.subscribe()
+
+        async def gen():
+            import json as _json
+            try:
+                # Sofort aktuellen Status senden
+                yield f"data: {_json.dumps(BUS.current.to_dict())}\n\n"
+                # Letzte N Events als Replay (wenige – Client dedupliziert)
+                for evt in BUS.history[-5:]:
+                    yield f"data: {_json.dumps(evt.to_dict())}\n\n"
+                # Live-Updates
+                while True:
+                    try:
+                        evt = await asyncio.wait_for(q.get(), timeout=25)
+                        yield f"data: {_json.dumps(evt.to_dict())}\n\n"
+                    except asyncio.TimeoutError:
+                        yield "data: {\"keepalive\":true}\n\n"
+            finally:
+                BUS.unsubscribe(q)
+
+        return StreamingResponse(gen(), media_type="text/event-stream",
+                                 headers={"Cache-Control": "no-cache",
+                                          "X-Accel-Buffering": "no"})
+
+    @app.get("/api/status/current")
+    def status_current():
+        """Aktueller Status als JSON (für initiales Laden)."""
+        return BUS.current.to_dict()
+
     # ── Live Event-Feed (SSE) ─────────────────────────────────────────────────────
     @app.get("/api/feed/stream")
     async def feed_stream():
         async def gen():
-            last_id = 0
-            row = db.query_one("SELECT MAX(id) m FROM events_log")
+            row = await asyncio.to_thread(db.query_one, "SELECT MAX(id) m FROM events_log")
             last_id = (row["m"] or 0) if row else 0
             while True:
-                rows = db.query("SELECT id, type, summary, created_at FROM events_log WHERE id > %s ORDER BY id", (last_id,))
+                rows = await asyncio.to_thread(
+                    db.query,
+                    "SELECT id, type, summary, created_at FROM events_log WHERE id > %s ORDER BY id",
+                    (last_id,),
+                )
                 for r in rows:
                     last_id = r["id"]
                     yield f"data: {json.dumps(_jsonable(r))}\n\n"

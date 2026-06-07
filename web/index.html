@@ -56,6 +56,26 @@
   .tab{flex:1;text-align:center;padding:8px;border-radius:12px;background:var(--card2);color:var(--muted);font-size:13px;cursor:pointer;}
   .tab.active{background:linear-gradient(120deg,var(--accent),var(--accent2));color:#fff;}
 
+  /* Live-Status */
+  .status-bar{display:flex;align-items:center;gap:8px;padding:9px 14px;border-radius:14px;background:rgba(26,37,64,.5);border:1px solid var(--line);font-size:12px;color:#9fb0d6;transition:.3s;}
+  .status-bar.thinking{border-color:rgba(59,130,246,.4);background:rgba(59,130,246,.08);}
+  .status-bar.tool{border-color:rgba(139,92,246,.4);background:rgba(139,92,246,.08);}
+  .status-bar.memory{border-color:rgba(34,197,94,.4);background:rgba(34,197,94,.08);}
+  .status-bar.learning{border-color:rgba(251,191,36,.3);background:rgba(251,191,36,.06);}
+  .status-bar.error{border-color:rgba(239,68,68,.4);background:rgba(239,68,68,.08);}
+  .sdot{width:8px;height:8px;border-radius:50%;flex-shrink:0;background:#475569;transition:.3s;}
+  .sdot.thinking{background:#3b82f6;animation:pulse-blue 1.2s infinite;}
+  .sdot.tool{background:#8b5cf6;animation:pulse-purple 1s infinite;}
+  .sdot.memory{background:#22c55e;}
+  .sdot.learning{background:#fbbf24;animation:pulse-yellow 1.4s infinite;}
+  .sdot.idle{background:#22c55e;}
+  .sdot.error{background:#ef4444;}
+  @keyframes pulse-blue{0%,100%{box-shadow:0 0 0 0 rgba(59,130,246,.6)}50%{box-shadow:0 0 0 5px rgba(59,130,246,0)}}
+  @keyframes pulse-purple{0%,100%{box-shadow:0 0 0 0 rgba(139,92,246,.6)}50%{box-shadow:0 0 0 5px rgba(139,92,246,0)}}
+  @keyframes pulse-yellow{0%,100%{box-shadow:0 0 0 0 rgba(251,191,36,.5)}50%{box-shadow:0 0 0 5px rgba(251,191,36,0)}}
+  .act-row{display:flex;gap:8px;padding:5px 0;font-size:12px;color:#9fb0d6;border-bottom:1px solid rgba(31,44,74,.6);animation:fade .2s ease;}
+  .act-row:last-child{border-bottom:none;}
+
   /* Desktop */
   @media(min-width:900px){
     .app{max-width:1100px;padding:0 28px 40px;}
@@ -140,7 +160,75 @@ function closeSheet(){$('#sheet').classList.remove('open');}
 
 setInterval(()=>{$('#clock').textContent=new Date().toLocaleTimeString('de-DE',{hour:'2-digit',minute:'2-digit'});},1000);
 async function status(){try{const s=await api('/api/status');$('#dot').style.background=s.running?'#22c55e':'#ef4444';const t=`${s.running?'Online':'Offline'} · ${s.model} · ${s.tools} Tools`;$('#sub').textContent=t;const ss=$('#sideStatus');if(ss)ss.textContent=t;const h=new Date().getHours();$('#hello').textContent=h<11?'Guten Morgen':h<18?'Hallo Timo':'Guten Abend';}catch(e){}}
-status();setInterval(status,8000);
+status();setInterval(status,60000);
+
+// ── Live-Status-Stream ────────────────────────────────────────────────────────
+const STATUS_ICONS={thinking:'💭',tool:'🔧',memory:'🧠',learning:'💡',idle:'✅',autopilot:'🤖',error:'⚠️'};
+const STATUS_LABELS={thinking:'Denkt…',tool:'Tool',memory:'Erinnerung',learning:'Lernt',idle:'Bereit',autopilot:'Autopilot',error:'Fehler'};
+let _actLog=[]; // letzten N Status-Events für Activity-Feed
+let _actSeen=new Set(); // Dedup: bereits gesehene Event-Timestamps
+
+function applyStatus(evt){
+  if(evt.keepalive) return;
+  const type=evt.type||'idle';
+  const text=evt.text||'';
+  const detail=evt.detail||'';
+
+  // Dot in Header
+  const dot=$('#dot');
+  if(dot){dot.style.background=type==='idle'?'#22c55e':type==='error'?'#ef4444':'#3b82f6';}
+
+  // Sub-Zeile Header aktualisieren
+  const sub=$('#sub');
+  if(sub&&(type!=='idle'||text)){
+    sub.textContent = type==='idle' ? sub.textContent : `${STATUS_ICONS[type]||'·'} ${text}${detail?' · '+detail:''}`;
+  }
+
+  // Sidebar
+  const ss=$('#sideStatus');
+  if(ss&&type!=='idle'){ss.textContent=`${STATUS_ICONS[type]||'·'} ${text}`;}
+
+  // Home-Status-Bar updaten (wenn sichtbar)
+  const bar=$('#homeStatus');
+  if(bar){
+    bar.className=`status-bar ${type}`;
+    const sdot=bar.querySelector('.sdot');
+    if(sdot){sdot.className=`sdot ${type}`;}
+    const stxt=bar.querySelector('.stxt');
+    if(stxt){stxt.textContent=`${STATUS_ICONS[type]||'·'} ${text}${detail?' · '+detail:''}`;}
+  }
+
+  // Activity-Log Buffer – mit Dedup über Timestamp
+  if(type!=='idle'){
+    const ts=evt.ts||Date.now()/1000;
+    // Schlüssel: ts + type + text (gleicher Event kann in verschiedenen Sekunden kommen)
+    const key=`${Math.round(ts*10)}|${type}|${text}`;
+    if(!_actSeen.has(key)){
+      _actSeen.add(key);
+      // Set begrenzen damit er nicht unbegrenzt wächst
+      if(_actSeen.size>200){
+        const oldest=[..._actSeen].slice(0,50);
+        oldest.forEach(k=>_actSeen.delete(k));
+      }
+      _actLog.unshift({...evt, ts});
+      if(_actLog.length>50) _actLog=_actLog.slice(0,50);
+      // Live-Feed in Mind-View einblenden falls offen
+      const feed=$('#actFeed');
+      if(feed){
+        const row=el(`<div class="act-row"><span>${STATUS_ICONS[type]||'·'}</span><span style="flex:1;color:#c7d2fe">${esc(text)}${detail?` <span style="color:var(--muted)">${esc(detail)}</span>`:''}</span><span style="color:#4a5980">${new Date(ts*1000).toLocaleTimeString('de-DE',{hour:'2-digit',minute:'2-digit',second:'2-digit'})}</span></div>`);
+        feed.prepend(row);
+        while(feed.children.length>60) feed.lastChild.remove();
+      }
+    }
+  }
+}
+
+function startStatusStream(){
+  const es=new EventSource(`${API}/api/status/stream`);
+  es.onmessage=ev=>{try{applyStatus(JSON.parse(ev.data));}catch(e){}};
+  es.onerror=()=>setTimeout(startStatusStream, 5000); // reconnect
+}
+startStatusStream();
 
 // Build sidebar
 function buildSidebar(){const c=$('#sideNav');c.innerHTML=NAV.map(i=>`<button class="side-btn" data-v="${i[0]}"><span style="font-size:17px">${i[1]}</span> ${i[2]}</button>`).join('');c.querySelectorAll('.side-btn').forEach(b=>b.onclick=()=>go(b.dataset.v));}
@@ -149,6 +237,8 @@ buildSidebar();
 const VIEWS={};
 function go(v){
   if(v==='more'){openMore();return;}
+  // Cleanup vorheriger View (z.B. Mind-Patch)
+  const prev=view().firstChild;if(prev&&prev._cleanup)prev._cleanup();
   CUR=v;
   document.querySelectorAll('.nav-btn').forEach(b=>b.classList.toggle('active',b.dataset.v===v));
   document.querySelectorAll('.side-btn').forEach(b=>b.classList.toggle('active',b.dataset.v===v));
@@ -164,6 +254,7 @@ VIEWS.home=async(root)=>{
   root.innerHTML=`<div id="h-top"></div>
     <div id="h-rings" style="margin-top:18px"></div>
     <div id="h-quick" style="margin-top:18px"></div>
+    <div id="h-status" style="margin-top:12px"></div>
     <div class="grid2"><div id="h-left"></div><div id="h-right"></div></div>`;
   const ov=await api('/api/overview');
   // Wetter – nahtlos, ohne Box
@@ -173,11 +264,19 @@ VIEWS.home=async(root)=>{
       <div style="text-align:right;font-size:12px;color:var(--muted);line-height:1.7">${f.slice(0,3).map(d=>`<div>${new Date(d.date).toLocaleDateString('de',{weekday:'short'})} &nbsp;${Math.round(d.min)}–${Math.round(d.max)}° &nbsp;💧${d.rain_prob??0}%</div>`).join('')}</div>
     </div>`));}}catch(e){}
   // Rings – nahtlos
+  // health[0] = heute (Schlaf letzte Nacht ✓, Schritte erst abends ✗)
+  // health[1] = gestern (Schritte vollständig ✓, Ruhepuls ✓)
   const hd=(ov.health&&ov.health[0])||{};
+  const hdY=(ov.health&&ov.health[1])||{}; // gestern
+  const stepsVal=hdY.steps||0;
+  const stepsLabel=stepsVal?(stepsVal.toLocaleString('de')+' gest.'):'–';
+  // Ruhepuls: gestern bevorzugen, Fallback heute. Ring-Füllstand: 40bpm=voll, 80bpm=leer
+  const hrVal=hdY.resting_hr||hd.resting_hr;
+  const hrFill=hrVal?Math.min(1,Math.max(0,(80-hrVal)/40)):0;
   $('#h-rings').appendChild(el(`<div style="display:flex;justify-content:space-around;text-align:center">
-    ${ringStat(Math.min(1,(hd.steps||0)/10000),'👟',(hd.steps||0).toLocaleString('de'),'#3b82f6')}
+    ${ringStat(Math.min(1,stepsVal/10000),'👟',stepsLabel,'#3b82f6')}
     ${ringStat(Math.min(1,(hd.sleep||0)/8),'😴',hd.sleep?hd.sleep.toFixed(1)+'h':'–','#8b5cf6')}
-    ${ringStat(hd.hrv?Math.min(1,hd.hrv/80):0,'❤️',hd.resting_hr||'–','#22c55e')}
+    ${ringStat(hrFill,'❤️',hrVal?hrVal+' bpm':'–','#22c55e')}
   </div>`));
   // Quick add – flache Buttons
   $('#h-quick').appendChild(el(`<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px">
@@ -186,6 +285,14 @@ VIEWS.home=async(root)=>{
     <button class="soft" style="padding:13px 4px;font-size:11px;cursor:pointer" onclick="addMeal()">＋ Mahlzeit</button>
     <button class="soft" style="padding:13px 4px;font-size:11px;cursor:pointer" onclick="go('body')">＋ Training</button>
     <button class="soft" style="padding:13px 4px;font-size:11px;cursor:pointer" onclick="addJournal()">＋ Journal</button>
+  </div>`));
+  // Status-Bar
+  const hsCur=await api('/api/status/current').catch(()=>({type:'idle',text:'Bereit'}));
+  const hsType=hsCur.type||'idle';
+  $('#h-status').appendChild(el(`<div id="homeStatus" class="status-bar ${hsType}" onclick="go('mind')" style="cursor:pointer">
+    <span class="sdot ${hsType}"></span>
+    <span class="stxt" style="flex:1">${STATUS_ICONS[hsType]||'·'} ${esc(hsCur.text||'Bereit')}${hsCur.detail?' · '+esc(hsCur.detail):''}</span>
+    <span style="font-size:11px;color:#4a5980">Jarvis Aktivität ›</span>
   </div>`));
   const L=$('#h-left'),R=$('#h-right');
   // Habits
@@ -269,28 +376,43 @@ VIEWS.body=async(root)=>{
 };
 function muscleBody(m){
   const max=Math.max(1,...Object.values(m));
-  const col=(g)=>{const v=(m[g]||0)/max;if(!m[g])return '#1c2742';const a=0.35+v*0.65;return `rgba(99,140,255,${a})`;};
-  const grp=(g,label,emoji)=>`<div style="display:flex;align-items:center;gap:7px;padding:3px 0"><span style="width:14px;text-align:center">${emoji}</span><div style="flex:1"><div style="display:flex;justify-content:space-between;font-size:11px"><span>${label}</span><span style="color:#7c8db5">${m[g]||0}</span></div><div class="pill-h" style="margin-top:3px;height:5px"><div class="pill-f" style="width:${Math.round((m[g]||0)/max*100)}%"></div></div></div></div>`;
-  // Stilisierter Front-Körper (weiche Formen, Glow auf trainierten Gruppen)
-  const svg=`<svg viewBox="0 0 130 230" width="118" style="display:block;margin:4px auto;filter:drop-shadow(0 4px 12px rgba(0,0,0,.4))">
-    <defs><linearGradient id="bodyG" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#1a2540"/><stop offset="1" stop-color="#131c33"/></linearGradient></defs>
-    <!-- Outline body -->
-    <path d="M65 8 q12 0 12 14 q0 9 -4 13 q14 4 16 16 l4 26 q1 8 -5 9 l-3 -1 l-3 -20 l-2 34 q0 6 2 16 l5 44 q1 7 -6 8 q-6 1 -8 -6 l-7 -40 l-7 40 q-2 7 -8 6 q-7 -1 -6 -8 l5 -44 q2 -10 2 -16 l-2 -34 l-3 20 l-3 1 q-6 -1 -5 -9 l4 -26 q2 -12 16 -16 q-4 -4 -4 -13 q0 -14 12 -14 z" fill="url(#bodyG)" stroke="#2c3c63" stroke-width="1.2"/>
-    <!-- Shoulders -->
-    <ellipse cx="44" cy="62" rx="9" ry="7" fill="${col('shoulders')}"/><ellipse cx="86" cy="62" rx="9" ry="7" fill="${col('shoulders')}"/>
-    <!-- Chest -->
-    <path d="M52 66 q13 -6 26 0 q1 12 -13 13 q-14 -1 -13 -13 z" fill="${col('chest')}"/>
-    <!-- Arms -->
-    <path d="M34 66 q-6 2 -7 10 l-3 22 q3 3 7 1 l5 -30 z" fill="${col('arms')}"/>
-    <path d="M96 66 q6 2 7 10 l3 22 q-3 3 -7 1 l-5 -30 z" fill="${col('arms')}"/>
-    <!-- Core -->
-    <rect x="54" y="84" width="22" height="34" rx="7" fill="${col('core')}"/>
-    <!-- Legs -->
-    <path d="M52 122 q6 -3 11 0 l3 46 q-1 6 -7 6 q-6 0 -7 -6 z" fill="${col('legs')}"/>
-    <path d="M67 122 q5 -3 11 0 l0 46 q-1 6 -7 6 q-6 0 -7 -6 z" fill="${col('legs')}"/>
-    <ellipse cx="65" cy="22" rx="12" ry="13" fill="#1a2540" stroke="#2c3c63"/>
+  const col=(g)=>{const v=(m[g]||0)/max;if(!m[g])return '#1b2640';const a=0.4+v*0.6;return `rgba(96,165,250,${a})`;};
+  const dot=(g)=>m[g]?`rgba(96,165,250,${0.5+(m[g]/max)*0.5})`:'#2a3a5e';
+  const grp=(g,label)=>`<div style="display:flex;align-items:center;gap:9px;padding:4px 0"><span style="width:9px;height:9px;border-radius:50%;background:${dot(g)};flex-shrink:0"></span><div style="flex:1"><div style="display:flex;justify-content:space-between;font-size:12px"><span>${label}</span><span style="color:#7c8db5">${m[g]||0}</span></div><div class="pill-h" style="margin-top:3px;height:4px"><div class="pill-f" style="width:${Math.round((m[g]||0)/max*100)}%"></div></div></div></div>`;
+  const S='#162038', O='#2c3c63';   // unbespielt / Outline
+  // Anatomische Front-Muskelkarte
+  const svg=`<svg viewBox="0 0 200 380" width="135" style="display:block;margin:2px auto;filter:drop-shadow(0 6px 16px rgba(0,0,0,.45))">
+    <!-- Kopf & Hals -->
+    <ellipse cx="100" cy="30" rx="20" ry="24" fill="${S}" stroke="${O}" stroke-width="1.5"/>
+    <path d="M88 52 q12 7 24 0 l0 12 q-12 8 -24 0 z" fill="${S}"/>
+    <!-- Trapez -->
+    <path d="M76 64 q24 -10 48 0 q-10 10 -24 10 q-14 0 -24 -10 z" fill="${col('shoulders')}" opacity="0.85"/>
+    <!-- Schultern (Deltas) -->
+    <ellipse cx="58" cy="86" rx="19" ry="15" fill="${col('shoulders')}" stroke="${O}" stroke-width="1"/>
+    <ellipse cx="142" cy="86" rx="19" ry="15" fill="${col('shoulders')}" stroke="${O}" stroke-width="1"/>
+    <!-- Brust (Pecs) -->
+    <path d="M100 72 C82 72 70 80 69 96 C68 108 84 112 100 109 Z" fill="${col('chest')}" stroke="${O}" stroke-width="1"/>
+    <path d="M100 72 C118 72 130 80 131 96 C132 108 116 112 100 109 Z" fill="${col('chest')}" stroke="${O}" stroke-width="1"/>
+    <!-- Bizeps -->
+    <ellipse cx="50" cy="120" rx="12" ry="27" fill="${col('arms')}" stroke="${O}" stroke-width="1"/>
+    <ellipse cx="150" cy="120" rx="12" ry="27" fill="${col('arms')}" stroke="${O}" stroke-width="1"/>
+    <!-- Unterarme -->
+    <ellipse cx="43" cy="166" rx="10" ry="25" fill="${col('arms')}" opacity="0.8"/>
+    <ellipse cx="157" cy="166" rx="10" ry="25" fill="${col('arms')}" opacity="0.8"/>
+    <!-- Bauch / Core -->
+    <path d="M82 112 h36 q3 0 3 4 l-2 56 q-19 8 -38 0 l-2 -56 q0 -4 3 -4 z" fill="${col('core')}" stroke="${O}" stroke-width="1"/>
+    <g stroke="#0e1626" stroke-width="1.6" opacity="0.55">
+      <line x1="100" y1="116" x2="100" y2="168"/>
+      <line x1="84" y1="130" x2="116" y2="130"/><line x1="84" y1="146" x2="116" y2="146"/>
+    </g>
+    <!-- Quads -->
+    <path d="M83 176 q-8 44 -2 84 q4 12 14 9 q6 -2 6 -13 l-2 -80 z" fill="${col('legs')}" stroke="${O}" stroke-width="1"/>
+    <path d="M117 176 q8 44 2 84 q-4 12 -14 9 q-6 -2 -6 -13 l2 -80 z" fill="${col('legs')}" stroke="${O}" stroke-width="1"/>
+    <!-- Waden -->
+    <path d="M86 266 q-5 38 2 62 q4 9 10 3 l1 -64 z" fill="${col('legs')}" opacity="0.8"/>
+    <path d="M114 266 q5 38 -2 62 q-4 9 -10 3 l-1 -64 z" fill="${col('legs')}" opacity="0.8"/>
   </svg>`;
-  return `<div style="display:flex;gap:12px;align-items:center;margin-top:6px"><div>${svg}</div><div style="flex:1">${grp('chest','Brust','🫀')}${grp('back','Rücken','🔙')}${grp('shoulders','Schultern','🤸')}${grp('arms','Arme','💪')}${grp('legs','Beine','🦵')}${grp('core','Core','🧱')}${grp('cardio','Cardio','🏃')}</div></div>`;
+  return `<div style="display:flex;gap:14px;align-items:center;margin-top:8px"><div style="flex-shrink:0">${svg}</div><div style="flex:1">${grp('chest','Brust')}${grp('shoulders','Schultern')}${grp('arms','Arme')}${grp('core','Core')}${grp('legs','Beine')}${grp('back','Rücken')}${grp('cardio','Cardio')}</div></div>`;
 }
 
 // ════════ HABITS (toggle, delete, commit graph) ════════
@@ -407,11 +529,61 @@ function askDelMemory(id){confirmAction('Diese Erinnerung wirklich löschen?',as
 // ════════ MIND ════════
 VIEWS.mind=async(root)=>{
   root.innerHTML=`<b style="font-size:18px">Jarvis Mind 🌌</b>
+
+    <!-- Live-Status ganz oben -->
+    <div id="mindStatusBar" class="status-bar idle" style="margin-top:14px">
+      <span class="sdot idle"></span>
+      <span class="stxt" style="flex:1">💭 Bereit</span>
+      <span style="font-size:11px;color:#4a5980" id="mindModel">–</span>
+    </div>
+
+    <!-- Aktivitäts-Stream -->
+    <div class="card" style="padding:16px;margin-top:14px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+        <b>⚡ Aktivität</b>
+        <span id="mindActCount" class="chip">0 Events</span>
+      </div>
+      <div id="actFeed" style="max-height:320px;overflow-y:auto"></div>
+    </div>
+
     <div class="grid2">
       <div class="card" style="padding:16px;margin-top:12px"><b>Gelernt über dich</b><div id="mNotes" style="margin-top:8px"></div></div>
       <div class="card" style="padding:16px;margin-top:12px"><b>Reflexionen</b><div id="mRef" style="margin-top:8px"></div></div>
     </div>
-    <div class="card" style="padding:16px;margin-top:12px"><b>Live-Aktivität</b><div id="mFeed" style="margin-top:8px;max-height:340px;overflow-y:auto"></div></div>`;
+    <div class="card" style="padding:16px;margin-top:12px"><b>Event-Log</b><div id="mFeed" style="margin-top:8px;max-height:280px;overflow-y:auto"></div></div>`;
+
+  // Aktueller Status initial
+  const cur=await api('/api/status/current').catch(()=>({type:'idle',text:'Bereit'}));
+  const msb=$('#mindStatusBar');
+  if(msb){msb.className=`status-bar ${cur.type||'idle'}`;msb.querySelector('.sdot').className=`sdot ${cur.type||'idle'}`;msb.querySelector('.stxt').textContent=`${STATUS_ICONS[cur.type||'idle']||'·'} ${cur.text||'Bereit'}`;}
+  const mm=$('#mindModel');if(mm&&cur.detail)mm.textContent=cur.detail;
+
+  // Buffered activity log reinspielen
+  const actFeed=$('#actFeed');
+  _actLog.slice(0,40).forEach(evt=>{
+    const row=el(`<div class="act-row"><span>${STATUS_ICONS[evt.type]||'·'}</span><span style="flex:1;color:#c7d2fe">${esc(evt.text||'')}${evt.detail?` <span style="color:var(--muted)">${esc(evt.detail)}</span>`:''}</span><span style="color:#4a5980">${new Date(evt.ts*1000).toLocaleTimeString('de-DE',{hour:'2-digit',minute:'2-digit',second:'2-digit'})}</span></div>`);
+    actFeed.appendChild(row);
+  });
+  if(!_actLog.length) actFeed.innerHTML='<span style="color:#5b6b8c;font-size:13px">Warte auf Aktivität…</span>';
+  const mc=$('#mindActCount');if(mc)mc.textContent=`${_actLog.length} Events`;
+
+  // Mind-StatusBar mit globalem Stream verknüpfen (überschreibt applyStatus-Side-Effect)
+  const _origApply=applyStatus;
+  const _mindPatch=(evt)=>{
+    _origApply(evt);
+    if(CUR!=='mind') return;
+    if(mc)mc.textContent=`${_actLog.length} Events`;
+    if(msb&&evt.type&&!evt.keepalive){
+      msb.className=`status-bar ${evt.type}`;
+      const sd=msb.querySelector('.sdot');if(sd)sd.className=`sdot ${evt.type}`;
+      const st=msb.querySelector('.stxt');if(st)st.textContent=`${STATUS_ICONS[evt.type]||'·'} ${evt.text||''}`;
+      const mmEl=$('#mindModel');if(mmEl&&evt.detail)mmEl.textContent=evt.detail;
+    }
+  };
+  // Temporär überschreiben während mind aktiv
+  window.applyStatus=_mindPatch;
+  root._cleanup=()=>{window.applyStatus=_origApply;};
+
   const m=await api('/api/mind');
   $('#mNotes').innerHTML=(m.notes||[]).length?m.notes.map(n=>`<div style="font-size:13px;color:#c7d2fe;padding:4px 0">• ${esc(n)}</div>`).join(''):'<span style="color:#5b6b8c;font-size:13px">Lernt noch…</span>';
   $('#mRef').innerHTML=(m.reflections||[]).length?m.reflections.map(r=>`<div style="font-size:13px;padding:6px 0;border-bottom:1px solid var(--line)">🪞 ${esc(r.content)}</div>`).join(''):'<span style="color:#5b6b8c;font-size:13px">Noch keine.</span>';

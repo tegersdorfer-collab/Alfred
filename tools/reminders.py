@@ -76,6 +76,17 @@ class ReminderStore:
         return [Reminder(id=r["id"], text=r["text"],
                          remind_at=r["remind_at"], sent=r["sent"]) for r in rows]
 
+    def next_due_seconds(self) -> float | None:
+        """Sekunden bis zum nächsten fälligen Reminder (oder None)."""
+        conn = self._get_conn()
+        with conn.cursor() as cur:
+            cur.execute(
+                "SELECT EXTRACT(EPOCH FROM (MIN(remind_at) - NOW())) "
+                "FROM reminders WHERE sent = FALSE AND remind_at > NOW()"
+            )
+            row = cur.fetchone()
+        return float(row[0]) if row and row[0] is not None else None
+
     def close(self):
         if self._conn and not self._conn.closed:
             self._conn.close()

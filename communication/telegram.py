@@ -3,6 +3,7 @@ Telegram Bot – primärer Kommunikationskanal.
 Tauschbar gegen andere Kanäle via CommunicationChannel Interface.
 """
 import asyncio
+import logging
 from datetime import datetime
 
 from telegram import Update
@@ -15,6 +16,8 @@ from telegram.constants import ChatAction
 from communication.base import CommunicationChannel, IncomingMessage, MessageHandler as MH
 import config
 
+log = logging.getLogger(__name__)
+
 
 class TelegramChannel(CommunicationChannel):
     supports_streaming = True
@@ -23,6 +26,7 @@ class TelegramChannel(CommunicationChannel):
         self._token = token or config.TELEGRAM_BOT_TOKEN
         self._app: Application | None = None
         self._chat_id: str | None = config.TELEGRAM_CHAT_ID or None
+        self._allowed: set[str] = set(config.TELEGRAM_ALLOWED_IDS)
         self._handler: MH | None = None
 
     def on_message(self, handler: MH) -> None:
@@ -78,13 +82,37 @@ class TelegramChannel(CommunicationChannel):
         except Exception:
             pass  # "message is not modified" o.ä. ignorieren
 
+    def _authorized(self, update: Update) -> bool:
+        """Darf dieser Absender mit Jarvis reden?
+        Mit konfigurierter Allowlist: strikt (User- oder Chat-ID muss passen).
+        Ohne Allowlist: Trust-on-first-use – der erste Absender wird für die
+        Laufzeit gesperrt, alle anderen abgewiesen (statt offen für jeden)."""
+        if not update.message or not update.message.from_user:
+            return False
+        uid = str(update.message.from_user.id)
+        cid = str(update.message.chat_id)
+        if self._allowed:
+            return uid in self._allowed or cid in self._allowed
+        # Nichts konfiguriert → auf ersten Absender sperren und laut warnen
+        log.warning(
+            "⚠️  Keine TELEGRAM_ALLOWED_IDS/TELEGRAM_CHAT_ID gesetzt – sperre auf "
+            "ersten Absender %s. Trag die ID in .env ein!", uid,
+        )
+        self._allowed = {uid}
+        self._chat_id = cid
+        return True
+
     async def _handle_message(
         self, update: Update, context: ContextTypes.DEFAULT_TYPE
     ) -> None:
         if not update.message or not update.message.text:
             return
+        if not self._authorized(update):
+            who = update.message.from_user.id if update.message.from_user else "?"
+            log.warning("Nachricht von nicht autorisierter ID %s verworfen", who)
+            return
 
-        # Chat-ID beim ersten Kontakt speichern
+        # Chat-ID des autorisierten Absenders merken (für Antworten/Proaktives)
         self._chat_id = str(update.message.chat_id)
 
         msg = IncomingMessage(
@@ -100,6 +128,9 @@ class TelegramChannel(CommunicationChannel):
     async def _handle_start(
         self, update: Update, context: ContextTypes.DEFAULT_TYPE
     ) -> None:
+        if not self._authorized(update):
+            log.warning("/start von nicht autorisierter ID verworfen")
+            return
         self._chat_id = str(update.message.chat_id)
         await update.message.reply_text(
             "Jarvis online. Was brauchst du?"
@@ -108,6 +139,8 @@ class TelegramChannel(CommunicationChannel):
     async def _handle_status(
         self, update: Update, context: ContextTypes.DEFAULT_TYPE
     ) -> None:
+        if not self._authorized(update):
+            return
         await update.message.reply_text("✅ System läuft.")
 
     async def start(self) -> None:

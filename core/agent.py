@@ -12,6 +12,7 @@ import ollama as _ollama
 from core import tools as toolreg
 from core.db import log_event
 from core.llm_gate import GATE
+from core.status import BUS
 import config
 
 log = logging.getLogger(__name__)
@@ -35,9 +36,12 @@ class Agent:
         use_tools: bool = True,
         allowed_tools: list[str] | None = None,
         think: bool = False,
+        model: str | None = None,
+        keep_alive: str | None = None,
     ) -> tuple[str, list[dict]]:
         """
         Führt den Agent-Loop aus.
+        `model`/`keep_alive` überschreiben pro Aufruf das Default-Modell (für Routing).
         Gibt (finale_antwort, tool_trace) zurück.
         tool_trace = [{"tool": name, "args": {...}, "result": "..."}]
         """
@@ -59,6 +63,7 @@ class Agent:
 
         for step in range(self._max_steps):
             is_first = step == 0
+            BUS.emit("thinking", "Denke nach…", detail=model or self._model)
             content, tool_calls = await self._call(
                 msgs,
                 tools=schemas,
@@ -66,6 +71,8 @@ class Agent:
                 temperature=temperature,
                 max_tokens=max_tokens,
                 think=think and is_first,
+                model=model,
+                keep_alive=keep_alive,
             )
 
             if not tool_calls:
@@ -92,6 +99,7 @@ class Agent:
                         args = json.loads(args)
                     except Exception:
                         args = {}
+                BUS.emit("tool", f"🔧 {name}", detail=_short(args) or None)
                 result = await toolreg.execute(name, args)
                 trace.append({"tool": name, "args": args, "result": result[:500]})
                 log_event("tool", f"{name}({_short(args)})", {"result": result[:300]})
@@ -101,6 +109,7 @@ class Agent:
         content, _ = await self._call(
             msgs, tools=None, stream_cb=stream_cb,
             temperature=temperature, max_tokens=max_tokens,
+            model=model, keep_alive=keep_alive,
         )
         return content.strip(), trace
 
@@ -112,12 +121,15 @@ class Agent:
         temperature: float,
         max_tokens: int,
         think: bool = False,
+        model: str | None = None,
+        keep_alive: str | None = None,
     ) -> tuple[str, list[dict]]:
         """Ein einzelner LLM-Call. Streamt wenn stream_cb gesetzt und keine Tools."""
+        mdl = model or self._model
         options = {
             "temperature": temperature,
             "num_predict": max_tokens,
-            "keep_alive": config.OLLAMA_KEEP_ALIVE,
+            "keep_alive": keep_alive or config.OLLAMA_KEEP_ALIVE,
         }
 
         def _extract_calls(m):
@@ -139,7 +151,7 @@ class Agent:
             parts: list[str] = []
             tool_calls: list[dict] = []
             last_len = 0
-            kwargs = dict(model=self._model, messages=msgs, options=options,
+            kwargs = dict(model=mdl, messages=msgs, options=options,
                           stream=True, think=think)
             if tools:
                 kwargs["tools"] = tools
@@ -167,7 +179,7 @@ class Agent:
             return full, tool_calls
 
         # Nicht-Streaming Call (mit oder ohne Tools)
-        kwargs = dict(model=self._model, messages=msgs, options=options, think=think)
+        kwargs = dict(model=mdl, messages=msgs, options=options, think=think)
         if tools:
             kwargs["tools"] = tools
         async with GATE:
@@ -175,15 +187,16 @@ class Agent:
         m = resp.message
         return m.content or "", _extract_calls(m)
 
-    async def warmup(self) -> None:
+    async def warmup(self, model: str | None = None) -> None:
         """Lädt das Modell in den RAM (vermeidet Cold-Start bei erster Nachricht)."""
+        mdl = model or self._model
         try:
             await self._client.chat(
-                model=self._model,
+                model=mdl,
                 messages=[{"role": "user", "content": "ok"}],
                 options={"num_predict": 1, "keep_alive": config.OLLAMA_KEEP_ALIVE},
             )
-            log.info(f"🔥 Modell {self._model} aufgewärmt")
+            log.info(f"🔥 Modell {mdl} aufgewärmt")
         except Exception as e:
             log.debug(f"Warmup fehlgeschlagen: {e}")
 

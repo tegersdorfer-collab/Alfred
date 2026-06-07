@@ -99,13 +99,23 @@ def volume_by_day(days: int = 14) -> list[dict]:
 MUSCLE_GROUPS = ["chest", "back", "shoulders", "arms", "legs", "core", "cardio"]
 
 _MUSCLE_KEYWORDS = {
-    "chest": ["bench", "bankdrücken", "brust", "push", "dips", "fliegende", "chest"],
-    "back": ["rudern", "row", "klimmzug", "pull", "latzug", "kreuzheben", "deadlift", "rücken", "back"],
-    "shoulders": ["schulter", "shoulder", "press", "seitheben", "overhead", "ohp", "military"],
-    "arms": ["bizeps", "trizeps", "curl", "arm", "biceps", "triceps"],
-    "legs": ["squat", "kniebeuge", "bein", "leg", "lunge", "wadenheben", "beinpresse", "leg press"],
-    "core": ["bauch", "core", "plank", "crunch", "sit-up", "ab "],
-    "cardio": ["lauf", "run", "joggen", "cardio", "rad", "bike", "schwimm", "row erg"],
+    "cardio": ["running", "lauf", "joggen", "cycling", "stationary bike", "treadmill",
+               "rad", "bike", "schwimm", "cardio", "rowing erg", "elliptical"],
+    "legs": ["squat", "kniebeuge", "leg press", "leg extension", "leg curl", "lying leg",
+             "split squat", "hack squat", "lunge", "calf", "wadenheben", "bein", "beinpresse",
+             "hip adduction", "hip abduction", "romanian", "rdl"],
+    "back": ["row", "rudern", "pulldown", "lat ", "pull-up", "pull up", "pullup", "klimmzug",
+             "latzug", "deadlift", "kreuzheben", "shrug", "face pull", "single arm lat",
+             "t-bar", "bent-over", "high row", "rücken"],
+    "chest": ["bench", "bankdrücken", "chest press", "chest", "brust", "butterfly", "fly",
+              "flys", "dips", "pec", "incline press", "push-up", "pushup"],
+    "shoulders": ["shoulder press", "overhead press", "military", "ohp", "lateral raise",
+                  "seitheben", "lateral raises", "reverse butterfly", "reverse fly",
+                  "reverse flys", "shoulder", "schulter", "delt"],
+    "arms": ["curl", "biceps", "bizeps", "triceps", "trizeps", "pushdown", "extension",
+             "preacher", "wrist curl", "unterarme", "forearm", "farmers"],
+    "core": ["crunch", "plank", "sit-up", "situp", "ab ", "abs", "bauch", "leg raise",
+             "hanging leg", "knee raise", "core"],
 }
 
 
@@ -115,6 +125,131 @@ def guess_muscle(exercise_name: str, workout_type: str = "") -> str:
         if any(k in t for k in kws):
             return grp
     return "other"
+
+
+# ── CSV-Import (Gym-App-Export, strukturiert – kein LLM nötig) ────────────────
+
+import re as _re
+from datetime import datetime as _dt
+
+_WHDR = _re.compile(r'^"(.+?)";"(\d{4}-\d{2}-\d{2})\s+(\d{1,2}:\d{2})\s*h";"(.+?)"\s*$')
+_EHDR = _re.compile(r'^"(\d+)\.\s*(.+?)"\s*$')
+
+
+def _num(s: str):
+    s = (s or "").strip().replace(",", ".").lstrip("+")
+    if not s:
+        return None
+    try:
+        return float(s)
+    except ValueError:
+        return None
+
+
+def _dur_to_min(s: str):
+    s = (s or "").strip().lower()
+    try:
+        if ":" in s and "hr" in s:
+            h, m = s.replace("hr", "").strip().split(":")
+            return int(h) * 60 + int(m)
+        n = float(_re.findall(r"[\d.]+", s)[0])
+        if "hr" in s:   return round(n * 60)
+        if "sec" in s:  return max(0, round(n / 60))
+        return round(n)   # min
+    except Exception:
+        return None
+
+
+def _time_to_sec(v: str, unit: str):
+    v = (v or "").strip()
+    if ":" in v:
+        p = v.split(":")
+        try:
+            return int(p[0]) * 60 + int(p[1])
+        except Exception:
+            return None
+    n = _num(v)
+    if n is None:
+        return None
+    if unit == "HOURS": return int(n * 3600)
+    if unit == "SECS":  return int(n)
+    return int(n * 60)  # MINS
+
+
+def import_workout_csv(text: str) -> dict:
+    """Parst einen strukturierten Gym-App-Export (mehrere Workouts) deterministisch."""
+    lines = text.replace("\r\n", "\n").split("\n")
+    workouts_added = sets_added = skipped = 0
+    cur_w = None          # {date,title,duration,exercises:[{name,sets:[...]}], cardio:bool}
+    cur_ex = None
+    cur_cols = None       # ("KG","REPS") etc.
+
+    def flush():
+        nonlocal workouts_added, sets_added, skipped, cur_w
+        if not cur_w:
+            return
+        d = cur_w["date"]; title = cur_w["title"]
+        exists = db.query_one("SELECT id FROM workouts WHERE date=%s AND title=%s", (d, title))
+        if exists:
+            skipped += 1; cur_w = None; return
+        # Typ + Gesamtdistanz
+        is_cardio = all(guess_muscle(e["name"]) == "cardio" for e in cur_w["exercises"]) and cur_w["exercises"]
+        total_km = sum((s.get("distance_km") or 0) for e in cur_w["exercises"] for s in e["sets"]) or None
+        flat = []
+        for e in cur_w["exercises"]:
+            for i, s in enumerate(e["sets"], 1):
+                flat.append({"exercise": e["name"], "set_index": i, **s})
+        log_workout(title=title, type_="cardio" if is_cardio else "strength",
+                    duration_min=cur_w["duration"], distance_km=total_km,
+                    on_date=d, sets=flat)
+        workouts_added += 1
+        sets_added += len(flat)
+        cur_w = None
+
+    for raw in lines:
+        line = raw.strip()
+        if not line:
+            continue
+        mw = _WHDR.match(line)
+        if mw:
+            flush()
+            cur_w = {"date": _dt.strptime(mw.group(2), "%Y-%m-%d").date(),
+                     "title": mw.group(1)[:120], "duration": _dur_to_min(mw.group(4)),
+                     "exercises": []}
+            cur_ex = None; cur_cols = None
+            continue
+        me = _EHDR.match(line)
+        if me and cur_w is not None:
+            name = me.group(2).split(" · ")[0].strip()[:80]
+            cur_ex = {"name": name, "sets": []}
+            cur_w["exercises"].append(cur_ex)
+            cur_cols = None
+            continue
+        if line.startswith("#;"):
+            parts = line.split(";")
+            cur_cols = (parts[1].strip().upper() if len(parts) > 1 else "KG",
+                        parts[2].strip().upper() if len(parts) > 2 else "REPS")
+            continue
+        # Satzzeile
+        if cur_ex is not None and _re.match(r"^\d+;", line):
+            p = line.split(";")
+            if len(p) < 3:
+                continue
+            unit1 = (cur_cols or ("KG", "REPS"))[0]
+            unit2 = (cur_cols or ("KG", "REPS"))[1]
+            s = {}
+            if unit1 == "KM":
+                s["distance_km"] = _num(p[1])
+                s["duration_s"] = _time_to_sec(p[2], unit2)
+            else:  # KG
+                s["weight_kg"] = _num(p[1])
+                if unit2 == "REPS":
+                    r = _num(p[2]); s["reps"] = int(r) if r is not None else None
+                else:
+                    s["duration_s"] = _time_to_sec(p[2], unit2)
+            cur_ex["sets"].append(s)
+    flush()
+    return {"workouts": workouts_added, "sets": sets_added, "skipped": skipped}
 
 
 def muscle_volume(days: int = 7) -> dict:

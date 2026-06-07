@@ -19,26 +19,29 @@ log = logging.getLogger(__name__)
 
 PROACTIVE_PROMPT = """Du bist Jarvis. Antworte IMMER auf Deutsch.
 
-Du hast gerade eine Nachricht abgeschickt und denkst nun nach was als nächstes sinnvoll ist.
+Du überlegst ob du Timo jetzt proaktiv schreiben sollst.
 
-Generiere EINEN Gedanken/eine Nachricht an Timo auf Deutsch.
+Generiere EINEN konkreten Gedanken/eine Nachricht an Timo auf Deutsch.
 
 Priorität (in dieser Reihenfolge):
-1. Follow-up zu etwas Konkretem aus dem letzten Gespräch
-2. Gezielte Frage um mehr über Timo zu lernen (Ziele, Gewohnheiten, Situation)
-3. Beobachtung oder Impuls der langfristig relevant ist
-4. Wenn gar nichts: stelle eine direkte Frage zu seiner aktuellen Lebenssituation
+1. Follow-up zu etwas Konkretem aus dem letzten Gespräch – aber NUR wenn noch offen
+2. Beobachtung oder Impuls basierend auf seinen Daten (Gesundheit, Ziele, Habits)
+3. Gezielte Frage zu etwas das du noch NICHT weißt und nicht bereits gefragt hast
 
-Regeln:
+STRENGE Regeln:
 - Max 2-3 Sätze
 - Kein "Hallo Timo" – direkt rein
 - Kein leeres "Wie geht's?" ohne Kontext
-- Keine Wiederholung von dem was du gerade erst gefragt hast
+- KEINE Frage die im letzten Gespräch bereits gestellt oder beantwortet wurde
+- KEINE Wiederholung von Themen die im letzten Gespräch bereits besprochen wurden
+- Wenn du dir nicht sicher bist ob das Thema neu ist: lieber schweigen
+- KEINE Diagnosen, medizinischen Erklärungen oder Ursachen erfinden die Timo nicht selbst genannt hat
+- Nur Fakten verwenden die Timo dir tatsächlich mitgeteilt hat
 
 Aktuelle Zeit: {time}
 Was du über Timo weißt:
 {memories}
-
+{recent_chat}
 Generiere jetzt den Gedanken (nur der Text, kein Kommentar):"""
 
 EVALUATE_PROMPT = """Du bist Jarvis. Du hast gerade diesen Gedanken generiert:
@@ -139,7 +142,7 @@ class ProactiveEngine:
             return False
 
     async def generate(self) -> str | None:
-        """Generiert eine proaktive Nachricht basierend auf Memories + Dashboard."""
+        """Generiert eine proaktive Nachricht basierend auf Memories + Dashboard + Chat-History."""
         try:
             memories = self.lzg.get_all(limit=10)
             memory_ctx = self.lzg.format_for_context(memories)
@@ -171,17 +174,57 @@ class ProactiveEngine:
             except Exception as e:
                 log.debug(f"Dashboard-Kontext für Proaktiv fehlgeschlagen: {e}")
 
+        # Letzte Chat-Nachrichten + explizite Blacklist bereits gestellter Fragen
+        recent_chat_ctx = ""
+        last_proactive_ctx = ""
+        try:
+            from core import db as _db
+            rows = _db.query(
+                """
+                SELECT role, content, channel FROM chat_messages
+                ORDER BY created_at DESC
+                LIMIT 20
+                """,
+            )
+            if rows:
+                # Letzte proaktive Jarvis-Nachrichten explizit hervorheben
+                proactive_msgs = [
+                    r["content"][:150]
+                    for r in rows
+                    if r["role"] == "assistant" and r.get("channel") in ("autopilot", "telegram")
+                ][:3]
+                if proactive_msgs:
+                    last_proactive_ctx = (
+                        "\n⛔ BEREITS GESENDETE NACHRICHTEN (diese Themen/Fragen NICHT wiederholen):\n"
+                        + "\n".join(f"- {m}" for m in proactive_msgs)
+                        + "\n"
+                    )
+
+                # Gesamte Chat-History als Kontext
+                rows_conv = list(reversed(rows[:12]))
+                lines = []
+                for r in rows_conv:
+                    role_label = "Timo" if r["role"] == "user" else "Jarvis"
+                    lines.append(f"{role_label}: {r['content'][:200]}")
+                recent_chat_ctx = "\nLetztes Gespräch:\n" + "\n".join(lines) + "\n"
+        except Exception as e:
+            log.debug(f"Chat-History für Proaktiv fehlgeschlagen: {e}")
+
         now = datetime.now().strftime("%A, %d. %B %Y, %H:%M Uhr")
         memories_with_dashboard = memory_ctx
         if dashboard_ctx:
             memories_with_dashboard += f"\n\nLive-Daten:\n{dashboard_ctx}"
-        prompt = PROACTIVE_PROMPT.format(time=now, memories=memories_with_dashboard)
+        prompt = PROACTIVE_PROMPT.format(
+            time=now,
+            memories=memories_with_dashboard,
+            recent_chat=recent_chat_ctx + last_proactive_ctx,
+        )
 
         try:
             response = await self.llm.chat(
                 messages=[Message(role="user", content=prompt)],
-                temperature=0.85,   # Etwas kreativer als normale Antworten
-                max_tokens=200,
+                temperature=0.65,   # Niedrig genug um Generations-Loops zu vermeiden
+                max_tokens=150,     # Kurz halten – proaktive Nachrichten müssen prägnant sein
             )
             msg = response.strip()
             if msg:

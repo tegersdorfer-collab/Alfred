@@ -4,21 +4,44 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # LLM
-OLLAMA_MODEL      = os.getenv("OLLAMA_MODEL", "qwen3:14b")
-OLLAMA_FAST_MODEL = os.getenv("OLLAMA_FAST_MODEL", "llama3.2:3b")  # schneller Router/Klassifikation
+OLLAMA_MODEL      = os.getenv("OLLAMA_MODEL", "qwen3:14b")         # Fallback wenn Routing aus
+OLLAMA_FAST_MODEL = os.getenv("OLLAMA_FAST_MODEL", "llama3.2:3b")  # 3B-Klassifikator (≠ Agent-Routing)
 OLLAMA_BASE_URL   = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
 OLLAMA_KEEP_ALIVE = os.getenv("OLLAMA_KEEP_ALIVE", "30m")          # Modell warm halten
+
+# ── Agent-Modell-Routing: schnell wenn möglich, stark wenn nötig ──────────────
+# Einfache Anfragen/Tool-Aktionen → schnelles Modell; komplexe Analysen/Reflexion/
+# Beratung → starkes Modell. Rein heuristisch (kein LLM-Call). Aus: LLM_ROUTING=false.
+LLM_ROUTING        = os.getenv("LLM_ROUTING", "true").strip().lower() in ("1", "true", "yes", "on", "ja")
+AGENT_MODEL_FAST   = os.getenv("AGENT_MODEL_FAST", "qwen3.5:4b")   # residentes Arbeitstier
+AGENT_MODEL_STRONG = os.getenv("AGENT_MODEL_STRONG", "qwen3.5:9b") # nur bei komplexen Anfragen
+# Starkes Modell schnell wieder entladen (16-GB-RAM: nicht beide dauerhaft warm halten)
+OLLAMA_KEEP_ALIVE_STRONG = os.getenv("OLLAMA_KEEP_ALIVE_STRONG", "2m")
 ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY", "")
 CLAUDE_MODEL      = "claude-haiku-4-5"  # Für schwere Tasks
 
 # Telegram
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "")
 TELEGRAM_CHAT_ID   = os.getenv("TELEGRAM_CHAT_ID", "")
+# Absender-Allowlist – nur diese Telegram-IDs dürfen mit Jarvis reden.
+# Kommagetrennt (User- oder Chat-IDs); TELEGRAM_CHAT_ID wird automatisch ergänzt.
+TELEGRAM_ALLOWED_IDS = {
+    s.strip()
+    for s in (os.getenv("TELEGRAM_ALLOWED_IDS", "").split(",") + [TELEGRAM_CHAT_ID])
+    if s.strip()
+}
 
 # Besitzer (persönliche Daten – aus .env, NICHT im Repo)
 OWNER_NAME     = os.getenv("OWNER_NAME", "Timo")
 OWNER_EMAIL    = os.getenv("OWNER_EMAIL", "")
 OWNER_TIMEZONE = os.getenv("OWNER_TIMEZONE", "Europe/Berlin")
+
+# Datenquellen (direkt von der Quelle – unabhängig von ai-dashboard)
+HEALTH_JSON_PATH  = os.getenv(
+    "HEALTH_JSON_PATH",
+    "~/Library/Mobile Documents/iCloud~is~workflow~my~workflows/Documents/Health.json",
+)
+CALENDAR_ICS_URLS = os.getenv("CALENDAR_ICS_URLS", "")   # kommagetrennt
 
 # Database
 DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://localhost:5432/jarvis")

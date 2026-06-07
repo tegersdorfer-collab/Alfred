@@ -3,6 +3,7 @@ Ollama Provider – lokale LLM-Inference.
 Modell über OLLAMA_MODEL in .env konfigurierbar.
 """
 import asyncio
+from collections import OrderedDict
 from typing import AsyncIterator
 import ollama as _ollama
 
@@ -16,7 +17,8 @@ class OllamaProvider(LLMProvider):
         self._model = model or config.OLLAMA_MODEL
         self._embed_model = embed_model or config.LZG_EMBED_MODEL
         self._client = _ollama.AsyncClient(host=config.OLLAMA_BASE_URL)
-        self._embed_cache: dict[str, list[float]] = {}
+        self._embed_cache: OrderedDict[str, list[float]] = OrderedDict()
+        self._embed_cache_max = 256
 
     @property
     def model_name(self) -> str:
@@ -42,15 +44,19 @@ class OllamaProvider(LLMProvider):
         temperature: float = 0.7,
         max_tokens: int = 1024,
         think: bool = False,
+        format: str | dict | None = None,
     ) -> str:
+        kwargs = dict(
+            model=self._model,
+            messages=self._build_messages(messages, system),
+            options={"temperature": temperature, "num_predict": max_tokens,
+                     "keep_alive": config.OLLAMA_KEEP_ALIVE},
+            think=think,
+        )
+        if format:                       # 'json' oder JSON-Schema → erzwingt valides JSON
+            kwargs["format"] = format
         async with GATE:
-            response = await self._client.chat(
-                model=self._model,
-                messages=self._build_messages(messages, system),
-                options={"temperature": temperature, "num_predict": max_tokens,
-                         "keep_alive": config.OLLAMA_KEEP_ALIVE},
-                think=think,
-            )
+            response = await self._client.chat(**kwargs)
         return response.message.content
 
     async def stream(
@@ -79,10 +85,13 @@ class OllamaProvider(LLMProvider):
                 input=text,
             )
         emb = response.embeddings[0]
-        # Cache begrenzen
-        if len(self._embed_cache) > 500:
-            self._embed_cache.clear()
-        self._embed_cache[key] = emb
+        # LRU: ältesten Eintrag entfernen wenn voll
+        if key in self._embed_cache:
+            self._embed_cache.move_to_end(key)
+        else:
+            if len(self._embed_cache) >= self._embed_cache_max:
+                self._embed_cache.popitem(last=False)
+            self._embed_cache[key] = emb
         return emb
 
     async def check_model(self) -> bool:

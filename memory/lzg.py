@@ -1,17 +1,22 @@
 """
 Langzeitgedächtnis (LZG) – persistente Vektordatenbank via pgvector.
 Speichert komprimierte Fakten, Muster und Erkenntnisse über Timo.
+
+Alle DB-Operationen laufen über den zentralen Connection-Pool (core.db),
+keine eigene psycopg2-Connection mehr → kein Race-Condition-Risiko.
 """
 import json
+import logging
 from dataclasses import dataclass
 from datetime import datetime
 from typing import Optional
 
 import numpy as np
-import psycopg2
-from pgvector.psycopg2 import register_vector
 
 import config
+from core import db as _db
+
+log = logging.getLogger(__name__)
 
 
 @dataclass
@@ -28,27 +33,12 @@ class Memory:
 class LZG:
     """
     Langzeitgedächtnis mit semantischer Suche (pgvector).
-    Alle Fakten und Erkenntnisse über Timo werden hier gespeichert.
+    Nutzt den gemeinsamen DB-Pool — thread-sicher, kein Verbindungs-Thrashing.
     """
-
-    def __init__(self):
-        self._conn = None
-
-    def close(self) -> None:
-        if self._conn and not self._conn.closed:
-            self._conn.close()
-            self._conn = None
-
-    def _get_conn(self):
-        if self._conn is None or self._conn.closed:
-            self._conn = psycopg2.connect(config.DATABASE_URL)
-            register_vector(self._conn)
-        return self._conn
 
     def setup(self) -> None:
         """Erstellt Tabellen falls nicht vorhanden."""
-        conn = self._get_conn()
-        with conn.cursor() as cur:
+        with _db.cursor(vector=True) as cur:
             cur.execute("CREATE EXTENSION IF NOT EXISTS vector;")
             cur.execute("""
                 CREATE TABLE IF NOT EXISTS memories (
@@ -66,7 +56,6 @@ class LZG:
                 CREATE INDEX IF NOT EXISTS memories_embedding_idx
                 ON memories USING hnsw (embedding vector_cosine_ops);
             """)
-            # KZG-Persistenz: letzte Gespräche über Restarts hinweg
             cur.execute("""
                 CREATE TABLE IF NOT EXISTS kzg_sessions (
                     id         SERIAL PRIMARY KEY,
@@ -75,7 +64,6 @@ class LZG:
                     created_at TIMESTAMPTZ DEFAULT NOW()
                 );
             """)
-            conn.commit()
 
     def save(
         self,
@@ -86,8 +74,7 @@ class LZG:
         metadata: dict | None = None,
     ) -> int:
         """Speichert eine neue Erinnerung. Gibt ID zurück."""
-        conn = self._get_conn()
-        with conn.cursor() as cur:
+        with _db.cursor(vector=True) as cur:
             cur.execute(
                 """
                 INSERT INTO memories (content, embedding, category, confidence, metadata)
@@ -97,9 +84,7 @@ class LZG:
                 (content, np.array(embedding), category, confidence,
                  json.dumps(metadata or {})),
             )
-            memory_id = cur.fetchone()[0]
-            conn.commit()
-            return memory_id
+            return cur.fetchone()["id"]
 
     def search(
         self,
@@ -110,7 +95,6 @@ class LZG:
     ) -> list[Memory]:
         """Semantische Suche im Langzeitgedächtnis."""
         k = top_k or config.LZG_TOP_K
-        conn = self._get_conn()
 
         where = "confidence >= %s"
         params: list = [min_confidence]
@@ -122,7 +106,7 @@ class LZG:
         params.append(np.array(query_embedding))
         params.append(k)
 
-        with conn.cursor() as cur:
+        with _db.cursor(vector=True) as cur:
             cur.execute(
                 f"""
                 SELECT id, content, category, confidence,
@@ -136,65 +120,47 @@ class LZG:
             )
             rows = cur.fetchall()
 
-        return [
-            Memory(
-                id=r[0], content=r[1], category=r[2],
-                confidence=r[3], created_at=r[4],
-                last_verified=r[5], metadata=r[6] or {},
-            )
-            for r in rows
-        ]
+        return [_row_to_memory(r) for r in rows]
 
     def get_all(self, category: str | None = None, limit: int = 50) -> list[Memory]:
         """Alle Memories abrufen (ohne Vektor-Suche)."""
-        conn = self._get_conn()
-        with conn.cursor() as cur:
-            if category:
-                cur.execute(
-                    """
-                    SELECT id, content, category, confidence,
-                           created_at, last_verified, metadata
-                    FROM memories
-                    WHERE category = %s
-                    ORDER BY created_at DESC
-                    LIMIT %s
-                    """,
-                    (category, limit),
-                )
-            else:
-                cur.execute(
-                    """
-                    SELECT id, content, category, confidence,
-                           created_at, last_verified, metadata
-                    FROM memories
-                    ORDER BY created_at DESC
-                    LIMIT %s
-                    """,
-                    (limit,),
-                )
-            rows = cur.fetchall()
-
-        return [
-            Memory(
-                id=r[0], content=r[1], category=r[2],
-                confidence=r[3], created_at=r[4],
-                last_verified=r[5], metadata=r[6] or {},
+        if category:
+            rows = _db.query(
+                """
+                SELECT id, content, category, confidence,
+                       created_at, last_verified, metadata
+                FROM memories
+                WHERE category = %s
+                ORDER BY created_at DESC
+                LIMIT %s
+                """,
+                (category, limit),
             )
-            for r in rows
-        ]
+        else:
+            rows = _db.query(
+                """
+                SELECT id, content, category, confidence,
+                       created_at, last_verified, metadata
+                FROM memories
+                ORDER BY created_at DESC
+                LIMIT %s
+                """,
+                (limit,),
+            )
+
+        return [_row_to_memory(r) for r in rows]
 
     def find_similar(
         self,
         embedding: list[float] | np.ndarray,
-        threshold: float = 0.12,   # cosine distance (0 = identisch, <0.15 = sehr ähnlich)
+        threshold: float = 0.12,
         top_k: int = 3,
     ) -> list[tuple["Memory", float]]:
         """
-        Findet Memories die semantisch sehr ähnlich sind.
+        Findet semantisch sehr ähnliche Memories.
         Gibt Liste von (Memory, distance) zurück – kleinste distance = ähnlichster.
         """
-        conn = self._get_conn()
-        with conn.cursor() as cur:
+        with _db.cursor(vector=True) as cur:
             cur.execute(
                 """
                 SELECT id, content, category, confidence,
@@ -210,78 +176,53 @@ class LZG:
 
         result = []
         for r in rows:
-            dist = float(r[7])
+            dist = float(r["distance"])
             if dist <= threshold:
-                mem = Memory(
-                    id=r[0], content=r[1], category=r[2],
-                    confidence=r[3], created_at=r[4],
-                    last_verified=r[5], metadata=r[6] or {},
-                )
-                result.append((mem, dist))
+                result.append((_row_to_memory(r), dist))
         return result
 
     def update_confidence(self, memory_id: int, confidence: float) -> None:
-        conn = self._get_conn()
-        with conn.cursor() as cur:
-            cur.execute(
-                "UPDATE memories SET confidence = %s, last_verified = NOW() WHERE id = %s",
-                (confidence, memory_id),
-            )
-            conn.commit()
+        _db.execute(
+            "UPDATE memories SET confidence = %s, last_verified = NOW() WHERE id = %s",
+            (confidence, memory_id),
+        )
 
     def delete(self, memory_id: int) -> None:
-        conn = self._get_conn()
-        with conn.cursor() as cur:
-            cur.execute("DELETE FROM memories WHERE id = %s", (memory_id,))
-            conn.commit()
+        _db.execute("DELETE FROM memories WHERE id = %s", (memory_id,))
 
     # ── KZG-Session-Persistenz ──────────────────────────────────────────────
 
     def save_kzg_turn(self, role: str, content: str) -> None:
-        """Speichert einen KZG-Turn persistent in der DB."""
-        conn = self._get_conn()
-        with conn.cursor() as cur:
-            cur.execute(
-                "INSERT INTO kzg_sessions (role, content) VALUES (%s, %s)",
-                (role, content),
-            )
-            conn.commit()
+        _db.execute(
+            "INSERT INTO kzg_sessions (role, content) VALUES (%s, %s)",
+            (role, content),
+        )
 
     def load_recent_kzg(self, max_turns: int = 10) -> list[dict]:
-        """Lädt die letzten N Turns aus der letzten Session."""
-        conn = self._get_conn()
-        with conn.cursor() as cur:
-            cur.execute(
-                """
-                SELECT role, content FROM kzg_sessions
-                ORDER BY created_at DESC
-                LIMIT %s
-                """,
-                (max_turns,),
-            )
-            rows = cur.fetchall()
-        # Umkehren damit älteste zuerst (Chronologie)
-        return [{"role": r[0], "content": r[1]} for r in reversed(rows)]
+        rows = _db.query(
+            """
+            SELECT role, content FROM kzg_sessions
+            ORDER BY created_at DESC
+            LIMIT %s
+            """,
+            (max_turns,),
+        )
+        return list(reversed(rows))
 
     def clear_kzg_sessions(self, keep_last: int = 20) -> None:
-        """Löscht alte KZG-Turns, behält nur die letzten N."""
-        conn = self._get_conn()
-        with conn.cursor() as cur:
-            cur.execute(
-                """
-                DELETE FROM kzg_sessions
-                WHERE id NOT IN (
-                    SELECT id FROM kzg_sessions
-                    ORDER BY created_at DESC
-                    LIMIT %s
-                )
-                """,
-                (keep_last,),
+        _db.execute(
+            """
+            DELETE FROM kzg_sessions
+            WHERE id NOT IN (
+                SELECT id FROM kzg_sessions
+                ORDER BY created_at DESC
+                LIMIT %s
             )
-            conn.commit()
+            """,
+            (keep_last,),
+        )
 
     def format_for_context(self, memories: list[Memory]) -> str:
-        """Formatiert Memories als lesbaren Kontext für System-Prompt."""
         if not memories:
             return "Noch keine Langzeiterinnerungen vorhanden."
         lines = []
@@ -289,3 +230,21 @@ class LZG:
             conf_str = f"({int(m.confidence * 100)}% sicher)"
             lines.append(f"[{m.category.upper()}] {m.content} {conf_str}")
         return "\n".join(lines)
+
+    # Kein close() mehr nötig – Pool-Verwaltung übernimmt core.db
+    def close(self) -> None:
+        pass
+
+
+# ── Helfer ────────────────────────────────────────────────────────────────────
+
+def _row_to_memory(r: dict) -> Memory:
+    return Memory(
+        id=r["id"],
+        content=r["content"],
+        category=r["category"],
+        confidence=r["confidence"],
+        created_at=r["created_at"],
+        last_verified=r.get("last_verified"),
+        metadata=r.get("metadata") or {},
+    )
