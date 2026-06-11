@@ -1,10 +1,10 @@
-# Jarvis 2.0 — Von reaktivem Bot zu autonomem AI-Concierge
+# Alfred 2.0 — Von reaktivem Bot zu autonomem AI-Concierge
 
 > Ziel: Aus einem reaktiven Telegram-Bot ein High-End, selbst-verbesserndes
 > Lebens-Betriebssystem machen. "Leben auf Autopilot."
 
 ## Leitprinzipien
-1. **Agentisch** – Jarvis entscheidet selbst welche Tools er nutzt (echtes Function-Calling), nicht starre Regex-Regeln.
+1. **Agentisch** – Alfred entscheidet selbst welche Tools er nutzt (echtes Function-Calling), nicht starre Regex-Regeln.
 2. **Proaktiv & autonom** – ein echtes Autopilot-System mit eigener Agenda, zeitbewussten Aktivitäten, Anomalie-Erkennung.
 3. **Selbst-verbessernd** – Reflexions-Engine, Meta-Gedächtnis über Timos Vorlieben, Verhaltensanpassung.
 4. **Schnell** – Streaming-Antworten, warmes Modell, paralleler Kontextaufbau.
@@ -15,7 +15,7 @@
 
 ### Phase A — Datenfundament
 - `core/db.py`: zentraler Connection-Pool, Migrations-Runner
-- Neue Tabellen (jarvis DB): habits, habit_logs, workouts, exercises, workout_sets,
+- Neue Tabellen (alfred DB): habits, habit_logs, workouts, exercises, workout_sets,
   training_plans, journal_entries, meals, goals, agenda, reflections, chat_messages,
   events_log, metrics_snapshots
 
@@ -42,6 +42,6 @@
 
 ### Phase H — Dashboard-Frontend
 - Mobil-first PWA, Multi-View: Command Center, Chat, Health, Fitness-App, Habits,
-  Tasks, Kalender, Journal, Ernährung, Ziele, Memory-Browser, Jarvis-Mind, Analytics, Settings
+  Tasks, Kalender, Journal, Ernährung, Ziele, Memory-Browser, Alfred-Mind, Analytics, Settings
 
 ### Phase I — Integration & Test

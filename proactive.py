@@ -1,5 +1,5 @@
 """
-Proaktive Nachrichten – Jarvis meldet sich aus eigener Initiative.
+Proaktive Nachrichten – Alfred meldet sich aus eigener Initiative.
 Basiert auf LZG-Memories und Tageszeit.
 """
 import logging
@@ -17,7 +17,7 @@ except Exception:
 
 log = logging.getLogger(__name__)
 
-PROACTIVE_PROMPT = """Du bist Jarvis, Timos persönlicher AI-Assistent. Antworte IMMER auf Deutsch.
+PROACTIVE_PROMPT = """Du bist Alfred, Timos persönlicher AI-Assistent. Antworte IMMER auf Deutsch.
 
 Du überlegst, ob du Timo jetzt proaktiv etwas schreiben sollst.
 
@@ -46,7 +46,7 @@ Was du über Timo weißt:
 {recent_chat}
 Generiere jetzt den Gedanken (nur der Text, kein Kommentar):"""
 
-EVALUATE_PROMPT = """Du bist Jarvis. Du hast gerade diesen Gedanken generiert:
+EVALUATE_PROMPT = """Du bist Alfred. Du hast gerade diesen Gedanken generiert:
 
 "{thought}"
 
@@ -147,7 +147,7 @@ class ProactiveEngine:
 
     async def evaluate(self, thought: str) -> bool:
         """
-        Lässt Jarvis selbst entscheiden ob der Gedanke es wert ist gesendet zu werden.
+        Lässt Alfred selbst entscheiden ob der Gedanke es wert ist gesendet zu werden.
         Nutzt Claude Code wenn verfügbar (besseres Urteilsvermögen), sonst Qwen.
         """
         prompt = EVALUATE_PROMPT.replace("{thought}", thought)
@@ -211,7 +211,7 @@ class ProactiveEngine:
                 """,
             )
             if rows:
-                # Letzte proaktive Jarvis-Nachrichten explizit hervorheben
+                # Letzte proaktive Alfred-Nachrichten explizit hervorheben
                 proactive_msgs = [
                     r["content"][:150]
                     for r in rows
@@ -232,9 +232,9 @@ class ProactiveEngine:
                 rows_conv = list(reversed(rows[:12]))
                 lines = []
                 for r in rows_conv:
-                    role_label = "Timo" if r["role"] == "user" else "Jarvis"
+                    role_label = "Timo" if r["role"] == "user" else "Alfred"
                     content = r['content'][:200]
-                    # Jarvis-Nachrichten die Ankündigungen enthalten überspringen
+                    # Alfred-Nachrichten die Ankündigungen enthalten überspringen
                     if r["role"] == "assistant" and any(p in content.lower() for p in _bad_phrases):
                         continue
                     lines.append(f"{role_label}: {content}")

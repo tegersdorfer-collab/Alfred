@@ -1,5 +1,5 @@
 """
-Jarvis Dashboard API – läuft IM Jarvis-Prozess (geteilter State mit dem Agent).
+Alfred Dashboard API – läuft IM Alfred-Prozess (geteilter State mit dem Agent).
 Voll interaktiv: REST für alle Domänen + 2-Wege-Chat (SSE-Streaming) + Live-Feeds.
 """
 import asyncio
@@ -18,12 +18,12 @@ from core import db, tools as T
 from core.status import BUS
 from domains import habits, fitness, nutrition, journal, goals, weather, tasks as tasks_d
 
-log = logging.getLogger("jarvis.api")
+log = logging.getLogger("alfred.api")
 WEB_DIR = Path(__file__).parent
 
 
 def create_app(orch=None) -> FastAPI:
-    app = FastAPI(title="Jarvis Dashboard", docs_url=None, redoc_url=None)
+    app = FastAPI(title="Alfred Dashboard", docs_url=None, redoc_url=None)
     app.add_middleware(CORSMiddleware, allow_origins=["*"],
                        allow_methods=["*"], allow_headers=["*"])
 
@@ -32,7 +32,7 @@ def create_app(orch=None) -> FastAPI:
     def status():
         pid = None; running = False
         try:
-            pid = int(open("/tmp/jarvis.pid").read().strip())
+            pid = int(open("/tmp/alfred.pid").read().strip())
             os.kill(pid, 0); running = True
         except Exception:
             pass
@@ -175,7 +175,7 @@ def create_app(orch=None) -> FastAPI:
     def habits_commit(days: int = 30):
         return habits.commit_history(days)
 
-    # ── Tasks (jarvis-nativ: Arten, Unteraufgaben, Fortschritt, Archiv) ──────────
+    # ── Tasks (alfred-nativ: Arten, Unteraufgaben, Fortschritt, Archiv) ──────────
     @app.get("/api/tasks")
     def get_tasks(status: str = "open"):
         return _jsonable(tasks_d.list_tasks(status))
@@ -190,7 +190,7 @@ def create_app(orch=None) -> FastAPI:
                                   notes=d.get("notes"), parent_id=d.get("parent_id"))
         # Zuweisung: explizit > auto-klassifizieren
         explicit = d.get("assigned_to")
-        if explicit in ("user", "jarvis"):
+        if explicit in ("user", "alfred"):
             db.execute("UPDATE tasks SET assigned_to=%s WHERE id=%s", (explicit, tid))
         elif orch:
             try:
@@ -223,7 +223,7 @@ def create_app(orch=None) -> FastAPI:
             "UPDATE tasks SET suggestion_status='rejected', rejection_reason=%s, status='archived' WHERE id=%s",
             (reason, tid)
         )
-        # Jarvis lernt daraus
+        # Alfred lernt daraus
         if orch and reason:
             try:
                 from domains.task_executor import learn_from_rejection
@@ -235,7 +235,7 @@ def create_app(orch=None) -> FastAPI:
 
     @app.post("/api/tasks/generate")
     async def generate_task_suggestion():
-        """Manueller Trigger: Jarvis überlegt sich sofort einen neuen Task-Vorschlag."""
+        """Manueller Trigger: Alfred überlegt sich sofort einen neuen Task-Vorschlag."""
         if not orch:
             return {"ok": False, "error": "Kein Orchestrator"}
         import asyncio as _aio
@@ -434,7 +434,7 @@ def create_app(orch=None) -> FastAPI:
             ctx_lines.append(f"Durchschnittliche Stimmung letzte 7 Tage: {avg_mood:.1f}/5")
         ctx = "\n".join(ctx_lines) or "Keine bisherigen Einträge."
         prompt = (
-            f"Du bist Jarvis, ein persönlicher AI-Begleiter. Generiere genau 3 kurze, "
+            f"Du bist Alfred, ein persönlicher AI-Begleiter. Generiere genau 3 kurze, "
             f"persönliche Journalfragen für den Abend-Check-in von Timo. "
             f"Die Fragen sollen zur Selbstreflexion anregen, variieren und nicht zu allgemein sein. "
             f"Kontext:\n{ctx}\n\n"
@@ -546,7 +546,7 @@ def create_app(orch=None) -> FastAPI:
     def del_kg_relation(rid: int):
         db.execute("DELETE FROM kg_relations WHERE id=%s", (rid,)); return {"ok": True}
 
-    # ── Jarvis Mind (Events, Reflexionen, Agenda) ────────────────────────────────
+    # ── Alfred Mind (Events, Reflexionen, Agenda) ────────────────────────────────
     @app.get("/api/mind")
     def mind():
         return {
@@ -602,7 +602,7 @@ def create_app(orch=None) -> FastAPI:
     async def chat(req: Request):
         d = await req.json()
         if not orch:
-            return {"response": "Jarvis-Kern nicht verbunden."}
+            return {"response": "Alfred-Kern nicht verbunden."}
         resp, trace = await orch.dashboard_respond(d["text"])
         return {"response": resp, "tools": [t["tool"] for t in trace]}
 
@@ -641,7 +641,7 @@ def create_app(orch=None) -> FastAPI:
     # ── Live Status-Stream (SSE) ──────────────────────────────────────────────────
     @app.get("/api/status/stream")
     async def status_stream():
-        """SSE-Stream mit Echtzeit-Status-Updates von Jarvis."""
+        """SSE-Stream mit Echtzeit-Status-Updates von Alfred."""
         q = BUS.subscribe()
 
         async def gen():
@@ -710,7 +710,7 @@ def create_app(orch=None) -> FastAPI:
     @app.get("/manifest.json")
     def manifest():
         return JSONResponse({
-            "name": "Jarvis", "short_name": "Jarvis",
+            "name": "Alfred", "short_name": "Alfred",
             "start_url": "/", "display": "standalone",
             "background_color": "#0a0f1e", "theme_color": "#0a0f1e",
             "icons": [{"src": "https://em-content.zobj.net/source/apple/391/robot_1f916.png",

@@ -1,4 +1,4 @@
-# Jarvis 🤖
+# Alfred 🤖
 
 Persönlicher, autonomer AI-Concierge — läuft lokal auf einem Mac (Apple Silicon),
 spricht über Telegram und ein eigenes mobil-first Dashboard.
@@ -22,8 +22,8 @@ spricht über Telegram und ein eigenes mobil-first Dashboard.
 ```bash
 pip install -r requirements.txt
 cp .env.example .env          # Werte eintragen
-createdb jarvis               # PostgreSQL-DB anlegen (pgvector-Extension nötig)
-./start.sh                    # startet Jarvis + Dashboard (Port 7779)
+createdb alfred               # PostgreSQL-DB anlegen (pgvector-Extension nötig)
+./start.sh                    # startet Alfred + Dashboard (Port 7779)
 ```
 
 ## Architektur

@@ -1,6 +1,6 @@
 """
-Reminder-System – Jarvis erinnert Timo zu bestimmten Zeiten.
-Gespeichert in der jarvis DB, wird im Denkzyklus geprüft.
+Reminder-System – Alfred erinnert Timo zu bestimmten Zeiten.
+Gespeichert in der alfred DB, wird im Denkzyklus geprüft.
 Nutzt den zentralen Connection-Pool (core.db) – keine eigene Connection mehr.
 """
 import logging

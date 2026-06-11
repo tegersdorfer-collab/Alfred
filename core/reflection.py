@@ -1,5 +1,5 @@
 """
-Selbst-Verbesserung – Jarvis lernt über sich selbst und über Timo.
+Selbst-Verbesserung – Alfred lernt über sich selbst und über Timo.
 
 1. Interaktions-Reflexion: erkennt Korrekturen/Stimmung nach jedem Austausch,
    speichert Vorlieben & Kommunikationsstil als Meta-Gedächtnis.
@@ -32,7 +32,7 @@ class Reflection:
         return "## Gelernt über die Zusammenarbeit mit Timo:\n" + "\n".join(f"- {n}" for n in notes)
 
     _JUNK = ("korrektur", "vorliebe", "zeichen von", "technisches problem",
-             "es gibt", "nichts", "json", "assistant", "timo:", "jarvis:")
+             "es gibt", "nichts", "json", "assistant", "timo:", "alfred:")
 
     def _add_note(self, note: str) -> None:
         n = note.strip().strip('"')
@@ -55,11 +55,11 @@ class Reflection:
     async def reflect_on_interaction(self, user_msg: str, assistant_msg: str) -> None:
         """Schnelle Analyse via Schnellmodell: Korrektur? Vorliebe? Unmut?"""
         prompt = (
-            "Analysiere diesen Austausch zwischen Timo (User) und Jarvis (Assistant). "
+            "Analysiere diesen Austausch zwischen Timo (User) und Alfred (Assistant). "
             "Gibt es eine KORREKTUR, eine VORLIEBE, oder ein Zeichen von Unmut/Zufriedenheit, "
-            "das Jarvis sich fürs nächste Mal merken sollte?\n\n"
+            "das Alfred sich fürs nächste Mal merken sollte?\n\n"
             f"Timo: {user_msg[:400]}\n"
-            f"Jarvis: {assistant_msg[:400]}\n\n"
+            f"Alfred: {assistant_msg[:400]}\n\n"
             "Wenn ja: antworte mit EINEM kurzen Lern-Satz (imperativ, z.B. 'Fasse dich kürzer'). "
             "Wenn nichts Relevantes: antworte mit 'NICHTS'."
         )

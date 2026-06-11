@@ -1,5 +1,5 @@
 """
-Jarvis – Entry Point
+Alfred – Entry Point
 """
 import asyncio
 import logging
@@ -13,16 +13,16 @@ logging.basicConfig(
     format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
     datefmt="%H:%M:%S",
 )
-log = logging.getLogger("jarvis")
+log = logging.getLogger("alfred")
 
 
 def ensure_single_instance():
-    pidfile = "/tmp/jarvis.pid"
+    pidfile = "/tmp/alfred.pid"
     if os.path.exists(pidfile):
         try:
             old_pid = int(open(pidfile).read().strip())
             os.kill(old_pid, 0)
-            log.error(f"Jarvis läuft bereits (PID {old_pid}). Beende mit: kill {old_pid}")
+            log.error(f"Alfred läuft bereits (PID {old_pid}). Beende mit: kill {old_pid}")
             sys.exit(1)
         except (ProcessLookupError, ValueError, OSError):
             pass  # Alter Prozess tot

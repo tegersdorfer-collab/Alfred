@@ -23,7 +23,7 @@ CLAUDE_MODEL      = "claude-haiku-4-5"  # Für schwere Tasks
 # Telegram
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "")
 TELEGRAM_CHAT_ID   = os.getenv("TELEGRAM_CHAT_ID", "")
-# Absender-Allowlist – nur diese Telegram-IDs dürfen mit Jarvis reden.
+# Absender-Allowlist – nur diese Telegram-IDs dürfen mit Alfred reden.
 # Kommagetrennt (User- oder Chat-IDs); TELEGRAM_CHAT_ID wird automatisch ergänzt.
 TELEGRAM_ALLOWED_IDS = {
     s.strip()
@@ -44,7 +44,7 @@ HEALTH_JSON_PATH  = os.getenv(
 CALENDAR_ICS_URLS = os.getenv("CALENDAR_ICS_URLS", "")   # kommagetrennt
 
 # Database
-DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://localhost:5432/jarvis")
+DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://localhost:5432/alfred")
 
 # Thermal
 THERMAL_TARGET_CELSIUS = float(os.getenv("THERMAL_TARGET_CELSIUS", "70.0"))
@@ -67,7 +67,7 @@ KZG_MAX_TURNS    = 20                   # Max Turns im Kurzzeitgedächtnis
 # Search
 BRAVE_API_KEY = os.getenv("BRAVE_API_KEY", "")
 
-# Google Calendar (OAuth2 – für Jarvis → Google Termine schreiben)
+# Google Calendar (OAuth2 – für Alfred → Google Termine schreiben)
 GOOGLE_CLIENT_ID     = os.getenv("GOOGLE_CLIENT_ID", "")
 GOOGLE_CLIENT_SECRET = os.getenv("GOOGLE_CLIENT_SECRET", "")
 GOOGLE_CALENDAR_ID   = os.getenv("GOOGLE_CALENDAR_ID", "primary")  # 'primary' = Haupt-Kalender

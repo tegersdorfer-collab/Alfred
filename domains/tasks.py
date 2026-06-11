@@ -1,5 +1,5 @@
 """
-Reiches Task-System (jarvis-nativ).
+Reiches Task-System (alfred-nativ).
 Arten: task | project | checklist. Unteraufgaben via parent_id. Fortschritt %. Archiv.
 """
 from datetime import datetime

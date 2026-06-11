@@ -34,7 +34,7 @@ class TelegramChannel(CommunicationChannel):
 
     async def send(self, text: str) -> None:
         if not self._app or not self._chat_id:
-            print(f"[Jarvis → Telegram nicht verbunden]: {text}")
+            print(f"[Alfred → Telegram nicht verbunden]: {text}")
             return
 
         # Lange Nachrichten aufteilen (Telegram-Limit: 4096 Zeichen)
@@ -83,7 +83,7 @@ class TelegramChannel(CommunicationChannel):
             pass  # "message is not modified" o.ä. ignorieren
 
     def _authorized(self, update: Update) -> bool:
-        """Darf dieser Absender mit Jarvis reden?
+        """Darf dieser Absender mit Alfred reden?
         Mit konfigurierter Allowlist: strikt (User- oder Chat-ID muss passen).
         Ohne Allowlist: Trust-on-first-use – der erste Absender wird für die
         Laufzeit gesperrt, alle anderen abgewiesen (statt offen für jeden)."""
@@ -133,7 +133,7 @@ class TelegramChannel(CommunicationChannel):
             return
         self._chat_id = str(update.message.chat_id)
         await update.message.reply_text(
-            "Jarvis online. Was brauchst du?"
+            "Alfred online. Was brauchst du?"
         )
 
     async def _handle_status(

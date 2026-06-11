@@ -13,7 +13,7 @@ from memory.lzg import LZG
 log = logging.getLogger(__name__)
 
 # Kein f-string, kein .format() – plain string mit eigenem Platzhalter
-COMPRESSION_PROMPT_PREFIX = """Du analysierst ein Gespräch zwischen Timo und Jarvis.
+COMPRESSION_PROMPT_PREFIX = """Du analysierst ein Gespräch zwischen Timo und Alfred.
 Extrahiere alle Informationen die LANGFRISTIG relevant sind.
 
 Kategorien:

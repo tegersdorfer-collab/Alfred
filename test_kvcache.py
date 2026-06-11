@@ -14,7 +14,7 @@ import time
 import os
 import sys
 
-# Jarvis-Pfad einbinden
+# Alfred-Pfad einbinden
 sys.path.insert(0, os.path.dirname(__file__))
 import config
 
@@ -24,7 +24,7 @@ MODEL = config.AGENT_MODEL_FAST  # 4B – schneller zu testen
 
 # ── Gleicher stabiler Prefix (simuliert IDENTITY + Werkzeuge) ──────────────
 STABLE = """\
-Du bist Jarvis, Timos persönlicher AI-Concierge. Du kennst ihn gut, redest direkt,
+Du bist Alfred, Timos persönlicher AI-Concierge. Du kennst ihn gut, redest direkt,
 gibst keine leeren Floskeln. Du bist ein Mentor, kein Assistent.
 
 ## Werkzeuge

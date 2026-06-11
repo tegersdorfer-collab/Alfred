@@ -1,4 +1,4 @@
-// Jarvis Service Worker – network-first, kein Caching.
+// Alfred Service Worker – network-first, kein Caching.
 // Sorgt dafür, dass die installierte Homescreen-App immer die neueste Version lädt.
 self.addEventListener('install', (e) => self.skipWaiting());
 self.addEventListener('activate', (e) => e.waitUntil(self.clients.claim()));

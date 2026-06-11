@@ -1,7 +1,7 @@
 """
-Kalender-Domäne (jarvis-nativ).
+Kalender-Domäne (alfred-nativ).
 Quelle: Google/iCloud ICS-Abo-URL(s) – direkt gefetcht & geparst mit korrekter
-Zeitzone. Plus jarvis-eigene Events aus calendar_events. KEINE ai-dashboard-Abhängigkeit.
+Zeitzone. Plus alfred-eigene Events aus calendar_events. KEINE ai-dashboard-Abhängigkeit.
 Synchron (mit Cache) damit alle bestehenden Aufrufstellen es nutzen können.
 """
 import logging
@@ -84,7 +84,7 @@ def upcoming(days: int = 7) -> list[dict]:
     cutoff = now - timedelta(minutes=30)
     events = [e for e in ics if e["start"] >= cutoff and e["start"] <= horizon]
 
-    jarvis_events = []
+    alfred_events = []
     try:
         rows = db.query(
             "SELECT uid, title, start_ts, end_ts, all_day, location FROM calendar_events "
@@ -95,18 +95,18 @@ def upcoming(days: int = 7) -> list[dict]:
             s = r["start_ts"]
             if getattr(s, "tzinfo", None):
                 s = s.astimezone(_TZ).replace(tzinfo=None)
-            jarvis_events.append({"uid": r["uid"], "title": r["title"], "start": s,
+            alfred_events.append({"uid": r["uid"], "title": r["title"], "start": s,
                                   "end": r["end_ts"], "all_day": r["all_day"],
                                   "location": r["location"],
-                                  "calendar": "Jarvis", "source": "jarvis"})
+                                  "calendar": "Alfred", "source": "alfred"})
     except Exception as e:
-        log.debug(f"Jarvis-Events: {e}")
+        log.debug(f"Alfred-Events: {e}")
 
-    # ICS-Duplikate entfernen: Jarvis-Events die via Google Cal zurücksynchronisiert wurden
+    # ICS-Duplikate entfernen: Alfred-Events die via Google Cal zurücksynchronisiert wurden
     def _is_duplicate(ics_ev: dict) -> bool:
         t = ics_ev["start"]
         title_lower = ics_ev["title"].lower()
-        for je in jarvis_events:
+        for je in alfred_events:
             if je["title"].lower() == title_lower:
                 diff = abs((je["start"] - t).total_seconds())
                 if diff < 300:  # gleicher Titel + max 5min Abweichung
@@ -114,13 +114,13 @@ def upcoming(days: int = 7) -> list[dict]:
         return False
 
     events = [e for e in events if not _is_duplicate(e)]
-    events += jarvis_events
+    events += alfred_events
     events.sort(key=lambda e: e["start"])
     return events[:25]
 
 
 def find_event(query: str) -> dict | None:
-    """Findet einen Event per Titelsuche – zuerst in Jarvis-DB, dann Google Calendar."""
+    """Findet einen Event per Titelsuche – zuerst in Alfred-DB, dann Google Calendar."""
     rows = db.query(
         "SELECT uid, title, start_ts, end_ts, all_day, location, gcal_id "
         "FROM calendar_events WHERE LOWER(title) LIKE %s ORDER BY start_ts LIMIT 1",
@@ -140,7 +140,7 @@ def find_event(query: str) -> dict | None:
 
 def update_event(uid: str, title: str = None, start: datetime = None,
                  end: datetime = None, location: str = None, notes: str = None) -> bool:
-    """Aktualisiert einen Jarvis-Event (DB + Google Calendar)."""
+    """Aktualisiert einen Alfred-Event (DB + Google Calendar)."""
     fields, vals = [], []
     if title:    fields.append("title = %s");    vals.append(title)
     if start:    fields.append("start_ts = %s"); vals.append(start)
@@ -176,11 +176,11 @@ def delete_event(uid: str | None, gcal_id: str | None = None) -> bool:
 
 def create_event(title: str, start: datetime, end: datetime = None,
                  location: str = None, notes: str = None, all_day: bool = False) -> str:
-    uid = f"jarvis-{uuid.uuid4()}"
+    uid = f"alfred-{uuid.uuid4()}"
     if end is None and not all_day:
         end = start + timedelta(hours=1)
 
-    # In Jarvis-DB speichern (immer)
+    # In Alfred-DB speichern (immer)
     db.execute(
         "INSERT INTO calendar_events (uid, title, start_ts, end_ts, all_day, location, notes) "
         "VALUES (%s,%s,%s,%s,%s,%s,%s)",

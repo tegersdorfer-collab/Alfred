@@ -2,10 +2,10 @@
 memory/extractor.py
 
 Auto-Extraktion dauerhafter Fakten + Entitäten/Relationen nach jedem Gesprächswechsel.
-Läuft als fire-and-forget Task nach jeder Jarvis-Antwort.
+Läuft als fire-and-forget Task nach jeder Alfred-Antwort.
 
 Funktionsweise:
-  1. LLM analysiert NUR Timos Nachricht (nie Jarvis-Antwort → kein Halluzinationsrisiko)
+  1. LLM analysiert NUR Timos Nachricht (nie Alfred-Antwort → kein Halluzinationsrisiko)
   2. Fakten → LZG (pgvector, mit Jaccard + Vektor-Dedup)
   3. Entitäten + Relationen → Knowledge Graph (PostgreSQL relational)
   4. Regex-Fallback für offensichtliche Fakten wenn LLM nichts liefert
@@ -30,7 +30,7 @@ log = logging.getLogger(__name__)
 
 _EXTRACT_PROMPT = """\
 Du bist ein Gedächtnis-Extraktor für einen persönlichen AI-Assistenten.
-Analysiere den folgenden Gesprächswechsel zwischen Timo und Jarvis.
+Analysiere den folgenden Gesprächswechsel zwischen Timo und Alfred.
 
 Extrahiere NUR dauerhaft nützliche Fakten über Timo – Dinge, die in \
 Wochen oder Monaten noch relevant sind.
@@ -138,8 +138,8 @@ class MemoryExtractor:
             return 0
 
     async def _run(self, user_text: str, assistant_text: str) -> int:
-        # Nur Timos eigene Worte als Faktenquelle – Jarvis-Antworten nie extrahieren
-        # (verhindert dass halluzinierte Inhalte aus Jarvis-Antworten ins Gedächtnis kommen)
+        # Nur Timos eigene Worte als Faktenquelle – Alfred-Antworten nie extrahieren
+        # (verhindert dass halluzinierte Inhalte aus Alfred-Antworten ins Gedächtnis kommen)
         exchange = f"Timo sagt: {user_text}"
 
         # ── 1. LLM-Extraktion (Fast-Modell) ───────────────────────────────

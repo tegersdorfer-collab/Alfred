@@ -80,7 +80,7 @@ def fetch_and_log(url: str, on_date: date | None = None) -> str:
         url = f'https://alphaprogression.com/de/{code}'
     try:
         r = httpx.get(url, timeout=15, follow_redirects=True,
-                      headers={'User-Agent': 'Mozilla/5.0 (compatible; Jarvis/1.0)'})
+                      headers={'User-Agent': 'Mozilla/5.0 (compatible; Alfred/1.0)'})
         r.raise_for_status()
     except Exception as e:
         log.error(f"AP fetch error: {e}")

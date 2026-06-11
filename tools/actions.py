@@ -1,5 +1,5 @@
 """
-Action-Parser – erkennt Jarvis-Befehle in Antworten und führt sie aus.
+Action-Parser – erkennt Alfred-Befehle in Antworten und führt sie aus.
 Format: [[ACTION:create_task|title=...|priority=...]]
         [[ACTION:complete_task|query=...]]
 """
@@ -41,7 +41,7 @@ def parse_actions(text: str) -> tuple[str, list[ParsedAction]]:
 
 
 def build_action_instructions(tasks: list) -> str:
-    """Erklärt Jarvis wie er Task- und Reminder-Aktionen auslöst."""
+    """Erklärt Alfred wie er Task- und Reminder-Aktionen auslöst."""
     task_list = ""
     if tasks:
         task_list = "\nBekannte offene Tasks (für complete_task):\n"

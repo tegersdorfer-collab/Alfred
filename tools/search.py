@@ -1,5 +1,5 @@
 """
-Web-Suche für Jarvis.
+Web-Suche für Alfred.
 Primär: DuckDuckGo (kostenlos, kein API-Key)
 Fallback: Brave Search API (falls BRAVE_API_KEY gesetzt)
 """

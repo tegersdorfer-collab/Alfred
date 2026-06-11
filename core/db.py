@@ -1,5 +1,5 @@
 """
-Zentrale Datenbank-Schicht für Jarvis.
+Zentrale Datenbank-Schicht für Alfred.
 - Connection-Pool (thread-safe)
 - pgvector-Registrierung pro Connection
 - Sync- und Async-Helfer (Async läuft im Thread-Executor)
@@ -198,7 +198,7 @@ MIGRATIONS = [
         energy      INT,                        -- 1-5
         content     TEXT,
         tags        TEXT[],
-        author      TEXT DEFAULT 'timo',        -- timo | jarvis
+        author      TEXT DEFAULT 'timo',        -- timo | alfred
         created_at  TIMESTAMPTZ DEFAULT NOW()
     );
     """,
@@ -236,7 +236,7 @@ MIGRATIONS = [
     );
     """,
 
-    # Reiches Task-System (jarvis-nativ): Arten, Unteraufgaben, Fortschritt, Archiv
+    # Reiches Task-System (alfred-nativ): Arten, Unteraufgaben, Fortschritt, Archiv
     """
     CREATE TABLE IF NOT EXISTS tasks (
         id           SERIAL PRIMARY KEY,
@@ -256,7 +256,7 @@ MIGRATIONS = [
     "CREATE INDEX IF NOT EXISTS tasks_status_idx ON tasks(status);",
     "CREATE INDEX IF NOT EXISTS tasks_parent_idx ON tasks(parent_id);",
     "ALTER TABLE tasks ADD COLUMN IF NOT EXISTS assigned_to TEXT DEFAULT 'user';",
-    "ALTER TABLE tasks ADD COLUMN IF NOT EXISTS jarvis_result TEXT;",
+    "ALTER TABLE tasks ADD COLUMN IF NOT EXISTS alfred_result TEXT;",
     "ALTER TABLE tasks ADD COLUMN IF NOT EXISTS rejection_reason TEXT;",
     "ALTER TABLE tasks ADD COLUMN IF NOT EXISTS suggestion_status TEXT;",
     "ALTER TABLE tasks ADD COLUMN IF NOT EXISTS execution_phase TEXT DEFAULT 'pending';",
@@ -264,7 +264,7 @@ MIGRATIONS = [
     "ALTER TABLE tasks ADD COLUMN IF NOT EXISTS clarification_answer TEXT;",
     "ALTER TABLE tasks ADD COLUMN IF NOT EXISTS hold_until TIMESTAMPTZ;",
 
-    # Jarvis' eigene Agenda (autonome To-dos)
+    # Alfred' eigene Agenda (autonome To-dos)
     """
     CREATE TABLE IF NOT EXISTS agenda (
         id          SERIAL PRIMARY KEY,
@@ -303,7 +303,7 @@ MIGRATIONS = [
     );
     """,
 
-    # Event-Log (alles was Jarvis tut → fürs Dashboard "Mind"/Activity)
+    # Event-Log (alles was Alfred tut → fürs Dashboard "Mind"/Activity)
     """
     CREATE TABLE IF NOT EXISTS events_log (
         id          SERIAL PRIMARY KEY,
@@ -325,7 +325,7 @@ MIGRATIONS = [
     );
     """,
 
-    # Health (jarvis-nativ, gespeist aus iCloud Health.json – unabhängig von ai-dashboard)
+    # Health (alfred-nativ, gespeist aus iCloud Health.json – unabhängig von ai-dashboard)
     """
     CREATE TABLE IF NOT EXISTS health_data (
         date             DATE PRIMARY KEY,
@@ -356,7 +356,7 @@ MIGRATIONS = [
     );
     """,
 
-    # Kalender (jarvis-erstellte Events; gelesene Events kommen live aus ICS)
+    # Kalender (alfred-erstellte Events; gelesene Events kommen live aus ICS)
     """
     CREATE TABLE IF NOT EXISTS calendar_events (
         id          SERIAL PRIMARY KEY,
@@ -367,7 +367,7 @@ MIGRATIONS = [
         all_day     BOOLEAN DEFAULT FALSE,
         location    TEXT,
         notes       TEXT,
-        source      TEXT DEFAULT 'jarvis',
+        source      TEXT DEFAULT 'alfred',
         created_at  TIMESTAMPTZ DEFAULT NOW()
     );
     """,
@@ -424,7 +424,7 @@ def set_setting(key: str, value) -> None:
 
 
 def log_event(type_: str, summary: str, detail: dict | None = None) -> None:
-    """Schreibt einen Eintrag ins Event-Log (fürs Dashboard 'Jarvis Mind')."""
+    """Schreibt einen Eintrag ins Event-Log (fürs Dashboard 'Alfred Mind')."""
     import json
     try:
         execute(

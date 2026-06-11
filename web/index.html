@@ -7,7 +7,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#0a0f1e">
 <link rel="manifest" href="/manifest.json">
-<title>Jarvis</title>
+<title>Alfred</title>
 <script src="https://cdn.tailwindcss.com"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <style>
@@ -103,7 +103,7 @@
   <aside class="sidebar">
     <div style="display:flex;align-items:center;gap:11px;padding:6px 10px 18px">
       <div style="width:38px;height:38px;border-radius:12px;background:linear-gradient(135deg,var(--accent),var(--accent2));display:flex;align-items:center;justify-content:center;font-size:19px">🤖</div>
-      <div><div style="font-weight:700">Jarvis</div><div id="sideStatus" style="font-size:11px;color:var(--muted)">…</div></div>
+      <div><div style="font-weight:700">Alfred</div><div id="sideStatus" style="font-size:11px;color:var(--muted)">…</div></div>
     </div>
     <div id="sideNav" style="flex:1;overflow-y:auto"></div>
   </aside>
@@ -114,7 +114,7 @@
         <div style="display:flex;align-items:center;justify-content:space-between">
           <div style="display:flex;align-items:center;gap:11px">
             <div class="hmob" style="width:40px;height:40px;border-radius:13px;background:linear-gradient(135deg,var(--accent),var(--accent2));display:flex;align-items:center;justify-content:center;font-size:20px">🤖</div>
-            <div><div style="font-weight:700;font-size:18px" id="hello">Jarvis</div><div style="font-size:11px;color:var(--muted)" id="sub">verbinde…</div></div>
+            <div><div style="font-weight:700;font-size:18px" id="hello">Alfred</div><div style="font-size:11px;color:var(--muted)" id="sub">verbinde…</div></div>
           </div>
           <div style="display:flex;align-items:center;gap:8px">
             <span id="dot" style="width:9px;height:9px;border-radius:50%;background:#475569"></span>
@@ -145,7 +145,7 @@ const API=location.origin; let CUR='home'; let charts={};
 const NAV=[['home','🏠','Home'],['chat','💬','Chat'],['body','💪','Körper'],['habits','🔥','Habits'],
   ['tasks','✅','Aufgaben'],['calendar','📅','Kalender'],['nutrition','🍽️','Ernährung'],
   ['journal','📖','Journal'],['goals','🎯','Ziele'],['memory','🧠','Gedächtnis'],
-  ['mind','🌌','Jarvis Mind'],['analytics','📊','Analytics'],['settings','⚙️','Einstellungen']];
+  ['mind','🌌','Alfred Mind'],['analytics','📊','Analytics'],['settings','⚙️','Einstellungen']];
 
 const $=(s,r=document)=>r.querySelector(s);
 const el=(h)=>{const d=document.createElement('div');d.innerHTML=h.trim();return d.firstChild;};
@@ -295,7 +295,7 @@ VIEWS.home=async(root)=>{
   $('#h-status').appendChild(el(`<div id="homeStatus" class="status-bar ${hsType}" onclick="go('mind')" style="cursor:pointer">
     <span class="sdot ${hsType}"></span>
     <span class="stxt" style="flex:1">${STATUS_ICONS[hsType]||'·'} ${esc(hsCur.text||'Bereit')}${hsCur.detail?' · '+esc(hsCur.detail):''}</span>
-    <span style="font-size:11px;color:#4a5980">Jarvis Aktivität ›</span>
+    <span style="font-size:11px;color:#4a5980">Alfred Aktivität ›</span>
   </div>`));
   const L=$('#h-left'),R=$('#h-right');
   // Habits
@@ -311,7 +311,7 @@ VIEWS.home=async(root)=>{
   if(ov.goals&&ov.goals.length){
     R.appendChild(el(`<div style="margin-top:22px;padding:0 2px"><b>Ziele</b>${ov.goals.slice(0,4).map(g=>`<div style="margin-top:10px"><div style="display:flex;justify-content:space-between;font-size:13px"><span>${esc(g.title)}</span><span style="color:#a5b4fc">${g.progress_pct}%</span></div><div class="pill-h" style="margin-top:5px"><div class="pill-f" style="width:${g.progress_pct}%"></div></div></div>`).join('')}</div>`));}
   // Feed
-  try{const m=await api('/api/mind');R.appendChild(el(`<div style="margin-top:22px;padding:0 2px"><b>Jarvis Aktivität</b>${(m.events||[]).slice(0,6).map(e=>`<div style="display:flex;gap:8px;padding:5px 0;font-size:12px;color:#9fb0d6"><span>${feedIcon(e.type)}</span><span style="flex:1">${esc(e.summary)}</span></div>`).join('')||'<div style="color:#5b6b8c;font-size:13px;margin-top:8px">Noch ruhig…</div>'}</div>`));}catch(e){}
+  try{const m=await api('/api/mind');R.appendChild(el(`<div style="margin-top:22px;padding:0 2px"><b>Alfred Aktivität</b>${(m.events||[]).slice(0,6).map(e=>`<div style="display:flex;gap:8px;padding:5px 0;font-size:12px;color:#9fb0d6"><span>${feedIcon(e.type)}</span><span style="flex:1">${esc(e.summary)}</span></div>`).join('')||'<div style="color:#5b6b8c;font-size:13px;margin-top:8px">Noch ruhig…</div>'}</div>`));}catch(e){}
 };
 function ringStat(p,icon,val,col){return `<div style="position:relative;border:none!important;background:none!important;outline:none!important;box-shadow:none!important">${ring(p,76,8,col)}<div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center"><div style="font-size:16px">${icon}</div><div style="font-size:13px;font-weight:700">${val}</div></div></div>`;}
 function taskRow(t,compact){const pr={high:'🔴',medium:'🟡',low:'🟢'};const hasSub=t.subtasks&&t.subtasks.length;return `<div style="display:flex;align-items:center;gap:10px;padding:7px 0"><button onclick="event.stopPropagation();completeTask(${t.id})" style="width:20px;height:20px;border-radius:6px;border:2px solid #3b5;background:none;cursor:pointer;flex-shrink:0"></button><div style="flex:1;min-width:0"><div style="font-size:14px">${esc(t.title)} ${hasSub?`<span class="chip" style="font-size:10px">${t.progress_pct}%</span>`:''}</div>${hasSub&&!compact?`<div class="pill-h" style="margin-top:5px"><div class="pill-f" style="width:${t.progress_pct}%"></div></div>`:''}</div>${t.due?`<span class="chip">${fmtDue(t.due)}</span>`:''}<span>${pr[t.priority]||''}</span></div>`;}
@@ -322,7 +322,7 @@ VIEWS.chat=async(root)=>{
   root.innerHTML=`<div class="chat-wrap" style="display:flex;flex-direction:column;height:calc(100vh - 150px);max-height:calc(100vh - 150px)">
     <div id="cmsgs" style="flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:10px;padding:4px 2px 12px"></div>
     <div style="display:flex;gap:8px;padding:8px 0 4px;background:var(--bg)">
-      <textarea id="cin" rows="1" placeholder="Schreib Jarvis…" style="flex:1;resize:none;max-height:120px" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendChat();}"></textarea>
+      <textarea id="cin" rows="1" placeholder="Schreib Alfred…" style="flex:1;resize:none;max-height:120px" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendChat();}"></textarea>
       <button class="btn" onclick="sendChat()" style="padding:0 18px">➤</button>
     </div></div>`;
   const box=$('#cmsgs');
@@ -621,18 +621,18 @@ VIEWS.tasks=async(root)=>{
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
       <b style="font-size:18px">Aufgaben</b>
       <div style="display:flex;gap:8px">
-        <button id="genBtn" onclick="generateTask()" class="soft" style="padding:8px 12px;font-size:13px;border:none;cursor:pointer" title="Jarvis überlegt sich einen Vorschlag">💡 Generieren</button>
+        <button id="genBtn" onclick="generateTask()" class="soft" style="padding:8px 12px;font-size:13px;border:none;cursor:pointer" title="Alfred überlegt sich einen Vorschlag">💡 Generieren</button>
         <button class="btn" onclick="addTask()" style="padding:8px 14px;font-size:13px">＋ Neu</button>
       </div>
     </div>
     ${suggestions.length ? `
     <div style="margin-bottom:16px">
-      <div style="font-size:12px;font-weight:700;color:#a5b4fc;letter-spacing:.5px;margin-bottom:8px">💡 JARVIS SCHLÄGT VOR</div>
+      <div style="font-size:12px;font-weight:700;color:#a5b4fc;letter-spacing:.5px;margin-bottom:8px">💡 ALFRED SCHLÄGT VOR</div>
       <div id="sugg-list"></div>
     </div>` : ''}
     <div class="tabbar">
       <div class="tab ${taskFilter==='open'?'active':''}" onclick="setTaskFilter('open')">Offen</div>
-      <div class="tab" onclick="setTaskFilter('jarvis')" style="${taskFilter==='jarvis'?'border-bottom:2px solid #a5b4fc;color:#a5b4fc':''}">🤖 Jarvis</div>
+      <div class="tab" onclick="setTaskFilter('alfred')" style="${taskFilter==='alfred'?'border-bottom:2px solid #a5b4fc;color:#a5b4fc':''}">🤖 Alfred</div>
       <div class="tab ${taskFilter==='done'?'active':''}" onclick="setTaskFilter('done')">Erledigt</div>
       <div class="tab ${taskFilter==='archived'?'active':''}" onclick="setTaskFilter('archived')">Archiv</div>
     </div>
@@ -642,7 +642,7 @@ VIEWS.tasks=async(root)=>{
   if(suggestions.length){
     const sl=$('#sugg-list');
     suggestions.forEach(s=>{
-      const who=s.assigned_to==='jarvis'?'<span style="font-size:10px;background:#1e3a5f;color:#a5b4fc;padding:2px 7px;border-radius:99px;margin-left:6px">Jarvis erledigt</span>':'';
+      const who=s.assigned_to==='alfred'?'<span style="font-size:10px;background:#1e3a5f;color:#a5b4fc;padding:2px 7px;border-radius:99px;margin-left:6px">Alfred erledigt</span>':'';
       const node=el(`<div class="card" style="padding:14px;margin-bottom:8px;border:1px solid #1e3a5f">
         <div style="font-size:14px;font-weight:600;margin-bottom:4px">${esc(s.title)}${who}</div>
         ${s.notes?`<div style="font-size:12px;color:#5b6b8c;margin-bottom:10px">${esc(s.notes)}</div>`:''}
@@ -658,24 +658,24 @@ VIEWS.tasks=async(root)=>{
   // Tasks rendern
   const kindIcon={task:'',project:'📁 ',checklist:'☑️ '};
   let filtered=ts;
-  if(taskFilter==='jarvis') filtered=ts.filter(t=>t.assigned_to==='jarvis');
-  else if(taskFilter==='open') filtered=ts.filter(t=>t.assigned_to!=='jarvis'||t.status==='in_progress');
+  if(taskFilter==='alfred') filtered=ts.filter(t=>t.assigned_to==='alfred');
+  else if(taskFilter==='open') filtered=ts.filter(t=>t.assigned_to!=='alfred'||t.status==='in_progress');
 
   if(!filtered.length){
-    $('#tl').innerHTML='<div class="card" style="padding:24px;text-align:center;color:#5b6b8c">'+(taskFilter==='jarvis'?'Keine Jarvis-Aufgaben 🤖':'Nichts hier 🎉')+'</div>';
+    $('#tl').innerHTML='<div class="card" style="padding:24px;text-align:center;color:#5b6b8c">'+(taskFilter==='alfred'?'Keine Alfred-Aufgaben 🤖':'Nichts hier 🎉')+'</div>';
     return;
   }
   filtered.forEach(t=>{
     const subs=t.subtasks||[];
-    const isJarvis=t.assigned_to==='jarvis';
-    const jarvisChip=isJarvis?`<span style="font-size:10px;background:#1e3a5f;color:#a5b4fc;padding:2px 7px;border-radius:99px">🤖</span>`:'';
-    const node=el(`<div class="card" style="padding:15px;margin-bottom:10px${isJarvis?';border-left:3px solid #3b5fc0':''}">
+    const isAlfred=t.assigned_to==='alfred';
+    const alfredChip=isAlfred?`<span style="font-size:10px;background:#1e3a5f;color:#a5b4fc;padding:2px 7px;border-radius:99px">🤖</span>`:'';
+    const node=el(`<div class="card" style="padding:15px;margin-bottom:10px${isAlfred?';border-left:3px solid #3b5fc0':''}">
       <div style="display:flex;align-items:center;gap:11px">
         ${taskFilter==='open'?`<button onclick="completeTask(${t.id})" style="width:24px;height:24px;border-radius:7px;border:2px solid #3b5;background:none;cursor:pointer;flex-shrink:0"></button>`:''}
         <div style="flex:1;min-width:0">
-          <div style="display:flex;align-items:center;gap:6px;font-size:15px;font-weight:600">${kindIcon[t.kind]||''}${esc(t.title)}${jarvisChip}</div>
+          <div style="display:flex;align-items:center;gap:6px;font-size:15px;font-weight:600">${kindIcon[t.kind]||''}${esc(t.title)}${alfredChip}</div>
           ${subs.length?`<div style="font-size:11px;color:var(--muted);margin-top:3px">${subs.filter(s=>s.status==='done').length}/${subs.length} erledigt · ${t.progress_pct}%</div><div class="pill-h" style="margin-top:5px"><div class="pill-f" style="width:${t.progress_pct}%"></div></div>`:''}
-          ${t.jarvis_result?`<div style="margin-top:8px;padding:8px;background:#0d1b2a;border-radius:8px;font-size:12px;color:#94a3b8;cursor:pointer" onclick="showResult(${t.id})">📄 Ergebnis ansehen</div>`:''}
+          ${t.alfred_result?`<div style="margin-top:8px;padding:8px;background:#0d1b2a;border-radius:8px;font-size:12px;color:#94a3b8;cursor:pointer" onclick="showResult(${t.id})">📄 Ergebnis ansehen</div>`:''}
         </div>
         <span>${({high:'🔴',medium:'🟡',low:'🟢'})[t.priority]||''}</span>
         <button onclick="taskMenu(${t.id},'${esc(t.title)}','${taskFilter}')" class="soft" style="border:none;border-radius:10px;padding:6px 9px;cursor:pointer">⋯</button>
@@ -698,7 +698,7 @@ async function acceptSuggestion(id){
 function rejectSuggestion(id,title){
   formSheet('Vorschlag ablehnen',
     `<div style="font-size:14px;font-weight:600;margin-bottom:12px">"${title}"</div>
-     <label style="font-size:12px;color:var(--muted)">Warum lehnst du ab? (hilft Jarvis zu lernen)</label>
+     <label style="font-size:12px;color:var(--muted)">Warum lehnst du ab? (hilft Alfred zu lernen)</label>
      <textarea id="rr" rows="3" placeholder="z.B. zu trivial, falsches Thema, bereits bekannt…" style="width:100%;box-sizing:border-box;margin-top:6px"></textarea>`,
     async()=>{
       await post('/api/tasks/'+id+'/reject',{reason:$('#rr').value});
@@ -710,10 +710,10 @@ function rejectSuggestion(id,title){
 async function showResult(id){
   const ts=await api('/api/tasks?status=done');
   const t=ts.find(x=>x.id===id)||{};
-  if(!t.jarvis_result)return;
+  if(!t.alfred_result)return;
   sheet(`<div style="width:40px;height:4px;background:#33415a;border-radius:99px;margin:0 auto 16px"></div>
     <div style="font-weight:700;margin-bottom:12px">${esc(t.title)}</div>
-    <div style="font-size:13px;line-height:1.6;color:#94a3b8;white-space:pre-wrap">${esc(t.jarvis_result)}</div>`);
+    <div style="font-size:13px;line-height:1.6;color:#94a3b8;white-space:pre-wrap">${esc(t.alfred_result)}</div>`);
 }
 
 function taskMenu(id,title,filter){
@@ -758,8 +758,8 @@ VIEWS.calendar=async(root)=>{
       const right=document.createElement('div');
       right.style.cssText='display:flex;gap:6px;align-items:center;flex-shrink:0';
       if(e.calendar){const chip=document.createElement('span');chip.className='chip';chip.textContent=e.calendar;right.appendChild(chip);}
-      // Edit/Delete nur für Jarvis-eigene Termine
-      if(e.source==='jarvis'&&e.uid){
+      // Edit/Delete nur für Alfred-eigene Termine
+      if(e.source==='alfred'&&e.uid){
         const editBtn=document.createElement('button');
         editBtn.className='btn';editBtn.style.cssText='padding:4px 8px;font-size:11px';editBtn.textContent='✏️';
         editBtn.onclick=()=>editEvent(e);
@@ -801,7 +801,7 @@ VIEWS.nutrition=async(root)=>{
   root.innerHTML=`<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px"><b style="font-size:18px">Ernährung</b><button class="btn" onclick="addMeal()" style="padding:8px 14px;font-size:13px">＋ Mahlzeit</button></div>
     <div id="nt"></div>
     <div class="card" style="padding:16px;margin-top:14px"><b>Verlauf (14T)</b><div style="position:relative;height:130px;margin-top:8px"><canvas id="cNut"></canvas></div></div>
-    <div class="soft" style="padding:13px;margin-top:12px;font-size:13px;color:#a5b4fc">💡 Sag im Chat einfach „ich hatte zwei Marmeladentoasts" – Jarvis schätzt die Makros und trägt sie ein.</div>
+    <div class="soft" style="padding:13px;margin-top:12px;font-size:13px;color:#a5b4fc">💡 Sag im Chat einfach „ich hatte zwei Marmeladentoasts" – Alfred schätzt die Makros und trägt sie ein.</div>
     <div id="nl" style="margin-top:14px"></div>`;
   const d=await api('/api/nutrition');const t=d.totals||{};
   const macro=(l,v,c)=>`<div style="text-align:center"><div style="font-size:20px;font-weight:700;color:${c}">${Math.round(v||0)}</div><div style="font-size:11px;color:var(--muted)">${l}</div></div>`;
@@ -846,7 +846,7 @@ VIEWS.journal=async(root)=>{
     <div class="card" style="padding:20px;margin-bottom:14px;text-align:center;background:linear-gradient(135deg,#0f1c2e,#1a2a3a);border:1px dashed #2a4a6a">
       <div style="font-size:32px;margin-bottom:8px">📖</div>
       <div style="font-size:15px;font-weight:600;margin-bottom:6px">Abend-Check-in</div>
-      <div style="font-size:13px;color:#5b6b8c;margin-bottom:14px">Wie war dein Tag? Jarvis hat 3 Fragen für dich.</div>
+      <div style="font-size:13px;color:#5b6b8c;margin-bottom:14px">Wie war dein Tag? Alfred hat 3 Fragen für dich.</div>
       <button class="btn" onclick="journalCheckin()" style="padding:10px 24px;font-size:14px">Jetzt eintragen</button>
     </div>
     `}
@@ -894,7 +894,7 @@ async function journalCheckin(){
     </div>
     <div style="text-align:center;padding:40px 0;color:#5b6b8c" id="jloading">
       <div style="font-size:24px;margin-bottom:8px">🤔</div>
-      Jarvis überlegt sich Fragen…
+      Alfred überlegt sich Fragen…
     </div>`;
   document.body.appendChild(sheet);
 
@@ -929,7 +929,7 @@ async function journalCheckin(){
       <div style="display:flex;justify-content:space-around;padding:8px 0">${energyBtns}</div>
     </div>
     <div style="border-top:1px solid #1a2a3a;padding-top:20px;margin-bottom:4px">
-      <div style="font-size:13px;color:#94a3b8;font-weight:600;margin-bottom:16px">💬 Jarvis fragt…</div>
+      <div style="font-size:13px;color:#94a3b8;font-weight:600;margin-bottom:16px">💬 Alfred fragt…</div>
       ${questionsHtml}
     </div>
     <div style="margin-bottom:24px">
@@ -1072,7 +1072,7 @@ function askDelKgRelation(id){confirmAction('Relation löschen?',async()=>{await
 
 // ════════ MIND ════════
 VIEWS.mind=async(root)=>{
-  root.innerHTML=`<b style="font-size:18px">Jarvis Mind 🌌</b>
+  root.innerHTML=`<b style="font-size:18px">Alfred Mind 🌌</b>
 
     <!-- Live-Status ganz oben -->
     <div id="mindStatusBar" class="status-bar idle" style="margin-top:14px">
@@ -1183,18 +1183,18 @@ function addTask(){
 
     <div style="margin-bottom:16px">
       <label style="font-size:12px;color:#5b6b8c;display:block;margin-bottom:6px">Details / Kontext</label>
-      <textarea id="tn" rows="3" placeholder="Hintergründe, Links, was Jarvis wissen sollte…" style="width:100%;box-sizing:border-box;background:#0d1b2a;border:1px solid #1e3a5f;border-radius:10px;color:#e2e8f0;padding:12px;font-size:13px;resize:vertical;font-family:inherit"></textarea>
+      <textarea id="tn" rows="3" placeholder="Hintergründe, Links, was Alfred wissen sollte…" style="width:100%;box-sizing:border-box;background:#0d1b2a;border:1px solid #1e3a5f;border-radius:10px;color:#e2e8f0;padding:12px;font-size:13px;resize:vertical;font-family:inherit"></textarea>
     </div>
 
     <div style="margin-bottom:16px">
       <label style="font-size:12px;color:#5b6b8c;display:block;margin-bottom:8px">Wer erledigt das?</label>
       <div style="display:flex;gap:8px">
         <button id="assignMe" onclick="setAssignee('user')" style="flex:1;padding:12px;border-radius:10px;border:2px solid #22c55e;background:#0d2a1a;color:#22c55e;cursor:pointer;font-size:13px;font-weight:600">👤 Ich</button>
-        <button id="assignJarvis" onclick="setAssignee('jarvis')" style="flex:1;padding:12px;border-radius:10px;border:1px solid #1e3a5f;background:transparent;color:#5b6b8c;cursor:pointer;font-size:13px;font-weight:600">🤖 Jarvis</button>
+        <button id="assignAlfred" onclick="setAssignee('alfred')" style="flex:1;padding:12px;border-radius:10px;border:1px solid #1e3a5f;background:transparent;color:#5b6b8c;cursor:pointer;font-size:13px;font-weight:600">🤖 Alfred</button>
         <button id="assignAuto" onclick="setAssignee('auto')" style="flex:1;padding:12px;border-radius:10px;border:1px solid #1e3a5f;background:transparent;color:#5b6b8c;cursor:pointer;font-size:13px;font-weight:600">✨ Auto</button>
       </div>
-      <div id="jarvisnote" style="display:none;margin-top:8px;font-size:12px;color:#a5b4fc;background:#0d1525;padding:8px 12px;border-radius:8px">
-        🤖 Jarvis übernimmt diese Aufgabe selbstständig und erarbeitet ein Ergebnis.
+      <div id="alfrednote" style="display:none;margin-top:8px;font-size:12px;color:#a5b4fc;background:#0d1525;padding:8px 12px;border-radius:8px">
+        🤖 Alfred übernimmt diese Aufgabe selbstständig und erarbeitet ein Ergebnis.
       </div>
     </div>
 
@@ -1230,20 +1230,20 @@ function addTask(){
 
 function setAssignee(who){
   window._taskAssignee = who;
-  ['user','jarvis','auto'].forEach(k=>{
+  ['user','alfred','auto'].forEach(k=>{
     const btn=document.getElementById('assign'+k.charAt(0).toUpperCase()+k.slice(1));
     if(!btn)return;
     if(k===who){
-      btn.style.border='2px solid '+(who==='jarvis'?'#a5b4fc':who==='auto'?'#f59e0b':'#22c55e');
-      btn.style.background=who==='jarvis'?'#0d1525':who==='auto'?'#1a1400':'#0d2a1a';
-      btn.style.color=who==='jarvis'?'#a5b4fc':who==='auto'?'#f59e0b':'#22c55e';
+      btn.style.border='2px solid '+(who==='alfred'?'#a5b4fc':who==='auto'?'#f59e0b':'#22c55e');
+      btn.style.background=who==='alfred'?'#0d1525':who==='auto'?'#1a1400':'#0d2a1a';
+      btn.style.color=who==='alfred'?'#a5b4fc':who==='auto'?'#f59e0b':'#22c55e';
     } else {
       btn.style.border='1px solid #1e3a5f';
       btn.style.background='transparent';
       btn.style.color='#5b6b8c';
     }
   });
-  document.getElementById('jarvisnote').style.display=who==='jarvis'?'block':'none';
+  document.getElementById('alfrednote').style.display=who==='alfred'?'block':'none';
 }
 
 async function submitTask(){
@@ -1262,7 +1262,7 @@ async function submitTask(){
   };
   await post('/api/tasks',payload);
   document.getElementById('tasksheet')?.remove();
-  toast(assignee==='jarvis'?'Jarvis übernimmt 🤖':'Aufgabe erstellt ✓');
+  toast(assignee==='alfred'?'Alfred übernimmt 🤖':'Aufgabe erstellt ✓');
   if(CUR==='tasks'||CUR==='home')go(CUR);
 }
 
@@ -1272,7 +1272,7 @@ async function generateTask(){
   await post('/api/tasks/generate',{});
   setTimeout(()=>{
     if(btn){btn.disabled=false;btn.textContent='💡 Generieren';}
-    toast('Jarvis überlegt sich einen Vorschlag…');
+    toast('Alfred überlegt sich einen Vorschlag…');
     setTimeout(()=>go('tasks'),3000);
   },1000);
 }
@@ -1292,7 +1292,7 @@ function addMeal(){formSheet('Mahlzeit',`<input id="f1" placeholder="Beschreibun
 function addWorkout(){formSheet('Training (manuell)',`<input id="f1" placeholder="Titel"><select id="f2"><option value="strength">Kraft</option><option value="run">Lauf</option><option value="mobility">Mobility</option><option value="other">Andere</option></select><div style="display:flex;gap:8px"><input id="f3" type="number" placeholder="Dauer min"><input id="f4" type="number" step="0.1" placeholder="km"></div>`,async()=>{await post('/api/workouts',{title:$('#f1').value,type:$('#f2').value,duration_min:+$('#f3').value||null,distance_km:+$('#f4').value||null});closeSheet();toast('Erfasst ✓');if(CUR==='body')go(CUR);});}
 function importWorkout(){
   formSheet('Training importieren',
-    `<div style="font-size:13px;color:var(--muted)">Lade eine Datei hoch (Text/CSV/JSON-Export deiner Gym-App) ODER füge den Text direkt ein – Jarvis parst Übungen & Sätze automatisch.</div>
+    `<div style="font-size:13px;color:var(--muted)">Lade eine Datei hoch (Text/CSV/JSON-Export deiner Gym-App) ODER füge den Text direkt ein – Alfred parst Übungen & Sätze automatisch.</div>
      <label class="soft" style="display:flex;align-items:center;justify-content:center;gap:8px;padding:16px;border-radius:14px;cursor:pointer;border:1px dashed var(--line)">📎 Datei wählen<input id="ffile" type="file" accept=".txt,.csv,.json,.md,.log,text/*" style="display:none"></label>
      <div id="ffname" style="font-size:12px;color:#a5b4fc;text-align:center"></div>
      <div style="text-align:center;font-size:11px;color:var(--muted)">– oder –</div>
@@ -1333,7 +1333,7 @@ function addHabit(){
 }
 function addJournal(){ journalCheckin(); }
 function addGoal(){formSheet('Neues Ziel',`<input id="f1" placeholder="Titel"><select id="f2"><option value="fitness">Fitness</option><option value="career">Karriere</option><option value="finance">Finanzen</option><option value="personal">Persönlich</option><option value="general">Allgemein</option></select><div style="display:flex;gap:8px"><input id="f3" type="number" placeholder="Zielwert"><input id="f4" placeholder="Einheit"></div><input id="f5" placeholder="Deadline (optional)">`,async()=>{await post('/api/goals',{title:$('#f1').value,category:$('#f2').value,target_value:+$('#f3').value||null,unit:$('#f4').value,deadline:$('#f5').value});closeSheet();toast('Angelegt ✓');if(CUR==='goals')go(CUR);});}
-function addMemory(){formSheet('Etwas merken',`<textarea id="f1" rows="3" placeholder="Was soll Jarvis sich merken?"></textarea><select id="f2"><option value="fact">Fakt</option><option value="preference">Vorliebe</option><option value="goal">Ziel</option><option value="context">Kontext</option></select>`,async()=>{await post('/api/memories',{content:$('#f1').value,category:$('#f2').value});closeSheet();toast('Gemerkt ✓');if(CUR==='memory')go(CUR);});}
+function addMemory(){formSheet('Etwas merken',`<textarea id="f1" rows="3" placeholder="Was soll Alfred sich merken?"></textarea><select id="f2"><option value="fact">Fakt</option><option value="preference">Vorliebe</option><option value="goal">Ziel</option><option value="context">Kontext</option></select>`,async()=>{await post('/api/memories',{content:$('#f1').value,category:$('#f2').value});closeSheet();toast('Gemerkt ✓');if(CUR==='memory')go(CUR);});}
 function updateGoal(id,title){
   formSheet(title,
     `<label style="font-size:12px;color:var(--muted)">Fortschritt %: <span id="pv">50</span></label><input id="f1" type="range" min="0" max="100" value="50" oninput="document.getElementById('pv').textContent=this.value"><select id="f2"><option value="active">Aktiv</option><option value="done">Erledigt</option><option value="paused">Pausiert</option></select>

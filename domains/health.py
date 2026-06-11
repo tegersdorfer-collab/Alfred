@@ -1,7 +1,7 @@
 """
-Health-Domäne (jarvis-nativ).
+Health-Domäne (alfred-nativ).
 Quelle: iCloud Health.json (vom iOS-Shortcut geschrieben) – direkt gelesen,
-KEINE Abhängigkeit von der ai-dashboard. Schreibt in jarvis.health_data.
+KEINE Abhängigkeit von der ai-dashboard. Schreibt in alfred.health_data.
 """
 import json
 import logging

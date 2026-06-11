@@ -113,7 +113,7 @@ async def _recall(query: str):
 async def _create_task(title: str, priority: str = "medium", kind: str = "task", due: str = None, notes: str = None):
     due_dt = parse_datetime(due) if due else None
     tid = tasks_d.create_task(title=title, notes=notes, priority=priority, kind=kind, due=due_dt)
-    # Auto-Klassifikation: kann Jarvis diese Task erledigen?
+    # Auto-Klassifikation: kann Alfred diese Task erledigen?
     assignee = "user"
     if CTX.llm:
         try:
@@ -123,7 +123,7 @@ async def _create_task(title: str, priority: str = "medium", kind: str = "task",
             _db.execute("UPDATE tasks SET assigned_to=%s WHERE id=%s", (assignee, tid))
         except Exception:
             pass
-    who = "Jarvis übernimmt das" if assignee == "jarvis" else "für dich eingetragen"
+    who = "Alfred übernimmt das" if assignee == "alfred" else "für dich eingetragen"
     return f"Aufgabe erstellt: {title} ({priority}) – {who}"
 
 
@@ -230,7 +230,7 @@ async def _update_event(query: str, title: str = None, start: str = None,
 @T.register("delete_calendar_event",
     "Löscht einen Kalendereintrag. Nutze dies wenn Timo sagt 'lösch den Termin', "
     "'streich den Termin', 'cancel', 'absagen' o.ä. Sucht per Titel-Stichwort.",
-    {"query": {"type": "string", "description": "Stichwort aus dem Termintitel, z.B. 'Zahnarzt' oder 'Jarvis Test'"}},
+    {"query": {"type": "string", "description": "Stichwort aus dem Termintitel, z.B. 'Zahnarzt' oder 'Alfred Test'"}},
     ["query"], "productivity")
 async def _delete_event(query: str):
     if not CTX.dashboard:
@@ -473,7 +473,7 @@ async def _list_goals():
 #  SELF-MODIFICATION
 
 @T.register("read_own_code",
-    "Liest eine Datei aus Jarvis' eigener Codebase. Nutze dies bevor du Code änderst "
+    "Liest eine Datei aus Alfred' eigener Codebase. Nutze dies bevor du Code änderst "
     "um den aktuellen Stand zu verstehen.",
     {"path": {"type": "string", "description": "Relativer Pfad z.B. 'domains/health.py' oder 'web/index.html'"}},
     ["path"], "system")
@@ -483,7 +483,7 @@ async def _read_own_code(path: str):
 
 
 @T.register("list_own_files",
-    "Listet Dateien in Jarvis' Codebase. Nutze dies zur Orientierung.",
+    "Listet Dateien in Alfred' Codebase. Nutze dies zur Orientierung.",
     {"directory": {"type": "string", "description": "Verzeichnis z.B. 'domains' oder 'web' (leer = alles)"}},
     [], "system")
 async def _list_own_files(directory: str = ""):
@@ -493,7 +493,7 @@ async def _list_own_files(directory: str = ""):
 
 
 @T.register("write_own_code",
-    "Schreibt oder überschreibt eine Datei in Jarvis' Codebase. "
+    "Schreibt oder überschreibt eine Datei in Alfred' Codebase. "
     "Erstellt automatisch ein Git-Backup und triggert einen gesicherten Neustart. "
     "Bei Fehler wird automatisch zur alten Version zurückgerollt. "
     "Nutze dies für Bugfixes, neue Features, UI-Änderungen. "
@@ -508,5 +508,5 @@ async def _write_own_code(path: str, content: str, description: str):
     from domains.self_modify import write_file
     result = write_file(path, content, description)
     if result["ok"]:
-        return f"✅ {result['message']}\nJarvis startet neu und prüft ob alles funktioniert. Bei Fehler: automatischer Rollback zu {result['backup_commit'][:8]}."
+        return f"✅ {result['message']}\nAlfred startet neu und prüft ob alles funktioniert. Bei Fehler: automatischer Rollback zu {result['backup_commit'][:8]}."
     return f"❌ {result['message']}"

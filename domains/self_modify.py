@@ -1,5 +1,5 @@
 """
-Self-Modify: Jarvis kann seine eigene Codebase lesen und verändern.
+Self-Modify: Alfred kann seine eigene Codebase lesen und verändern.
 Jede Änderung wird per Git gesichert; ein Watchdog-Subprocess übernimmt
 Neustart + Health-Check + automatischen Rollback bei Fehler.
 """
@@ -12,9 +12,9 @@ from typing import Optional
 
 log = logging.getLogger(__name__)
 
-JARVIS_DIR = Path(__file__).resolve().parent.parent
+ALFRED_DIR = Path(__file__).resolve().parent.parent
 
-# Erlaubte Pfade (relativ zu JARVIS_DIR)
+# Erlaubte Pfade (relativ zu ALFRED_DIR)
 _ALLOWED_DIRS = {"domains", "core", "web", "memory", "tools", "llm", "identity"}
 _ALLOWED_EXTENSIONS = {".py", ".html", ".md", ".json", ".css", ".js"}
 _BLOCKED_FILES = {"core/db.py", ".env", "main.py"}   # kritische Dateien schützen
@@ -22,8 +22,8 @@ _BLOCKED_FILES = {"core/db.py", ".env", "main.py"}   # kritische Dateien schütz
 
 def _safe_path(rel_path: str) -> Optional[Path]:
     """Gibt absoluten Pfad zurück wenn erlaubt, sonst None."""
-    p = (JARVIS_DIR / rel_path).resolve()
-    if not str(p).startswith(str(JARVIS_DIR)):
+    p = (ALFRED_DIR / rel_path).resolve()
+    if not str(p).startswith(str(ALFRED_DIR)):
         return None
     if rel_path in _BLOCKED_FILES:
         return None
@@ -38,7 +38,7 @@ def _safe_path(rel_path: str) -> Optional[Path]:
 
 
 def read_file(rel_path: str) -> str:
-    """Liest eine Datei aus der Jarvis-Codebase."""
+    """Liest eine Datei aus der Alfred-Codebase."""
     p = _safe_path(rel_path)
     if p is None:
         return f"Fehler: Pfad '{rel_path}' nicht erlaubt."
@@ -52,13 +52,13 @@ def read_file(rel_path: str) -> str:
 
 def list_files(rel_dir: str = "") -> list[str]:
     """Listet Dateien in einem Verzeichnis der Codebase."""
-    base = (JARVIS_DIR / rel_dir).resolve() if rel_dir else JARVIS_DIR
-    if not str(base).startswith(str(JARVIS_DIR)):
+    base = (ALFRED_DIR / rel_dir).resolve() if rel_dir else ALFRED_DIR
+    if not str(base).startswith(str(ALFRED_DIR)):
         return []
     result = []
     for p in sorted(base.rglob("*")):
         if p.is_file() and p.suffix in _ALLOWED_EXTENSIONS:
-            rel = str(p.relative_to(JARVIS_DIR))
+            rel = str(p.relative_to(ALFRED_DIR))
             if not any(part.startswith(".") or part == "__pycache__" for part in p.parts):
                 result.append(rel)
     return result[:80]
@@ -67,16 +67,16 @@ def list_files(rel_dir: str = "") -> list[str]:
 def git_backup(description: str) -> str:
     """Committed aktuellen Zustand als Backup. Gibt Commit-Hash zurück."""
     try:
-        subprocess.run(["git", "add", "-A"], cwd=JARVIS_DIR, capture_output=True, check=True)
+        subprocess.run(["git", "add", "-A"], cwd=ALFRED_DIR, capture_output=True, check=True)
         result = subprocess.run(
             ["git", "commit", "-m", f"auto-backup: {description}", "--no-gpg-sign",
              "--allow-empty"],
-            cwd=JARVIS_DIR, capture_output=True, text=True
+            cwd=ALFRED_DIR, capture_output=True, text=True
         )
         # Commit-Hash holen
         hash_result = subprocess.run(
             ["git", "rev-parse", "HEAD"],
-            cwd=JARVIS_DIR, capture_output=True, text=True
+            cwd=ALFRED_DIR, capture_output=True, text=True
         )
         return hash_result.stdout.strip()
     except Exception as e:
@@ -120,15 +120,15 @@ def write_file(rel_path: str, content: str, description: str) -> dict:
 
 def _trigger_restart(rollback_commit: str) -> bool:
     """Spawnt Watchdog-Subprocess der Neustart + Health-Check + ggf. Rollback übernimmt."""
-    watchdog = str(JARVIS_DIR / "scripts" / "restart_watchdog.py")
-    logfile  = "/tmp/jarvis_out.log"
+    watchdog = str(ALFRED_DIR / "scripts" / "restart_watchdog.py")
+    logfile  = "/tmp/alfred_out.log"
     old_pid  = os.getpid()
 
     try:
         subprocess.Popen(
             [sys.executable, watchdog, str(old_pid), rollback_commit, logfile],
-            start_new_session=True,   # überlebt Jarvis-Exit
-            stdout=open("/tmp/jarvis_watchdog.log", "a"),
+            start_new_session=True,   # überlebt Alfred-Exit
+            stdout=open("/tmp/alfred_watchdog.log", "a"),
             stderr=subprocess.STDOUT,
         )
         log.info(f"🔄 Watchdog gestartet (rollback: {rollback_commit[:8]})")

@@ -1,5 +1,5 @@
 """
-Orchestrator – Herzstück von Jarvis 2.0.
+Orchestrator – Herzstück von Alfred 2.0.
 Koordiniert: Agent (Tool-Calling), Gedächtnis, Autopilot, Reflexion, Kommunikation, Thermal.
 """
 import asyncio
@@ -42,7 +42,7 @@ log = logging.getLogger(__name__)
 
 def _load_identity() -> str:
     """Lädt die generische Identität und füllt persönliche Platzhalter aus .env."""
-    text = (Path(__file__).parent / "identity" / "jarvis.md").read_text()
+    text = (Path(__file__).parent / "identity" / "alfred.md").read_text()
     text = text.replace("{{OWNER}}", config.OWNER_NAME)
     text = text.replace("{{TIMEZONE}}", config.OWNER_TIMEZONE)
     if config.OWNER_EMAIL:
@@ -288,7 +288,7 @@ class Orchestrator:
         trigger_tools = {"create_habit", "create_task", "create_goal", "add_event", "log_workout"}
         if any(t in trigger_tools for t in tools_used):
             asyncio.create_task(self._suggest_from_event(
-                f"Jarvis hat gerade '{', '.join(t for t in tools_used if t in trigger_tools)}' ausgeführt: {msg.text[:120]}"
+                f"Alfred hat gerade '{', '.join(t for t in tools_used if t in trigger_tools)}' ausgeführt: {msg.text[:120]}"
             ))
         self._resume_idle()
 
@@ -472,16 +472,16 @@ class Orchestrator:
                     except Exception as e:
                         log.debug(f"Pattern Detector: {e}", exc_info=True)
 
-            # Adaptiver Takt: kürzer wenn Jarvis gerade an Tasks arbeitet
+            # Adaptiver Takt: kürzer wenn Alfred gerade an Tasks arbeitet
             try:
                 nxt = self._reminders.next_due_seconds()
             except Exception as e:
                 log.debug(f"Reminder-next_due: {e}", exc_info=True)
                 nxt = None
-            # Aktive Jarvis-Task? → 8s Takt statt 60s
+            # Aktive Alfred-Task? → 8s Takt statt 60s
             from core import db as _db
             has_active_task = _db.query(
-                "SELECT 1 FROM tasks WHERE assigned_to='jarvis' AND status='in_progress' AND execution_phase IN ('executing','finalizing') LIMIT 1"
+                "SELECT 1 FROM tasks WHERE assigned_to='alfred' AND status='in_progress' AND execution_phase IN ('executing','finalizing') LIMIT 1"
             )
             if has_active_task:
                 delay = 8
@@ -561,8 +561,8 @@ class Orchestrator:
 
         self._idle_task = asyncio.create_task(self._autopilot_loop())
         await self.channel.start()
-        log_event("system", "Jarvis gestartet")
-        log.info("Jarvis bereit ✅")
+        log_event("system", "Alfred gestartet")
+        log.info("Alfred bereit ✅")
 
     async def stop(self) -> None:
         self._state = "stopping"
@@ -580,5 +580,5 @@ class Orchestrator:
             db.close_pool()
         except Exception:
             pass
-        log_event("system", "Jarvis gestoppt")
+        log_event("system", "Alfred gestoppt")
         log.info("Orchestrator gestoppt")

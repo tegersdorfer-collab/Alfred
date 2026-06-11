@@ -1,5 +1,5 @@
 """
-Autopilot – die autonome Engine von Jarvis.
+Autopilot – die autonome Engine von Alfred.
 Zeitbewusste, wertorientierte proaktive Aktivitäten statt simpler Zufallsgedanken:
 
 - Morgen-Briefing (Wetter, Termine, Tasks, Habits, Ziel-Fokus)
@@ -131,10 +131,10 @@ class Autopilot:
             except Exception as e:
                 log.debug(f"Health-Anomalie: {e}")
 
-        # 5. Jarvis-Tasks abarbeiten (Deep Execution)
+        # 5. Alfred-Tasks abarbeiten (Deep Execution)
         try:
             active = db.query(
-                """SELECT * FROM tasks WHERE assigned_to='jarvis'
+                """SELECT * FROM tasks WHERE assigned_to='alfred'
                    AND status NOT IN ('done','archived')
                    AND (suggestion_status IS NULL OR suggestion_status='accepted')
                    AND (hold_until IS NULL OR hold_until < NOW())
@@ -194,7 +194,7 @@ class Autopilot:
                     "research_query": s.get("research_query"),
                 }, ensure_ascii=False)
                 db.execute(
-                    "INSERT INTO tasks (title, notes, parent_id, assigned_to, sort_order, status) VALUES (%s,%s,%s,'jarvis',%s,'todo')",
+                    "INSERT INTO tasks (title, notes, parent_id, assigned_to, sort_order, status) VALUES (%s,%s,%s,'alfred',%s,'todo')",
                     (s["title"], notes_payload, tid, i)
                 )
 
@@ -247,7 +247,7 @@ class Autopilot:
             BUS.emit("task_working", f"✍️ Fasst zusammen: {title_short}")
             result = await finalize_task(task, self.llm)
             db.execute(
-                "UPDATE tasks SET status='done', execution_phase='done', completed_at=NOW(), jarvis_result=%s WHERE id=%s",
+                "UPDATE tasks SET status='done', execution_phase='done', completed_at=NOW(), alfred_result=%s WHERE id=%s",
                 (result[:4000], tid)
             )
             # Kurze Zusammenfassung senden
