@@ -467,3 +467,46 @@ async def _list_goals():
         + (f" – {g['current_value']}/{g['target_value']} {g['unit'] or ''}" if g['target_value'] else "")
         for g in gs
     )
+
+
+# ════════════════════════════════════════════════════════════════════════════
+#  SELF-MODIFICATION
+
+@T.register("read_own_code",
+    "Liest eine Datei aus Jarvis' eigener Codebase. Nutze dies bevor du Code änderst "
+    "um den aktuellen Stand zu verstehen.",
+    {"path": {"type": "string", "description": "Relativer Pfad z.B. 'domains/health.py' oder 'web/index.html'"}},
+    ["path"], "system")
+async def _read_own_code(path: str):
+    from domains.self_modify import read_file
+    return read_file(path)
+
+
+@T.register("list_own_files",
+    "Listet Dateien in Jarvis' Codebase. Nutze dies zur Orientierung.",
+    {"directory": {"type": "string", "description": "Verzeichnis z.B. 'domains' oder 'web' (leer = alles)"}},
+    [], "system")
+async def _list_own_files(directory: str = ""):
+    from domains.self_modify import list_files
+    files = list_files(directory)
+    return "\n".join(files) if files else "Keine Dateien gefunden."
+
+
+@T.register("write_own_code",
+    "Schreibt oder überschreibt eine Datei in Jarvis' Codebase. "
+    "Erstellt automatisch ein Git-Backup und triggert einen gesicherten Neustart. "
+    "Bei Fehler wird automatisch zur alten Version zurückgerollt. "
+    "Nutze dies für Bugfixes, neue Features, UI-Änderungen. "
+    "IMMER zuerst read_own_code aufrufen um den aktuellen Stand zu lesen!",
+    {
+        "path": {"type": "string", "description": "Relativer Pfad z.B. 'domains/health.py'"},
+        "content": {"type": "string", "description": "Vollständiger neuer Inhalt der Datei"},
+        "description": {"type": "string", "description": "Kurze Beschreibung was geändert wurde und warum"},
+    },
+    ["path", "content", "description"], "system")
+async def _write_own_code(path: str, content: str, description: str):
+    from domains.self_modify import write_file
+    result = write_file(path, content, description)
+    if result["ok"]:
+        return f"✅ {result['message']}\nJarvis startet neu und prüft ob alles funktioniert. Bei Fehler: automatischer Rollback zu {result['backup_commit'][:8]}."
+    return f"❌ {result['message']}"
