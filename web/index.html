@@ -63,7 +63,9 @@
   .status-bar.memory{border-color:rgba(34,197,94,.4);background:rgba(34,197,94,.08);}
   .status-bar.learning{border-color:rgba(251,191,36,.3);background:rgba(251,191,36,.06);}
   .status-bar.error{border-color:rgba(239,68,68,.4);background:rgba(239,68,68,.08);}
+  .status-bar.task_working{border-color:rgba(165,180,252,.4);background:rgba(165,180,252,.08);}
   .sdot{width:8px;height:8px;border-radius:50%;flex-shrink:0;background:#475569;transition:.3s;}
+  .sdot.task_working{background:#a5b4fc;animation:pulse-indigo 1s infinite;}
   .sdot.thinking{background:#3b82f6;animation:pulse-blue 1.2s infinite;}
   .sdot.tool{background:#8b5cf6;animation:pulse-purple 1s infinite;}
   .sdot.memory{background:#22c55e;}
@@ -73,6 +75,7 @@
   @keyframes pulse-blue{0%,100%{box-shadow:0 0 0 0 rgba(59,130,246,.6)}50%{box-shadow:0 0 0 5px rgba(59,130,246,0)}}
   @keyframes pulse-purple{0%,100%{box-shadow:0 0 0 0 rgba(139,92,246,.6)}50%{box-shadow:0 0 0 5px rgba(139,92,246,0)}}
   @keyframes pulse-yellow{0%,100%{box-shadow:0 0 0 0 rgba(251,191,36,.5)}50%{box-shadow:0 0 0 5px rgba(251,191,36,0)}}
+  @keyframes pulse-indigo{0%,100%{box-shadow:0 0 0 0 rgba(165,180,252,.6)}50%{box-shadow:0 0 0 5px rgba(165,180,252,0)}}
   .act-row{display:flex;gap:8px;padding:5px 0;font-size:12px;color:#9fb0d6;border-bottom:1px solid rgba(31,44,74,.6);animation:fade .2s ease;}
   .act-row:last-child{border-bottom:none;}
 
@@ -163,8 +166,8 @@ async function status(){try{const s=await api('/api/status');$('#dot').style.bac
 status();setInterval(status,60000);
 
 // ── Live-Status-Stream ────────────────────────────────────────────────────────
-const STATUS_ICONS={thinking:'💭',tool:'🔧',memory:'🧠',learning:'💡',idle:'✅',autopilot:'🤖',error:'⚠️'};
-const STATUS_LABELS={thinking:'Denkt…',tool:'Tool',memory:'Erinnerung',learning:'Lernt',idle:'Bereit',autopilot:'Autopilot',error:'Fehler'};
+const STATUS_ICONS={thinking:'💭',tool:'🔧',memory:'🧠',learning:'💡',idle:'✅',autopilot:'🤖',error:'⚠️',task_working:'⚙️'};
+const STATUS_LABELS={thinking:'Denkt…',tool:'Tool',memory:'Erinnerung',learning:'Lernt',idle:'Bereit',autopilot:'Autopilot',error:'Fehler',task_working:'Arbeitet…'};
 let _actLog=[]; // letzten N Status-Events für Activity-Feed
 let _actSeen=new Set(); // Dedup: bereits gesehene Event-Timestamps
 
@@ -284,7 +287,7 @@ VIEWS.home=async(root)=>{
     <button class="soft" style="padding:13px 4px;font-size:11px;cursor:pointer" onclick="addTask()">＋ Aufgabe</button>
     <button class="soft" style="padding:13px 4px;font-size:11px;cursor:pointer" onclick="addMeal()">＋ Mahlzeit</button>
     <button class="soft" style="padding:13px 4px;font-size:11px;cursor:pointer" onclick="go('body')">＋ Training</button>
-    <button class="soft" style="padding:13px 4px;font-size:11px;cursor:pointer" onclick="addJournal()">＋ Journal</button>
+    <button class="soft" style="padding:13px 4px;font-size:11px;cursor:pointer" onclick="journalCheckin()">＋ Journal</button>
   </div>`));
   // Status-Bar
   const hsCur=await api('/api/status/current').catch(()=>({type:'idle',text:'Bereit'}));
@@ -345,7 +348,8 @@ async function sendChat(){
 
 // ════════ BODY (Health + Gym ausgebaut) ════════
 VIEWS.body=async(root)=>{
-  root.innerHTML=`<div id="b-cards"></div>
+  root.innerHTML=`<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px"><b style="font-size:17px">Gesundheit</b><button class="btn-ghost" onclick="importHealth()" style="padding:7px 12px;font-size:13px">☁️ iCloud sync</button></div>
+    <div id="b-cards"></div>
     <div class="grid2">
       <div class="card" style="padding:16px;margin-top:14px"><b>Schlaf (14T)</b><div style="position:relative;height:120px;margin-top:8px"><canvas id="cSleep"></canvas></div></div>
       <div class="card" style="padding:16px;margin-top:14px"><b>Gewicht</b><div style="position:relative;height:120px;margin-top:8px"><canvas id="cWeight"></canvas></div></div>
@@ -357,15 +361,24 @@ VIEWS.body=async(root)=>{
       <div id="b-volchart" style="margin-top:10px"></div>
     </div>
     <div id="b-wo" style="margin-top:14px"></div>`;
-  const h=await api('/api/health?days=14');const last=h[0]||{};
-  const card=(i,l,v,u)=>`<div class="soft" style="padding:13px;text-align:center"><div style="font-size:18px">${i}</div><div style="font-size:18px;font-weight:700;margin-top:3px">${v??'–'}<span style="font-size:11px;color:var(--muted)">${u||''}</span></div><div style="font-size:11px;color:var(--muted)">${l}</div></div>`;
-  $('#b-cards').appendChild(el(`<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px">${card('😴','Schlaf',last.sleep?last.sleep.toFixed(1):'–','h')}${card('👟','Schritte',(last.steps||0).toLocaleString('de'),'')}${card('❤️','Ruhepuls',last.resting_hr,'bpm')}${card('📊','HRV',last.hrv?Math.round(last.hrv):'–','')}${card('🔥','Aktiv',last.active_calories,'kcal')}${card('⚖️','Gewicht',last.weight,'kg')}</div>`));
+  const h=await api('/api/health?days=14');
+  // last = neuester Eintrag; yesterday = zweitneuester (für Schritte & aktive kcal)
+  const last=h[0]||{};
+  const yesterday=h[1]||{};
+  // Gewicht & BPM: neuesten vorhandenen Wert suchen
+  const lastWeight=(h.find(x=>x.weight)||{}).weight;
+  const lastBpm=(h.find(x=>x.resting_hr)||{}).resting_hr;
+  const card=(i,l,v,u,sub)=>`<div class="soft" style="padding:13px;text-align:center"><div style="font-size:18px">${i}</div><div style="font-size:18px;font-weight:700;margin-top:3px">${v??'–'}<span style="font-size:11px;color:var(--muted)">${u||''}</span></div><div style="font-size:11px;color:var(--muted)">${sub||l}</div></div>`;
+  const stepsYest=(yesterday.steps||0).toLocaleString('de');
+  const kcalYest=yesterday.active_calories??'–';
+  const hrvVal=last.hrv?Math.round(last.hrv):'–';
+  $('#b-cards').appendChild(el(`<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px">${card('😴','Schlaf',last.sleep?last.sleep.toFixed(1):'–','h')}${card('👟','Schritte',stepsYest,'','gestern')}${card('❤️','Ruhepuls',lastBpm,'bpm')}<div class="card" style="padding:10px;text-align:center;cursor:pointer" onclick="logHRV()"><div style="font-size:20px">📊</div><div style="font-size:11px;color:var(--muted);margin-top:2px">HRV</div><div style="font-size:18px;font-weight:700;margin-top:2px">${hrvVal}</div><div style="font-size:10px;color:#6366f1;margin-top:3px">+ eintragen</div></div>${card('🔥','Aktiv',kcalYest,'kcal','gestern')}${card('⚖️','Gewicht',lastWeight,'kg')}</div>`));
   const rev=[...h].reverse();
   lineChart('cSleep',rev.map(x=>x.date?.slice(5)),[{label:'Schlaf',data:rev.map(x=>x.sleep),color:'#8b5cf6'}]);
   lineChart('cWeight',rev.filter(x=>x.weight).map(x=>x.date?.slice(5)),[{label:'kg',data:rev.filter(x=>x.weight).map(x=>x.weight),color:'#3b82f6'}]);
   // Muscle body
-  const mus=await api('/api/fitness/muscles?days=7');
-  $('#b-muscle').appendChild(el(`<div class="card" style="padding:16px"><b>Muskelgruppen (7T)</b>${muscleBody(mus)}</div>`));
+  const mus=await api('/api/fitness/muscles?days=3');
+  $('#b-muscle').appendChild(el(`<div class="card" style="padding:16px"><b>Muskelgruppen (3T)</b>${muscleBody(mus)}</div>`));
   // Volume chart
   $('#b-volchart').appendChild(el(`<div class="card" style="padding:16px"><b>Trainingsvolumen (14T)</b><div style="position:relative;height:160px;margin-top:8px"><canvas id="cVol"></canvas></div></div>`));
   const vol=await api('/api/fitness/volume_by_day?days=14');
@@ -417,47 +430,252 @@ function muscleBody(m){
 
 // ════════ HABITS (toggle, delete, commit graph) ════════
 VIEWS.habits=async(root)=>{
-  root.innerHTML=`<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px"><b style="font-size:18px">Gewohnheiten</b><button class="btn" onclick="addHabit()" style="padding:8px 14px;font-size:13px">＋ Neu</button></div>
-    <div class="card" style="padding:16px;margin-bottom:14px"><div style="display:flex;justify-content:space-between"><b>Commitment</b><span class="chip" id="commitAvg"></span></div><div id="commitGraph" style="margin-top:10px"></div></div>
-    <div id="hl"></div>`;
-  // Commit graph
-  const cm=await api('/api/habits/commit?days=30');
-  if(cm.length){const avg=Math.round(cm.reduce((a,b)=>a+b.pct,0)/cm.length);$('#commitAvg').textContent=avg+'% Ø';
-    $('#commitGraph').appendChild(el(`<div style="display:flex;gap:3px;align-items:flex-end;height:60px">${cm.map(d=>`<div title="${d.date}: ${d.pct}%" style="flex:1;height:${Math.max(4,d.pct*0.58)}px;border-radius:3px 3px 0 0;background:${d.pct>=100?'linear-gradient(180deg,#22c55e,#16a34a)':d.pct>=50?'#3b82f6':d.pct>0?'#3b5b8c':'#1a2540'}"></div>`).join('')}</div>`));}
-  const hs=await api('/api/habits');
-  if(!hs.length){$('#hl').innerHTML='<div class="card" style="padding:24px;text-align:center;color:#5b6b8c">Noch keine Gewohnheiten 🔥</div>';return;}
-  hs.forEach(h=>{
-    const days=[];const today=new Date();
-    for(let i=29;i>=0;i--){const d=new Date(today);d.setDate(d.getDate()-i);days.push(h.done_dates?.includes(d.toISOString().slice(0,10)));}
-    $('#hl').appendChild(el(`<div class="card" style="padding:16px;margin-bottom:12px">
-      <div style="display:flex;justify-content:space-between;align-items:center">
-        <div style="display:flex;align-items:center;gap:10px"><span style="font-size:22px">${h.emoji}</span><div><div style="font-weight:600">${esc(h.name)}</div><div style="font-size:11px;color:var(--muted)">🔥 ${h.streak} Tage</div></div></div>
-        <div style="display:flex;gap:8px;align-items:center">
-          <button onclick="toggleHabit(${h.id},${h.today_done})" class="${h.today_done?'':'soft'}" style="border:none;border-radius:12px;padding:9px 14px;cursor:pointer;${h.today_done?'background:linear-gradient(120deg,#22c55e,#16a34a);color:#fff':''}">${h.today_done?'✓ Heute':'Abhaken'}</button>
-          <button onclick="deleteHabit(${h.id},'${esc(h.name)}')" class="soft" style="border:none;border-radius:12px;padding:9px 11px;cursor:pointer;color:#ef6b6b">🗑</button>
-        </div>
-      </div>
-      <div style="display:flex;gap:3px;margin-top:12px;flex-wrap:wrap">${days.map(d=>`<div class="heat" style="${d?'background:linear-gradient(120deg,#22c55e,#16a34a)':''}"></div>`).join('')}</div>
-    </div>`));
+  const DAYS=14;
+  const CATS=[
+    {key:'morning',label:'🌅 Morning Routine',color:'#f59e0b',bg:'rgba(245,158,11,0.08)'},
+    {key:'day',    label:'☀️ Rest of Day',    color:'#3b82f6',bg:'rgba(59,130,246,0.08)'},
+    {key:'evening',label:'🌙 Evening Routine',color:'#8b5cf6',bg:'rgba(139,92,246,0.08)'},
+  ];
+  root.innerHTML=`<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px"><b style="font-size:18px">Routinen</b><button class="btn" onclick="addHabit()" style="padding:8px 14px;font-size:13px">＋ Neu</button></div><div id="hbody"></div>`;
+  const [hs,cm]=await Promise.all([api('/api/habits'),api('/api/habits/commit?days='+DAYS)]);
+  const body=$('#hbody');
+
+  // Commit-Bar
+  if(cm.length){
+    const avg=Math.round(cm.reduce((a,b)=>a+b.pct,0)/cm.length);
+    const barsHtml=cm.map(d=>`<div title="${d.date}: ${d.pct}%" style="flex:1;height:${Math.max(3,d.pct*0.36)}px;border-radius:2px 2px 0 0;align-self:flex-end;background:${d.pct>=100?'#22c55e':d.pct>=50?'#3b82f6':d.pct>0?'#334155':'#1a2540'}"></div>`).join('');
+    body.insertAdjacentHTML('beforeend',`<div class="card" style="padding:12px 16px;margin-bottom:16px;display:flex;align-items:center;gap:14px"><svg width="44" height="44" viewBox="0 0 44 44" style="flex-shrink:0"><circle cx="22" cy="22" r="18" fill="none" stroke="#1e293b" stroke-width="4"/><circle cx="22" cy="22" r="18" fill="none" stroke="${avg>=80?'#22c55e':avg>=50?'#3b82f6':'#f59e0b'}" stroke-width="4" stroke-dasharray="${Math.round(avg*1.13)} 113" stroke-linecap="round" transform="rotate(-90 22 22)"/><text x="22" y="27" text-anchor="middle" font-size="10" fill="#e2e8f0" font-weight="bold">${avg}%</text></svg><div style="flex:1;display:flex;gap:2px;align-items:flex-end;height:36px">${barsHtml}</div></div>`);
+  }
+
+  if(!hs.length){body.insertAdjacentHTML('beforeend','<div class="card" style="padding:24px;text-align:center;color:#5b6b8c">Noch keine Routinen – leg welche an!</div>');return;}
+
+  // Datumsspalten
+  const today=new Date();
+  const dateCols=[];
+  for(let i=DAYS;i>=0;i--){const d=new Date(today);d.setDate(d.getDate()-i);dateCols.push(d.toISOString().slice(0,10));}
+  // Spalten: [Handle 18px] [Streak 32px] [Name ~140px] [14 past dots flex] [heute 38px] [X 28px]
+  const COLS=`18px 32px minmax(100px,140px) repeat(${DAYS},1fr) 38px 28px`;
+
+  // Eine gemeinsame Card für alle Kategorien
+  const masterCard=document.createElement('div');
+  masterCard.className='card';masterCard.style.cssText='padding:0;overflow:hidden';
+
+  // Datums-Header (einmalig ganz oben)
+  const hdrRow=document.createElement('div');
+  hdrRow.style.cssText=`display:flex;align-items:center;border-bottom:1px solid #1e293b`;
+  // Platz für vertikales Label
+  hdrRow.insertAdjacentHTML('beforeend','<div style="width:28px;flex-shrink:0"></div>');
+  // Grid-Header
+  const hdrGrid=document.createElement('div');
+  hdrGrid.style.cssText=`flex:1;display:grid;grid-template-columns:${COLS};align-items:center;padding:0 6px 0 8px`;
+  hdrGrid.insertAdjacentHTML('beforeend','<div></div>');
+  hdrGrid.insertAdjacentHTML('beforeend','<div style="text-align:center;font-size:9px;color:#475569;padding:5px 0">🔥</div>');
+  hdrGrid.insertAdjacentHTML('beforeend','<div style="font-size:10px;color:#475569;padding:5px 0 5px 4px">Routine</div>');
+  for(let i=0;i<DAYS;i++){
+    const dt=new Date(dateCols[i]);
+    const lbl=['So','Mo','Di','Mi','Do','Fr','Sa'][dt.getDay()];
+    const isMon=lbl==='Mo';
+    hdrGrid.insertAdjacentHTML('beforeend',`<div style="text-align:center;font-size:9px;color:${isMon?'#64748b':'#2d3f5a'};padding:5px 0;${isMon?'border-left:1px solid #1e293b':''}">${isMon||lbl==='So'?lbl:''}</div>`);
+  }
+  hdrGrid.insertAdjacentHTML('beforeend',`<div style="text-align:center;font-size:10px;font-weight:700;color:#94a3b8;padding:5px 0">Heu</div>`);
+  hdrGrid.insertAdjacentHTML('beforeend','<div></div>');
+  hdrRow.appendChild(hdrGrid);
+  masterCard.appendChild(hdrRow);
+
+  CATS.forEach((cat,ci)=>{
+    const inCat=hs.filter(h=>(h.category||'day')===cat.key);
+    if(!inCat.length)return;
+    const doneToday=inCat.filter(h=>h.today_done).length;
+
+    // Trennlinie zwischen Sektionen
+    if(ci>0) masterCard.insertAdjacentHTML('beforeend',`<div style="height:2px;background:linear-gradient(90deg,${cat.color}44,transparent)"></div>`);
+
+    // Sektion: vertikales Label links + Habit-Zeilen rechts
+    const section=document.createElement('div');
+    section.style.cssText='display:flex;align-items:stretch';
+
+    // Vertikales Kategorie-Label
+    const label=document.createElement('div');
+    label.style.cssText=`width:28px;flex-shrink:0;background:${cat.bg};display:flex;align-items:center;justify-content:center;border-right:2px solid ${cat.color}44;cursor:default`;
+    const labelInner=document.createElement('div');
+    labelInner.style.cssText=`writing-mode:vertical-rl;transform:rotate(180deg);font-size:11px;font-weight:700;color:${cat.color};letter-spacing:.5px;padding:8px 0;user-select:none;display:flex;align-items:center;gap:4px`;
+    labelInner.innerHTML=`<span>${cat.label.split(' ').slice(1).join(' ')}</span>`;
+    // Chip mit done/total unten
+    const chip=document.createElement('span');
+    chip.style.cssText=`font-size:9px;opacity:.7;font-weight:400`;
+    chip.textContent=`${doneToday}/${inCat.length}`;
+    labelInner.appendChild(chip);
+    label.appendChild(labelInner);
+    section.appendChild(label);
+
+    // Habit-Zeilen
+    const rows=document.createElement('div');
+    rows.style.cssText='flex:1;min-width:0';
+
+    // Drag & Drop state für diese Sektion
+    let dragSrc=null;
+    function saveCatOrder(){
+      const payload=[...rows.querySelectorAll('[data-hid]')].map((el,i)=>({id:+el.dataset.hid,sort_order:i}));
+      fetch('/api/habits/reorder',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+    }
+
+    inCat.forEach((h,hi)=>{
+      const row=document.createElement('div');
+      row.dataset.hid=h.id;
+      row.draggable=false; // nur per Handle aktivierbar
+      row.style.cssText=`display:grid;grid-template-columns:${COLS};align-items:center;padding:0 6px 0 4px;border-top:1px solid #0f172a;background:${hi%2?'rgba(255,255,255,0.012)':'transparent'};transition:opacity .15s`;
+      row.addEventListener('dragstart',e=>{if(!row.draggable)return e.preventDefault();dragSrc=row;e.dataTransfer.effectAllowed='move';setTimeout(()=>row.style.opacity='0.35',0);});
+      row.addEventListener('dragend',()=>{row.draggable=false;row.style.opacity='1';saveCatOrder();});
+      row.addEventListener('dragover',e=>{if(!dragSrc)return;e.preventDefault();if(dragSrc!==row){const mid=row.getBoundingClientRect().top+row.getBoundingClientRect().height/2;rows.insertBefore(dragSrc,e.clientY<mid?row:row.nextSibling);}});
+
+      // Drag Handle — setzt draggable nur bei Mousedown auf Handle
+      const handle=document.createElement('div');
+      handle.style.cssText='display:flex;align-items:center;justify-content:center;cursor:grab;color:#2d3f5a;font-size:14px;padding:0 2px;user-select:none;line-height:1';
+      handle.innerHTML='<span style="letter-spacing:-1px">⠿</span>';
+      handle.onmouseenter=()=>handle.style.color='#64748b';
+      handle.onmouseleave=()=>handle.style.color='#2d3f5a';
+      handle.addEventListener('mousedown',e=>{e.stopPropagation();row.draggable=true;});
+      row.appendChild(handle);
+
+      // Streak-Ring
+      const s=h.streak||0;
+      const pct=Math.min(s/Math.max(s,7),1);
+      const streakDiv=document.createElement('div');
+      streakDiv.style.cssText='display:flex;align-items:center;justify-content:center;padding:6px 0';
+      streakDiv.innerHTML=`<svg width="26" height="26" viewBox="0 0 26 26"><circle cx="13" cy="13" r="10" fill="none" stroke="#1e293b" stroke-width="3"/><circle cx="13" cy="13" r="10" fill="none" stroke="${s>=7?'#f59e0b':s>=1?cat.color:'#243450'}" stroke-width="3" stroke-dasharray="${Math.round(pct*62.8)} 62.8" stroke-linecap="round" transform="rotate(-90 13 13)"/>${s>0?`<text x="13" y="17" text-anchor="middle" font-size="8" fill="#e2e8f0" font-weight="bold">${s}</text>`:`<text x="13" y="17" text-anchor="middle" font-size="8" fill="#334155">–</text>`}</svg>`;
+      row.appendChild(streakDiv);
+
+      // Name
+      const nameDiv=document.createElement('div');
+      nameDiv.style.cssText='display:flex;align-items:center;gap:6px;padding:6px 0 6px 4px;min-width:0';
+      nameDiv.innerHTML=`<span style="font-size:15px;flex-shrink:0">${h.emoji}</span><span style="font-size:12px;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(h.name)}</span>`;
+      row.appendChild(nameDiv);
+
+      // Vergangene Dots (größer als vorher)
+      for(let i=0;i<DAYS;i++){
+        const done=h.done_dates?.includes(dateCols[i]);
+        const dt=new Date(dateCols[i]);
+        const isMon=['Mo'][0]===['So','Mo','Di','Mi','Do','Fr','Sa'][dt.getDay()];
+        const dotDiv=document.createElement('div');
+        dotDiv.style.cssText=`display:flex;align-items:center;justify-content:center;${isMon?'border-left:1px solid #1e293b':''}`;
+        dotDiv.innerHTML=`<div title="${dateCols[i]}" style="width:${done?20:9}px;height:${done?20:9}px;border-radius:${done?5:10}px;background:${done?cat.color:'#1e293b'}"></div>`;
+        row.appendChild(dotDiv);
+      }
+
+      // Heute-Checkbox
+      const todayDone=h.done_dates?.includes(dateCols[DAYS]);
+      const cb=document.createElement('div');
+      cb.style.cssText='display:flex;align-items:center;justify-content:center';
+      const cbBtn=document.createElement('button');
+      cbBtn.style.cssText=`width:26px;height:26px;border-radius:7px;border:2px solid ${todayDone?cat.color:'#334155'};background:${todayDone?cat.color:'transparent'};cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:13px;color:#fff;padding:0;transition:all .15s`;
+      cbBtn.textContent=todayDone?'✓':'';
+      let _done=todayDone;
+      cbBtn.onclick=async(e)=>{
+        e.stopPropagation();
+        if(_done){
+          await fetch('/api/habits/'+h.id+'/unlog',{method:'POST'});
+          _done=false;
+          cbBtn.textContent='';
+          cbBtn.style.background='transparent';
+          cbBtn.style.borderColor='#334155';
+          toast('Zurückgesetzt');
+        } else {
+          await fetch('/api/habits/'+h.id+'/log',{method:'POST',headers:{'Content-Type':'application/json'},body:'{}'});
+          _done=true;
+          cbBtn.textContent='✓';
+          cbBtn.style.background=cat.color;
+          cbBtn.style.borderColor=cat.color;
+          toast('🔥 Abgehakt');
+        }
+      };
+      cb.appendChild(cbBtn);row.appendChild(cb);
+
+      // X ganz rechts
+      const delDiv=document.createElement('div');
+      delDiv.style.cssText='display:flex;align-items:center;justify-content:center';
+      const delBtn=document.createElement('button');
+      delBtn.style.cssText='background:none;border:none;color:#2d3f5a;font-size:13px;cursor:pointer;padding:2px;border-radius:4px;line-height:1;transition:color .1s';
+      delBtn.textContent='✕';
+      delBtn.onmouseenter=()=>delBtn.style.color='#ef4444';
+      delBtn.onmouseleave=()=>delBtn.style.color='#2d3f5a';
+      delBtn.onclick=(e)=>{e.stopPropagation();deleteHabit(h.id,h.name);};
+      delDiv.appendChild(delBtn);row.appendChild(delDiv);
+
+      rows.appendChild(row);
+    });
+    section.appendChild(rows);
+    masterCard.appendChild(section);
   });
+  body.appendChild(masterCard);
 };
 
 // ════════ TASKS (Arten, Unteraufgaben, Fortschritt, Archiv) ════════
 let taskFilter='open';
 VIEWS.tasks=async(root)=>{
-  root.innerHTML=`<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px"><b style="font-size:18px">Aufgaben</b><button class="btn" onclick="addTask()" style="padding:8px 14px;font-size:13px">＋ Neu</button></div>
-    <div class="tabbar"><div class="tab ${taskFilter==='open'?'active':''}" onclick="setTaskFilter('open')">Offen</div><div class="tab ${taskFilter==='done'?'active':''}" onclick="setTaskFilter('done')">Erledigt</div><div class="tab ${taskFilter==='archived'?'active':''}" onclick="setTaskFilter('archived')">Archiv</div></div>
+  const [ts, suggestions] = await Promise.all([
+    api('/api/tasks?status='+taskFilter),
+    api('/api/tasks/suggestions'),
+  ]);
+
+  root.innerHTML=`
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+      <b style="font-size:18px">Aufgaben</b>
+      <div style="display:flex;gap:8px">
+        <button id="genBtn" onclick="generateTask()" class="soft" style="padding:8px 12px;font-size:13px;border:none;cursor:pointer" title="Jarvis überlegt sich einen Vorschlag">💡 Generieren</button>
+        <button class="btn" onclick="addTask()" style="padding:8px 14px;font-size:13px">＋ Neu</button>
+      </div>
+    </div>
+    ${suggestions.length ? `
+    <div style="margin-bottom:16px">
+      <div style="font-size:12px;font-weight:700;color:#a5b4fc;letter-spacing:.5px;margin-bottom:8px">💡 JARVIS SCHLÄGT VOR</div>
+      <div id="sugg-list"></div>
+    </div>` : ''}
+    <div class="tabbar">
+      <div class="tab ${taskFilter==='open'?'active':''}" onclick="setTaskFilter('open')">Offen</div>
+      <div class="tab" onclick="setTaskFilter('jarvis')" style="${taskFilter==='jarvis'?'border-bottom:2px solid #a5b4fc;color:#a5b4fc':''}">🤖 Jarvis</div>
+      <div class="tab ${taskFilter==='done'?'active':''}" onclick="setTaskFilter('done')">Erledigt</div>
+      <div class="tab ${taskFilter==='archived'?'active':''}" onclick="setTaskFilter('archived')">Archiv</div>
+    </div>
     <div id="tl"></div>`;
-  const ts=await api('/api/tasks?status='+taskFilter);
-  if(!ts.length){$('#tl').innerHTML='<div class="card" style="padding:24px;text-align:center;color:#5b6b8c">Nichts hier 🎉</div>';return;}
+
+  // Suggestions rendern
+  if(suggestions.length){
+    const sl=$('#sugg-list');
+    suggestions.forEach(s=>{
+      const who=s.assigned_to==='jarvis'?'<span style="font-size:10px;background:#1e3a5f;color:#a5b4fc;padding:2px 7px;border-radius:99px;margin-left:6px">Jarvis erledigt</span>':'';
+      const node=el(`<div class="card" style="padding:14px;margin-bottom:8px;border:1px solid #1e3a5f">
+        <div style="font-size:14px;font-weight:600;margin-bottom:4px">${esc(s.title)}${who}</div>
+        ${s.notes?`<div style="font-size:12px;color:#5b6b8c;margin-bottom:10px">${esc(s.notes)}</div>`:''}
+        <div style="display:flex;gap:8px">
+          <button onclick="acceptSuggestion(${s.id})" class="btn" style="flex:1;padding:8px;font-size:13px">✓ Annehmen</button>
+          <button onclick="rejectSuggestion(${s.id},'${esc(s.title)}')" class="soft" style="flex:1;padding:8px;font-size:13px;border:none;cursor:pointer">✕ Ablehnen</button>
+        </div>
+      </div>`);
+      sl.appendChild(node);
+    });
+  }
+
+  // Tasks rendern
   const kindIcon={task:'',project:'📁 ',checklist:'☑️ '};
-  ts.forEach(t=>{
+  let filtered=ts;
+  if(taskFilter==='jarvis') filtered=ts.filter(t=>t.assigned_to==='jarvis');
+  else if(taskFilter==='open') filtered=ts.filter(t=>t.assigned_to!=='jarvis'||t.status==='in_progress');
+
+  if(!filtered.length){
+    $('#tl').innerHTML='<div class="card" style="padding:24px;text-align:center;color:#5b6b8c">'+(taskFilter==='jarvis'?'Keine Jarvis-Aufgaben 🤖':'Nichts hier 🎉')+'</div>';
+    return;
+  }
+  filtered.forEach(t=>{
     const subs=t.subtasks||[];
-    const node=el(`<div class="card" style="padding:15px;margin-bottom:10px">
+    const isJarvis=t.assigned_to==='jarvis';
+    const jarvisChip=isJarvis?`<span style="font-size:10px;background:#1e3a5f;color:#a5b4fc;padding:2px 7px;border-radius:99px">🤖</span>`:'';
+    const node=el(`<div class="card" style="padding:15px;margin-bottom:10px${isJarvis?';border-left:3px solid #3b5fc0':''}">
       <div style="display:flex;align-items:center;gap:11px">
         ${taskFilter==='open'?`<button onclick="completeTask(${t.id})" style="width:24px;height:24px;border-radius:7px;border:2px solid #3b5;background:none;cursor:pointer;flex-shrink:0"></button>`:''}
-        <div style="flex:1;min-width:0"><div style="font-size:15px;font-weight:600">${kindIcon[t.kind]||''}${esc(t.title)}</div>
+        <div style="flex:1;min-width:0">
+          <div style="display:flex;align-items:center;gap:6px;font-size:15px;font-weight:600">${kindIcon[t.kind]||''}${esc(t.title)}${jarvisChip}</div>
           ${subs.length?`<div style="font-size:11px;color:var(--muted);margin-top:3px">${subs.filter(s=>s.status==='done').length}/${subs.length} erledigt · ${t.progress_pct}%</div><div class="pill-h" style="margin-top:5px"><div class="pill-f" style="width:${t.progress_pct}%"></div></div>`:''}
+          ${t.jarvis_result?`<div style="margin-top:8px;padding:8px;background:#0d1b2a;border-radius:8px;font-size:12px;color:#94a3b8;cursor:pointer" onclick="showResult(${t.id})">📄 Ergebnis ansehen</div>`:''}
         </div>
         <span>${({high:'🔴',medium:'🟡',low:'🟢'})[t.priority]||''}</span>
         <button onclick="taskMenu(${t.id},'${esc(t.title)}','${taskFilter}')" class="soft" style="border:none;border-radius:10px;padding:6px 9px;cursor:pointer">⋯</button>
@@ -468,7 +686,36 @@ VIEWS.tasks=async(root)=>{
     $('#tl').appendChild(node);
   });
 };
+
 function setTaskFilter(f){taskFilter=f;go('tasks');}
+
+async function acceptSuggestion(id){
+  await post('/api/tasks/'+id+'/accept',{});
+  toast('Aufgabe angenommen ✓');
+  go('tasks');
+}
+
+function rejectSuggestion(id,title){
+  formSheet('Vorschlag ablehnen',
+    `<div style="font-size:14px;font-weight:600;margin-bottom:12px">"${title}"</div>
+     <label style="font-size:12px;color:var(--muted)">Warum lehnst du ab? (hilft Jarvis zu lernen)</label>
+     <textarea id="rr" rows="3" placeholder="z.B. zu trivial, falsches Thema, bereits bekannt…" style="width:100%;box-sizing:border-box;margin-top:6px"></textarea>`,
+    async()=>{
+      await post('/api/tasks/'+id+'/reject',{reason:$('#rr').value});
+      closeSheet(); toast('Abgelehnt'); go('tasks');
+    }, 'Ablehnen'
+  );
+}
+
+async function showResult(id){
+  const ts=await api('/api/tasks?status=done');
+  const t=ts.find(x=>x.id===id)||{};
+  if(!t.jarvis_result)return;
+  sheet(`<div style="width:40px;height:4px;background:#33415a;border-radius:99px;margin:0 auto 16px"></div>
+    <div style="font-weight:700;margin-bottom:12px">${esc(t.title)}</div>
+    <div style="font-size:13px;line-height:1.6;color:#94a3b8;white-space:pre-wrap">${esc(t.jarvis_result)}</div>`);
+}
+
 function taskMenu(id,title,filter){
   const opts=[];
   if(filter!=='archived')opts.push(`<button class="soft" style="border:none;padding:13px;border-radius:12px;width:100%;text-align:left;cursor:pointer;margin-bottom:8px" onclick="closeSheet();setProgress(${id},'${esc(title)}')">📊 Fortschritt setzen</button>`);
@@ -479,11 +726,75 @@ function taskMenu(id,title,filter){
 
 // ════════ CALENDAR ════════
 VIEWS.calendar=async(root)=>{
-  root.innerHTML=`<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px"><b style="font-size:18px">Kalender</b><button class="btn" onclick="addEvent()" style="padding:8px 14px;font-size:13px">＋ Termin</button></div><div id="cl"></div>`;
-  const es=await api('/api/calendar?days=21');
-  if(!es.length){$('#cl').innerHTML='<div class="card" style="padding:24px;text-align:center;color:#5b6b8c">Keine Termine.</div>';return;}
-  es.forEach(e=>$('#cl').appendChild(el(`<div class="card" style="padding:14px;margin-bottom:10px;display:flex;gap:12px;align-items:center"><div style="min-width:54px;text-align:center"><div style="font-size:12px;color:#60a5fa">${e.start}</div></div><div style="flex:1"><div style="font-size:15px;font-weight:600">${esc(e.title)}</div>${e.location?`<div style="font-size:12px;color:var(--muted)">📍 ${esc(e.location)}</div>`:''}</div>${e.calendar?`<span class="chip">${esc(e.calendar)}</span>`:''}</div>`)));
+  root.innerHTML='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px"><b style="font-size:18px">📅 Kalender</b><button class="btn" onclick="addEvent()" style="padding:8px 14px;font-size:13px">＋ Termin</button></div><div id="cl"></div>';
+  const es=await api('/api/calendar?days=30');
+  const cl=document.getElementById('cl');
+  if(!es.length){cl.innerHTML='<div class="card" style="padding:24px;text-align:center;color:#5b6b8c">Keine Termine in den nächsten 30 Tagen.</div>';return;}
+  // Gruppieren nach Datum
+  const groups={};
+  es.forEach(e=>{
+    const d=e.start?e.start.split(' ')[0]||e.start.split('T')[0]:'?';
+    (groups[d]||(groups[d]=[])).push(e);
+  });
+  Object.entries(groups).forEach(([d,evs])=>{
+    const hdr=document.createElement('div');
+    hdr.style.cssText='font-size:12px;font-weight:700;color:#60a5fa;text-transform:uppercase;letter-spacing:1px;margin:14px 0 6px';
+    hdr.textContent=d;
+    cl.appendChild(hdr);
+    evs.forEach(e=>{
+      const card=document.createElement('div');
+      card.className='card';
+      card.style.cssText='padding:12px 14px;margin-bottom:8px;display:flex;gap:12px;align-items:center';
+      const timeDiv=document.createElement('div');
+      timeDiv.style.cssText='min-width:48px;text-align:center;font-size:12px;color:#a5b4fc;font-weight:600';
+      timeDiv.textContent=e.start&&e.start.includes(' ')?e.start.split(' ')[1]:'📅';
+      const body=document.createElement('div');
+      body.style.cssText='flex:1;min-width:0';
+      const title=document.createElement('div');
+      title.style.cssText='font-size:15px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap';
+      title.textContent=e.title;
+      body.appendChild(title);
+      if(e.location){const loc=document.createElement('div');loc.style.cssText='font-size:12px;color:var(--muted)';loc.textContent='📍 '+e.location;body.appendChild(loc);}
+      const right=document.createElement('div');
+      right.style.cssText='display:flex;gap:6px;align-items:center;flex-shrink:0';
+      if(e.calendar){const chip=document.createElement('span');chip.className='chip';chip.textContent=e.calendar;right.appendChild(chip);}
+      // Edit/Delete nur für Jarvis-eigene Termine
+      if(e.source==='jarvis'&&e.uid){
+        const editBtn=document.createElement('button');
+        editBtn.className='btn';editBtn.style.cssText='padding:4px 8px;font-size:11px';editBtn.textContent='✏️';
+        editBtn.onclick=()=>editEvent(e);
+        const delBtn=document.createElement('button');
+        delBtn.style.cssText='background:#dc2626;color:#fff;border:none;border-radius:6px;padding:4px 8px;font-size:11px;cursor:pointer';delBtn.textContent='🗑';
+        delBtn.onclick=()=>askDelEvent(e);
+        right.appendChild(editBtn);right.appendChild(delBtn);
+      }
+      card.appendChild(timeDiv);card.appendChild(body);card.appendChild(right);
+      cl.appendChild(card);
+    });
+  });
 };
+
+async function askDelEvent(e){
+  if(!confirm('Termin "'+e.title+'" löschen?'))return;
+  await fetch('/api/calendar/'+e.uid,{method:'DELETE'});
+  toast('Gelöscht ✓');go('calendar');
+}
+
+function editEvent(e){
+  // Datum für datetime-local formatieren
+  const toLocal=s=>{if(!s)return '';const d=new Date(s);if(isNaN(d))return s;return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')+'T'+String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0');};
+  const wrap=document.createElement('div');
+  const f1=document.createElement('input');f1.placeholder='Titel';f1.value=e.title||'';
+  const f2=document.createElement('input');f2.type='datetime-local';f2.value=toLocal(e.start_iso||e.start)||'';
+  const f3=document.createElement('input');f3.type='datetime-local';f3.value=toLocal(e.end_iso||e.end)||'';
+  const f4=document.createElement('input');f4.placeholder='Ort (optional)';f4.value=e.location||'';
+  [f1,f2,f3,f4].forEach(f=>{f.style.cssText='display:block;width:100%;margin-bottom:10px;padding:8px;background:#1e293b;border:1px solid #334155;border-radius:6px;color:#fff;font-size:14px';wrap.appendChild(f);});
+  formSheet('Termin bearbeiten',wrap.innerHTML,async()=>{
+    const inputs=document.querySelectorAll('#sheetBody input');
+    await fetch('/api/calendar/'+e.uid,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({title:inputs[0].value,start:inputs[1].value,end:inputs[2].value||null,location:inputs[3].value||null})});
+    closeSheet();toast('Gespeichert ✓');go('calendar');
+  });
+}
 
 // ════════ NUTRITION (chart, makros, AI-Hinweis, cleaner) ════════
 VIEWS.nutrition=async(root)=>{
@@ -502,12 +813,155 @@ VIEWS.nutrition=async(root)=>{
 
 // ════════ JOURNAL ════════
 VIEWS.journal=async(root)=>{
-  root.innerHTML=`<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px"><b style="font-size:18px">Journal</b><button class="btn" onclick="addJournal()" style="padding:8px 14px;font-size:13px">＋ Eintrag</button></div><div class="card" style="padding:16px;margin-bottom:14px"><b>Stimmung & Energie</b><div style="position:relative;height:120px;margin-top:8px"><canvas id="cMood"></canvas></div></div><div id="jl"></div>`;
-  const mood=await api('/api/journal/mood?days=21');
-  lineChart('cMood',mood.map(x=>x.date?.slice(5)),[{label:'Stimmung',data:mood.map(x=>x.mood),color:'#22c55e'},{label:'Energie',data:mood.map(x=>x.energy),color:'#f59e0b'}]);
-  const js=await api('/api/journal?limit=30');const emo=['','😞','😕','😐','🙂','😄'];
-  $('#jl').innerHTML=js.length?js.map(j=>`<div class="card" style="padding:14px;margin-bottom:10px"><div style="display:flex;justify-content:space-between;font-size:11px;color:var(--muted)"><span>${new Date(j.date).toLocaleDateString('de')}</span><span>${j.mood?emo[j.mood]:''} ${j.energy?'⚡'+j.energy:''}</span></div><div style="font-size:14px;margin-top:6px">${esc(j.content)}</div></div>`).join(''):'<div class="card" style="padding:24px;text-align:center;color:#5b6b8c">Noch keine Einträge.</div>';
+  const emo=['','😞','😕','😐','🙂','😄'];
+  const moodCol=['','#ef4444','#f97316','#eab308','#22c55e','#10b981'];
+
+  // Parallele Requests
+  const [todayEntry, moodData, history] = await Promise.all([
+    api('/api/journal/today'),
+    api('/api/journal/mood?days=21'),
+    api('/api/journal?limit=20'),
+  ]);
+  const hasToday = todayEntry && todayEntry.id;
+
+  root.innerHTML=`
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+      <b style="font-size:18px">Journal</b>
+      ${hasToday?`<button class="soft" onclick="journalCheckin()" style="padding:7px 13px;font-size:12px">✏️ Bearbeiten</button>`:''}
+    </div>
+
+    ${hasToday ? `
+    <div class="card" style="padding:16px;margin-bottom:14px;border:1px solid #1e3a5f">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+        <span style="font-size:13px;color:var(--muted)">Heute eingetragen ✓</span>
+        <span style="font-size:22px">${emo[todayEntry.mood||3]}</span>
+      </div>
+      <div style="display:flex;gap:16px;font-size:13px">
+        <span>Stimmung&nbsp;<b style="color:${moodCol[todayEntry.mood||3]}">${todayEntry.mood||'–'}/5</b></span>
+        <span>Energie&nbsp;<b style="color:#f59e0b">${todayEntry.energy||'–'}/5</b></span>
+      </div>
+      ${todayEntry.content ? `<div style="margin-top:10px;font-size:13px;color:#94a3b8;line-height:1.5">${esc(todayEntry.content).slice(0,120)}${todayEntry.content.length>120?'…':''}</div>` : ''}
+    </div>
+    ` : `
+    <div class="card" style="padding:20px;margin-bottom:14px;text-align:center;background:linear-gradient(135deg,#0f1c2e,#1a2a3a);border:1px dashed #2a4a6a">
+      <div style="font-size:32px;margin-bottom:8px">📖</div>
+      <div style="font-size:15px;font-weight:600;margin-bottom:6px">Abend-Check-in</div>
+      <div style="font-size:13px;color:#5b6b8c;margin-bottom:14px">Wie war dein Tag? Jarvis hat 3 Fragen für dich.</div>
+      <button class="btn" onclick="journalCheckin()" style="padding:10px 24px;font-size:14px">Jetzt eintragen</button>
+    </div>
+    `}
+
+    <div class="card" style="padding:16px;margin-bottom:14px">
+      <div style="font-size:13px;font-weight:600;margin-bottom:10px;color:#94a3b8">Stimmung & Energie — 3 Wochen</div>
+      <div style="position:relative;height:110px"><canvas id="cMood"></canvas></div>
+    </div>
+
+    <div style="font-size:13px;font-weight:600;color:#5b6b8c;margin-bottom:8px;padding-left:2px">Vergangene Einträge</div>
+    <div id="jl"></div>`;
+
+  lineChart('cMood', moodData.map(x=>x.date?.slice(5)), [
+    {label:'Stimmung', data:moodData.map(x=>x.mood), color:'#22c55e'},
+    {label:'Energie',  data:moodData.map(x=>x.energy), color:'#f59e0b'},
+  ]);
+
+  const filtered = history.filter(j => !hasToday || j.id !== todayEntry.id);
+  $('#jl').innerHTML = filtered.length ? filtered.map(j => {
+    let details = '';
+    if (j.prompts_answers) {
+      const qa = typeof j.prompts_answers === 'string' ? JSON.parse(j.prompts_answers) : j.prompts_answers;
+      details = qa.filter(x=>x.answer).map(x=>`<div style="margin-top:8px"><div style="font-size:11px;color:#5b6b8c">${esc(x.question)}</div><div style="font-size:13px;margin-top:2px">${esc(x.answer)}</div></div>`).join('');
+    }
+    if (j.content) details += `<div style="margin-top:8px;font-size:13px;color:#94a3b8;font-style:italic">${esc(j.content)}</div>`;
+    return `<div class="card" style="padding:14px;margin-bottom:10px">
+      <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--muted)">
+        <span>${new Date(j.date+'T12:00:00').toLocaleDateString('de',{weekday:'short',day:'numeric',month:'short'})}</span>
+        <span>${j.mood?emo[j.mood]+' '+j.mood:''} ${j.energy?'⚡'+j.energy:''}</span>
+      </div>
+      ${details||'<div style="font-size:13px;color:#5b6b8c;margin-top:6px">–</div>'}
+    </div>`;
+  }).join('') : '<div style="padding:20px;text-align:center;color:#5b6b8c;font-size:13px">Noch keine früheren Einträge.</div>';
 };
+
+async function journalCheckin(){
+  // Prompts laden (async, Spinner zeigen)
+  const sheet = document.createElement('div');
+  sheet.id = 'jsheet';
+  sheet.style.cssText = 'position:fixed;inset:0;background:#0a0f1a;z-index:200;overflow-y:auto;padding:20px 16px 40px';
+  sheet.innerHTML = `
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:20px">
+      <button onclick="document.getElementById('jsheet').remove()" style="background:none;border:none;color:#94a3b8;font-size:20px;cursor:pointer">←</button>
+      <b style="font-size:17px">Abend-Check-in</b>
+    </div>
+    <div style="text-align:center;padding:40px 0;color:#5b6b8c" id="jloading">
+      <div style="font-size:24px;margin-bottom:8px">🤔</div>
+      Jarvis überlegt sich Fragen…
+    </div>`;
+  document.body.appendChild(sheet);
+
+  const emo = ['','😞','😕','😐','🙂','😄'];
+  const moodCol = ['','#ef4444','#f97316','#eab308','#22c55e','#10b981'];
+  let selMood = 3, selEnergy = 3;
+
+  let prompts;
+  try { prompts = (await api('/api/journal/prompts')).prompts; }
+  catch(e) { prompts = ['Wie war dein Tag?','Was hat dich beschäftigt?','Worauf bist du stolz?']; }
+
+  const moodBtns = [1,2,3,4,5].map(v =>
+    `<button onclick="selMood=${v};document.querySelectorAll('.mbtn').forEach((b,i)=>{b.style.background=i+1==${v}?'${moodCol[v]}':'transparent';b.style.transform=i+1==${v}?'scale(1.25)':'scale(1)'});this.style.background='${moodCol[v]}'" class="mbtn" style="font-size:26px;background:transparent;border:none;cursor:pointer;transition:all .15s">${emo[v]}</button>`
+  ).join('');
+  const energyBtns = [1,2,3,4,5].map(v =>
+    `<button onclick="selEnergy=${v};document.querySelectorAll('.ebtn').forEach((b,i)=>{b.style.background=i+1==${v}?'#f59e0b22':'transparent';b.style.transform=i+1==${v}?'scale(1.25)':'scale(1)';b.style.color=i+1<=${v}?'#f59e0b':'#334155'});" class="ebtn" style="font-size:20px;background:transparent;border:none;cursor:pointer;transition:all .15s;color:#334155">⚡</button>`
+  ).join('');
+
+  const questionsHtml = prompts.map((q,i) => `
+    <div style="margin-bottom:18px">
+      <div style="font-size:13px;color:#a5b4fc;margin-bottom:6px;font-weight:600">${esc(q)}</div>
+      <textarea id="ja${i}" rows="2" placeholder="Deine Antwort…" style="width:100%;box-sizing:border-box;background:#0d1b2a;border:1px solid #1e3a5f;border-radius:10px;color:#e2e8f0;padding:10px;font-size:13px;resize:vertical;font-family:inherit"></textarea>
+    </div>`).join('');
+
+  document.getElementById('jloading').outerHTML = `
+    <div style="margin-bottom:20px">
+      <div style="font-size:13px;color:#94a3b8;font-weight:600;margin-bottom:12px">Wie war deine Stimmung?</div>
+      <div style="display:flex;justify-content:space-around;padding:8px 0">${moodBtns}</div>
+    </div>
+    <div style="margin-bottom:24px">
+      <div style="font-size:13px;color:#94a3b8;font-weight:600;margin-bottom:12px">Energielevel?</div>
+      <div style="display:flex;justify-content:space-around;padding:8px 0">${energyBtns}</div>
+    </div>
+    <div style="border-top:1px solid #1a2a3a;padding-top:20px;margin-bottom:4px">
+      <div style="font-size:13px;color:#94a3b8;font-weight:600;margin-bottom:16px">💬 Jarvis fragt…</div>
+      ${questionsHtml}
+    </div>
+    <div style="margin-bottom:24px">
+      <div style="font-size:13px;color:#94a3b8;font-weight:600;margin-bottom:6px">Freier Gedanke</div>
+      <textarea id="jfree" rows="4" placeholder="Alles was dir noch durch den Kopf geht…" style="width:100%;box-sizing:border-box;background:#0d1b2a;border:1px solid #1e3a5f;border-radius:10px;color:#e2e8f0;padding:10px;font-size:13px;resize:vertical;font-family:inherit"></textarea>
+    </div>
+    <button onclick="submitJournal(${prompts.length})" class="btn" style="width:100%;padding:14px;font-size:15px;font-weight:600">Speichern ✓</button>`;
+
+  // Default-Highlight Mood=3
+  const mBtns = document.querySelectorAll('.mbtn');
+  mBtns[2].style.transform='scale(1.25)'; mBtns[2].style.background=moodCol[3];
+  const eBtns = document.querySelectorAll('.ebtn');
+  [0,1,2].forEach(i=>{eBtns[i].style.color='#f59e0b';});
+}
+
+async function submitJournal(nq){
+  const answers = [];
+  // Prompts aus den Labels lesen
+  const labels = document.querySelectorAll('#jsheet [style*="a5b4fc"]');
+  for(let i=0;i<nq;i++){
+    const q = labels[i]?.textContent || '';
+    const a = document.getElementById('ja'+i)?.value||'';
+    answers.push({question:q, answer:a});
+  }
+  const free = document.getElementById('jfree')?.value||'';
+  const btn = document.querySelector('#jsheet .btn');
+  if(btn){btn.disabled=true;btn.textContent='Wird gespeichert…';}
+  await post('/api/journal',{mood:selMood,energy:selEnergy,content:free,prompts_answers:answers.filter(x=>x.answer)});
+  document.getElementById('jsheet')?.remove();
+  toast('Journal gespeichert 📖');
+  if(CUR==='journal') go(CUR);
+}
 
 // ════════ GOALS ════════
 VIEWS.goals=async(root)=>{
@@ -520,11 +974,101 @@ VIEWS.goals=async(root)=>{
 
 // ════════ MEMORY (delete confirm) ════════
 VIEWS.memory=async(root)=>{
-  root.innerHTML=`<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px"><b style="font-size:18px">Gedächtnis</b><button class="btn" onclick="addMemory()" style="padding:8px 14px;font-size:13px">＋ Merken</button></div><div id="ml"></div>`;
-  const ms=await api('/api/memories');const col={fact:'#60a5fa',goal:'#4ade80',pattern:'#c084fc',preference:'#f472b6',correction:'#fb923c',context:'#67e8f9'};
-  $('#ml').innerHTML=ms.length?ms.map(m=>`<div class="card" style="padding:13px;margin-bottom:9px"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px"><span class="chip" style="color:${col[m.category]||'#9fb0d6'}">${m.category}</span><div style="display:flex;gap:10px;align-items:center"><span style="font-size:11px;color:var(--muted)">${Math.round(m.confidence*100)}%</span><button onclick="askDelMemory(${m.id})" style="background:none;border:none;color:#ef6b6b;font-size:15px;cursor:pointer">✕</button></div></div><div style="font-size:14px">${esc(m.content)}</div></div>`).join(''):'<div class="card" style="padding:24px;text-align:center;color:#5b6b8c">Noch keine Erinnerungen.</div>';
+  root.innerHTML=`
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+      <b style="font-size:18px">Gedächtnis</b>
+      <button class="btn" onclick="addMemory()" style="padding:8px 14px;font-size:13px">＋ Merken</button>
+    </div>
+    <div style="display:flex;gap:8px;margin-bottom:14px">
+      <button class="soft mem-tab active" data-tab="lzg" onclick="memTab('lzg',this)" style="flex:1;padding:9px;font-size:13px">🧠 Fakten (${0})</button>
+      <button class="soft mem-tab" data-tab="kg" onclick="memTab('kg',this)" style="flex:1;padding:9px;font-size:13px">🕸️ Wissens-Graph</button>
+    </div>
+    <div id="mem-lzg"></div>
+    <div id="mem-kg" style="display:none"></div>`;
+
+  const col={fact:'#60a5fa',goal:'#4ade80',pattern:'#c084fc',preference:'#f472b6',correction:'#fb923c',context:'#67e8f9',identity:'#fbbf24'};
+  const typeCol={person:'#c084fc',place:'#34d399',project:'#60a5fa',organization:'#f472b6',concept:'#fb923c',habit:'#4ade80',goal:'#fbbf24'};
+
+  const [ms, kg] = await Promise.all([api('/api/memories'), api('/api/knowledge')]);
+
+  // Tab-Titel aktualisieren
+  root.querySelector('[data-tab="lzg"]').textContent=`🧠 Fakten (${ms.length})`;
+  root.querySelector('[data-tab="kg"]').textContent=`🕸️ Graph (${(kg.entities||[]).length} / ${(kg.relations||[]).length})`;
+
+  // LZG-Fakten
+  $('#mem-lzg').innerHTML=ms.length?ms.map(m=>`
+    <div class="card" style="padding:13px;margin-bottom:9px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px">
+        <span class="chip" style="color:${col[m.category]||'#9fb0d6'}">${m.category}</span>
+        <div style="display:flex;gap:10px;align-items:center">
+          <span style="font-size:11px;color:var(--muted)">${Math.round(m.confidence*100)}%</span>
+          <button onclick="askDelMemory(${m.id})" style="background:none;border:none;color:#ef6b6b;font-size:15px;cursor:pointer">✕</button>
+        </div>
+      </div>
+      <div style="font-size:14px">${esc(m.content)}</div>
+    </div>`).join(''):'<div class="card" style="padding:24px;text-align:center;color:#5b6b8c">Noch keine Erinnerungen.</div>';
+
+  // KG-Viewer – ohne verschachtelte Template-Literals
+  const ents=kg.entities||[], rels=kg.relations||[];
+  const relsBySubj={};
+  rels.forEach(r=>{(relsBySubj[r.subject]=relsBySubj[r.subject]||[]).push(r);});
+
+  if(!ents.length){
+    $('#mem-kg').innerHTML='<div class="card" style="padding:24px;text-align:center;color:#5b6b8c">Noch kein Wissens-Graph.</div>';
+  } else {
+    const kgEl=$('#mem-kg');
+    kgEl.innerHTML='';
+    ents.forEach(e=>{
+      const card=document.createElement('div');
+      card.className='card';
+      card.style.cssText='padding:12px;margin-bottom:8px';
+
+      // Header
+      const hdr=document.createElement('div');
+      hdr.style.cssText='display:flex;justify-content:space-between;align-items:center';
+      const nameSpan=document.createElement('div');
+      nameSpan.innerHTML=`<span style="font-weight:600;font-size:14px">${esc(e.name)}</span> `
+        +`<span class="chip" style="color:${typeCol[e.type]||'#9fb0d6'}">${e.type}</span>`;
+      const delBtn=document.createElement('button');
+      delBtn.textContent='✕'; delBtn.style.cssText='background:none;border:none;color:#ef6b6b;font-size:14px;cursor:pointer';
+      delBtn.onclick=()=>askDelKgEntity(e.id);
+      hdr.appendChild(nameSpan); hdr.appendChild(delBtn);
+      card.appendChild(hdr);
+
+      // Beschreibung
+      if(e.description){
+        const desc=document.createElement('div');
+        desc.style.cssText='font-size:12px;color:var(--muted);margin-top:4px';
+        desc.textContent=e.description;
+        card.appendChild(desc);
+      }
+
+      // Relationen
+      (relsBySubj[e.name]||[]).forEach(r=>{
+        const row=document.createElement('div');
+        row.style.cssText='font-size:12px;color:#a5b4fc;margin-top:6px;display:flex;justify-content:space-between;align-items:center';
+        const txt=document.createElement('span');
+        txt.innerHTML='→ <b>'+r.predicate.replace(/_/g,' ')+'</b> → '+esc(r.object);
+        const rDel=document.createElement('button');
+        rDel.textContent='✕'; rDel.style.cssText='background:none;border:none;color:#4a5980;font-size:12px;cursor:pointer';
+        rDel.onclick=()=>askDelKgRelation(r.id);
+        row.appendChild(txt); row.appendChild(rDel);
+        card.appendChild(row);
+      });
+
+      kgEl.appendChild(card);
+    });
+  }
 };
+function memTab(tab,btn){
+  document.querySelectorAll('.mem-tab').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  $('#mem-lzg').style.display=tab==='lzg'?'':'none';
+  $('#mem-kg').style.display=tab==='kg'?'':'none';
+}
 function askDelMemory(id){confirmAction('Diese Erinnerung wirklich löschen?',async()=>{await del('/api/memories/'+id);toast('Gelöscht');go('memory');});}
+function askDelKgEntity(id){confirmAction('Entität und alle ihre Relationen löschen?',async()=>{await del('/api/knowledge/entity/'+id);toast('Gelöscht');go('memory');});}
+function askDelKgRelation(id){confirmAction('Relation löschen?',async()=>{await del('/api/knowledge/relation/'+id);toast('Gelöscht');go('memory');});}
 
 // ════════ MIND ════════
 VIEWS.mind=async(root)=>{
@@ -613,6 +1157,8 @@ VIEWS.settings=async(root)=>{
     <div class="card" style="padding:16px;margin-top:12px"><b>Fähigkeiten (${tools.length} Tools)</b>${Object.entries(cats).map(([c,ts])=>`<div style="margin-top:10px"><div class="chip" style="display:inline-block;margin-bottom:6px">${c}</div><div style="font-size:12px;color:#9fb0d6">${ts.map(t=>esc(t.name)).join(' · ')}</div></div>`).join('')}</div>`;
 };
 async function saveSettings(){await post('/api/settings',{weather_city:$('#setCity').value});toast('Gespeichert ✓');}
+async function importHealth(){const btn=event.target;btn.textContent='⏳ …';btn.disabled=true;try{const r=await post('/api/health/import',{});toast(r.days>0?`✓ ${r.days} Tage importiert`:'Keine neuen Daten');go(CUR);}catch(e){toast('Fehler beim Import');}finally{btn.textContent='☁️ iCloud sync';btn.disabled=false;}}
+function logHRV(){formSheet('HRV eintragen',`<label style="font-size:12px;color:var(--muted)">HRV (ms)</label><input id="f1" type="number" min="1" max="200" placeholder="z.B. 48" style="margin-top:6px"><label style="font-size:12px;color:var(--muted);margin-top:10px;display:block">Datum (leer = heute)</label><input id="f2" type="date" style="margin-top:6px">`,async()=>{const v=+$('#f1').value;if(!v){toast('Bitte Wert eingeben');return;}const payload={hrv:v};const d=$('#f2').value;if(d)payload.date=d;await post('/api/health/manual',payload);closeSheet();toast('HRV gespeichert ✓');go(CUR);});}
 
 // ════════ Charts ════════
 function lineChart(id,labels,series){const ctx=document.getElementById(id);if(!ctx)return;if(charts[id])charts[id].destroy();charts[id]=new Chart(ctx,{type:'line',data:{labels,datasets:series.map(s=>({label:s.label,data:s.data,borderColor:s.color,backgroundColor:s.color+'22',tension:.4,fill:true,pointRadius:0,borderWidth:2,yAxisID:s.y1?'y1':'y'}))},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{color:'#9fb0d6',boxWidth:10,font:{size:10}}}},scales:{x:{ticks:{color:'#5b6b8c',font:{size:9},maxTicksLimit:7},grid:{display:false}},y:{ticks:{color:'#5b6b8c',font:{size:9}},grid:{color:'#16203a'}},y1:series.some(s=>s.y1)?{position:'right',ticks:{color:'#5b6b8c',font:{size:9}},grid:{display:false}}:{display:false}}}});}
@@ -620,9 +1166,128 @@ function barChart(id,labels,data){const ctx=document.getElementById(id);if(!ctx)
 
 // ════════ Forms ════════
 function formSheet(title,fields,onsave){sheet(`<div style="width:40px;height:4px;background:#33415a;border-radius:99px;margin:0 auto 16px"></div><div style="font-weight:700;font-size:18px;margin-bottom:14px">${title}</div><div style="display:flex;flex-direction:column;gap:10px">${fields}</div><button class="btn" id="fsave" style="width:100%;margin-top:16px">Speichern</button>`);$('#fsave').onclick=onsave;}
-function addTask(){formSheet('Neue Aufgabe',`<input id="f1" placeholder="Titel"><select id="fk"><option value="task">Aufgabe</option><option value="project">Projekt (mit Unteraufgaben)</option><option value="checklist">Checkliste</option></select><select id="f2"><option value="medium">Mittel</option><option value="high">Hoch</option><option value="low">Niedrig</option></select><input id="f3" placeholder="Fällig (optional, z.B. morgen 9:00)">`,async()=>{await post('/api/tasks',{title:$('#f1').value,kind:$('#fk').value,priority:$('#f2').value,due:$('#f3').value});closeSheet();toast('Erstellt ✓');if(CUR==='tasks'||CUR==='home')go(CUR);});}
+function addTask(){
+  const sheet=document.createElement('div');
+  sheet.id='tasksheet';
+  sheet.style.cssText='position:fixed;inset:0;background:#0a0f1a;z-index:200;overflow-y:auto;padding:20px 16px 40px';
+  sheet.innerHTML=`
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:20px">
+      <button onclick="document.getElementById('tasksheet').remove()" style="background:none;border:none;color:#94a3b8;font-size:20px;cursor:pointer">←</button>
+      <b style="font-size:17px">Neue Aufgabe</b>
+    </div>
+
+    <div style="margin-bottom:16px">
+      <label style="font-size:12px;color:#5b6b8c;display:block;margin-bottom:6px">Titel *</label>
+      <input id="tt" placeholder="Was soll erledigt werden?" style="width:100%;box-sizing:border-box;background:#0d1b2a;border:1px solid #1e3a5f;border-radius:10px;color:#e2e8f0;padding:12px;font-size:15px;font-family:inherit">
+    </div>
+
+    <div style="margin-bottom:16px">
+      <label style="font-size:12px;color:#5b6b8c;display:block;margin-bottom:6px">Details / Kontext</label>
+      <textarea id="tn" rows="3" placeholder="Hintergründe, Links, was Jarvis wissen sollte…" style="width:100%;box-sizing:border-box;background:#0d1b2a;border:1px solid #1e3a5f;border-radius:10px;color:#e2e8f0;padding:12px;font-size:13px;resize:vertical;font-family:inherit"></textarea>
+    </div>
+
+    <div style="margin-bottom:16px">
+      <label style="font-size:12px;color:#5b6b8c;display:block;margin-bottom:8px">Wer erledigt das?</label>
+      <div style="display:flex;gap:8px">
+        <button id="assignMe" onclick="setAssignee('user')" style="flex:1;padding:12px;border-radius:10px;border:2px solid #22c55e;background:#0d2a1a;color:#22c55e;cursor:pointer;font-size:13px;font-weight:600">👤 Ich</button>
+        <button id="assignJarvis" onclick="setAssignee('jarvis')" style="flex:1;padding:12px;border-radius:10px;border:1px solid #1e3a5f;background:transparent;color:#5b6b8c;cursor:pointer;font-size:13px;font-weight:600">🤖 Jarvis</button>
+        <button id="assignAuto" onclick="setAssignee('auto')" style="flex:1;padding:12px;border-radius:10px;border:1px solid #1e3a5f;background:transparent;color:#5b6b8c;cursor:pointer;font-size:13px;font-weight:600">✨ Auto</button>
+      </div>
+      <div id="jarvisnote" style="display:none;margin-top:8px;font-size:12px;color:#a5b4fc;background:#0d1525;padding:8px 12px;border-radius:8px">
+        🤖 Jarvis übernimmt diese Aufgabe selbstständig und erarbeitet ein Ergebnis.
+      </div>
+    </div>
+
+    <div style="display:flex;gap:10px;margin-bottom:16px">
+      <div style="flex:1">
+        <label style="font-size:12px;color:#5b6b8c;display:block;margin-bottom:6px">Typ</label>
+        <select id="tk" style="width:100%;background:#0d1b2a;border:1px solid #1e3a5f;border-radius:10px;color:#e2e8f0;padding:10px;font-size:13px">
+          <option value="task">Aufgabe</option>
+          <option value="project">Projekt</option>
+          <option value="checklist">Checkliste</option>
+        </select>
+      </div>
+      <div style="flex:1">
+        <label style="font-size:12px;color:#5b6b8c;display:block;margin-bottom:6px">Priorität</label>
+        <select id="tp" style="width:100%;background:#0d1b2a;border:1px solid #1e3a5f;border-radius:10px;color:#e2e8f0;padding:10px;font-size:13px">
+          <option value="medium">🟡 Mittel</option>
+          <option value="high">🔴 Hoch</option>
+          <option value="low">🟢 Niedrig</option>
+        </select>
+      </div>
+    </div>
+
+    <div style="margin-bottom:24px">
+      <label style="font-size:12px;color:#5b6b8c;display:block;margin-bottom:6px">Fällig (optional)</label>
+      <input id="td" placeholder="z.B. morgen 9:00 oder 20.06.2026" style="width:100%;box-sizing:border-box;background:#0d1b2a;border:1px solid #1e3a5f;border-radius:10px;color:#e2e8f0;padding:12px;font-size:13px;font-family:inherit">
+    </div>
+
+    <button onclick="submitTask()" class="btn" style="width:100%;padding:14px;font-size:15px;font-weight:600">Erstellen</button>`;
+  document.body.appendChild(sheet);
+  window._taskAssignee = 'user';
+  setTimeout(()=>document.getElementById('tt')?.focus(),100);
+}
+
+function setAssignee(who){
+  window._taskAssignee = who;
+  ['user','jarvis','auto'].forEach(k=>{
+    const btn=document.getElementById('assign'+k.charAt(0).toUpperCase()+k.slice(1));
+    if(!btn)return;
+    if(k===who){
+      btn.style.border='2px solid '+(who==='jarvis'?'#a5b4fc':who==='auto'?'#f59e0b':'#22c55e');
+      btn.style.background=who==='jarvis'?'#0d1525':who==='auto'?'#1a1400':'#0d2a1a';
+      btn.style.color=who==='jarvis'?'#a5b4fc':who==='auto'?'#f59e0b':'#22c55e';
+    } else {
+      btn.style.border='1px solid #1e3a5f';
+      btn.style.background='transparent';
+      btn.style.color='#5b6b8c';
+    }
+  });
+  document.getElementById('jarvisnote').style.display=who==='jarvis'?'block':'none';
+}
+
+async function submitTask(){
+  const title=document.getElementById('tt')?.value?.trim();
+  if(!title){document.getElementById('tt').style.borderColor='#ef4444';return;}
+  const btn=document.querySelector('#tasksheet .btn');
+  if(btn){btn.disabled=true;btn.textContent='Wird erstellt…';}
+  const assignee=window._taskAssignee||'user';
+  const payload={
+    title,
+    notes:document.getElementById('tn')?.value||'',
+    kind:document.getElementById('tk')?.value||'task',
+    priority:document.getElementById('tp')?.value||'medium',
+    due:document.getElementById('td')?.value||'',
+    assigned_to: assignee==='auto'?undefined:assignee,
+  };
+  await post('/api/tasks',payload);
+  document.getElementById('tasksheet')?.remove();
+  toast(assignee==='jarvis'?'Jarvis übernimmt 🤖':'Aufgabe erstellt ✓');
+  if(CUR==='tasks'||CUR==='home')go(CUR);
+}
+
+async function generateTask(){
+  const btn=document.getElementById('genBtn');
+  if(btn){btn.disabled=true;btn.textContent='⏳ Überlegt…';}
+  await post('/api/tasks/generate',{});
+  setTimeout(()=>{
+    if(btn){btn.disabled=false;btn.textContent='💡 Generieren';}
+    toast('Jarvis überlegt sich einen Vorschlag…');
+    setTimeout(()=>go('tasks'),3000);
+  },1000);
+}
 function addSubtask(pid){formSheet('Unteraufgabe',`<input id="f1" placeholder="Titel">`,async()=>{await post('/api/tasks',{title:$('#f1').value,parent_id:pid});closeSheet();toast('Hinzugefügt ✓');go('tasks');});}
-function addEvent(){formSheet('Neuer Termin',`<input id="f1" placeholder="Titel"><input id="f2" placeholder="Start (z.B. morgen 14:00)"><input id="f3" placeholder="Ort (optional)">`,async()=>{await post('/api/calendar',{title:$('#f1').value,start:$('#f2').value,location:$('#f3').value});closeSheet();toast('Erstellt ✓');if(CUR==='calendar')go(CUR);});}
+function addEvent(){
+  const now=new Date();const pad=n=>String(n).padStart(2,'0');
+  const def=now.getFullYear()+'-'+pad(now.getMonth()+1)+'-'+pad(now.getDate())+'T'+pad(now.getHours()+1)+':00';
+  formSheet('Neuer Termin',`<input id="f1" placeholder="Titel" style="display:block;width:100%;margin-bottom:10px;padding:8px;background:#1e293b;border:1px solid #334155;border-radius:6px;color:#fff;font-size:14px"><label style="font-size:12px;color:#64748b">Start</label><input id="f2" type="datetime-local" value="${def}" style="display:block;width:100%;margin-bottom:10px;padding:8px;background:#1e293b;border:1px solid #334155;border-radius:6px;color:#fff;font-size:14px"><label style="font-size:12px;color:#64748b">Ende (optional)</label><input id="f3" type="datetime-local" style="display:block;width:100%;margin-bottom:10px;padding:8px;background:#1e293b;border:1px solid #334155;border-radius:6px;color:#fff;font-size:14px"><input id="f4" placeholder="Ort (optional)" style="display:block;width:100%;padding:8px;background:#1e293b;border:1px solid #334155;border-radius:6px;color:#fff;font-size:14px">`,
+  async()=>{
+    const t=$('#f1').value,s=$('#f2').value,e=$('#f3').value,l=$('#f4').value;
+    if(!t||!s){toast('Titel und Start erforderlich');return;}
+    await post('/api/calendar',{title:t,start:s,end:e||null,location:l||null});
+    closeSheet();toast('Erstellt ✓');if(CUR==='calendar')go(CUR);
+  });
+}
 function addMeal(){formSheet('Mahlzeit',`<input id="f1" placeholder="Beschreibung"><select id="f2"><option value="breakfast">Frühstück</option><option value="lunch">Mittag</option><option value="dinner">Abend</option><option value="snack">Snack</option></select><div style="display:flex;gap:8px"><input id="f3" type="number" placeholder="kcal"><input id="f4" type="number" placeholder="Protein g"></div><div style="display:flex;gap:8px"><input id="f5" type="number" placeholder="Carbs g"><input id="f6" type="number" placeholder="Fett g"></div>`,async()=>{await post('/api/nutrition',{description:$('#f1').value,meal_type:$('#f2').value,calories:+$('#f3').value||null,protein_g:+$('#f4').value||null,carbs_g:+$('#f5').value||null,fat_g:+$('#f6').value||null});closeSheet();toast('Erfasst ✓');if(CUR==='nutrition'||CUR==='home')go(CUR);});}
 function addWorkout(){formSheet('Training (manuell)',`<input id="f1" placeholder="Titel"><select id="f2"><option value="strength">Kraft</option><option value="run">Lauf</option><option value="mobility">Mobility</option><option value="other">Andere</option></select><div style="display:flex;gap:8px"><input id="f3" type="number" placeholder="Dauer min"><input id="f4" type="number" step="0.1" placeholder="km"></div>`,async()=>{await post('/api/workouts',{title:$('#f1').value,type:$('#f2').value,duration_min:+$('#f3').value||null,distance_km:+$('#f4').value||null});closeSheet();toast('Erfasst ✓');if(CUR==='body')go(CUR);});}
 function importWorkout(){
@@ -645,17 +1310,28 @@ function importWorkout(){
 }
 const HABIT_EMOJIS=['📚','🏃','🧘','💪','💧','🥗','😴','🚭','🧠','✍️','🎯','🪥','☀️','💊','🚿','🎸','💰','🙏','📵','🌱'];
 function addHabit(){
-  formSheet('Neue Gewohnheit',
-    `<input id="f1" placeholder="Name (z.B. Lesen)">
+  formSheet('Neue Routine',
+    `<input id="f1" placeholder="Name (z.B. Meditieren)">
+     <select id="f3" style="background:#1e293b;color:#e2e8f0;border:1px solid #334155;border-radius:10px;padding:10px 12px;font-size:14px;width:100%">
+       <option value="morning">🌅 Morning Routine</option>
+       <option value="day">☀️ Rest of Day</option>
+       <option value="evening">🌙 Evening Routine</option>
+     </select>
      <input id="f2" type="hidden" value="📚">
      <div style="font-size:12px;color:var(--muted)">Emoji wählen</div>
      <div id="emojiGrid" style="display:grid;grid-template-columns:repeat(7,1fr);gap:6px">
        ${HABIT_EMOJIS.map((e,i)=>`<button type="button" class="emojiBtn soft" data-e="${e}" style="border:none;border-radius:11px;padding:9px 0;font-size:20px;cursor:pointer;${i===0?'outline:2px solid var(--accent)':''}">${e}</button>`).join('')}
      </div>`,
-    async()=>{const name=$('#f1').value.trim();if(!name){toast('Name fehlt');return;}await post('/api/habits',{name,emoji:$('#f2').value});closeSheet();toast('Angelegt ✓');go('habits');});
+    async()=>{
+      const name=$('#f1').value.trim();if(!name){toast('Name fehlt');return;}
+      const category=$('#f3').value||'day';
+      const emoji=$('#f2').value||'📚';
+      await post('/api/habits',{name,emoji,category});
+      closeSheet();toast('Angelegt ✓');go('habits');
+    });
   document.querySelectorAll('.emojiBtn').forEach(b=>b.onclick=()=>{$('#f2').value=b.dataset.e;document.querySelectorAll('.emojiBtn').forEach(x=>x.style.outline='none');b.style.outline='2px solid var(--accent)';});
 }
-function addJournal(){formSheet('Journal-Eintrag',`<textarea id="f1" rows="4" placeholder="Was beschäftigt dich?"></textarea><label style="font-size:12px;color:var(--muted)">Stimmung: <span id="mv">3</span></label><input id="f2" type="range" min="1" max="5" value="3" oninput="document.getElementById('mv').textContent=this.value"><label style="font-size:12px;color:var(--muted)">Energie: <span id="ev">3</span></label><input id="f3" type="range" min="1" max="5" value="3" oninput="document.getElementById('ev').textContent=this.value">`,async()=>{await post('/api/journal',{content:$('#f1').value,mood:+$('#f2').value,energy:+$('#f3').value});closeSheet();toast('Gespeichert ✓');if(CUR==='journal')go(CUR);});}
+function addJournal(){ journalCheckin(); }
 function addGoal(){formSheet('Neues Ziel',`<input id="f1" placeholder="Titel"><select id="f2"><option value="fitness">Fitness</option><option value="career">Karriere</option><option value="finance">Finanzen</option><option value="personal">Persönlich</option><option value="general">Allgemein</option></select><div style="display:flex;gap:8px"><input id="f3" type="number" placeholder="Zielwert"><input id="f4" placeholder="Einheit"></div><input id="f5" placeholder="Deadline (optional)">`,async()=>{await post('/api/goals',{title:$('#f1').value,category:$('#f2').value,target_value:+$('#f3').value||null,unit:$('#f4').value,deadline:$('#f5').value});closeSheet();toast('Angelegt ✓');if(CUR==='goals')go(CUR);});}
 function addMemory(){formSheet('Etwas merken',`<textarea id="f1" rows="3" placeholder="Was soll Jarvis sich merken?"></textarea><select id="f2"><option value="fact">Fakt</option><option value="preference">Vorliebe</option><option value="goal">Ziel</option><option value="context">Kontext</option></select>`,async()=>{await post('/api/memories',{content:$('#f1').value,category:$('#f2').value});closeSheet();toast('Gemerkt ✓');if(CUR==='memory')go(CUR);});}
 function updateGoal(id,title){

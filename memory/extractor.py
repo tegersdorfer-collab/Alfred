@@ -35,8 +35,8 @@ Analysiere den folgenden Gesprächswechsel zwischen Timo und Jarvis.
 Extrahiere NUR dauerhaft nützliche Fakten über Timo – Dinge, die in \
 Wochen oder Monaten noch relevant sind.
 
-Gute Beispiele: Name, Wohnort, Job, Familie, Hobbys, Langzeit-Projekte, \
-Gewohnheiten, Ernährung, feste Präferenzen.
+Gute Beispiele: Name, Wohnort, Job, Hobbys, Langzeit-Projekte, \
+Gewohnheiten, Ernährung, feste Präferenzen, Personen die Timo explizit erwähnt hat.
 
 Schlechte Beispiele: Was er gerade gefragt hat, heutige Stimmung, \
 temporäre Pläne, allgemeine Aussagen.
@@ -210,6 +210,27 @@ class MemoryExtractor:
             if any(_jaccard(text, ex) >= 0.55 for ex in existing_texts):
                 log.debug(f"Extraktor: Text-Duplikat übersprungen: '{text[:60]}'")
                 continue
+
+            # ── 4b. Verifier: steht das wirklich im Text? (0.5B lokal) ────
+            try:
+                verify_prompt = (
+                    f"Antworte NUR mit JA oder NEIN, nichts anderes.\n\n"
+                    f"Text: \"{user_text[:500]}\"\n"
+                    f"Behauptung: \"{text}\"\n\n"
+                    f"Wird die Behauptung im Text wörtlich oder eindeutig direkt erwähnt?"
+                )
+                vresp = await self._client.chat(
+                    model="qwen2.5:0.5b",
+                    messages=[{"role": "user", "content": verify_prompt}],
+                    options={"temperature": 0.0, "num_predict": 5, "keep_alive": "5m"},
+                    think=False,
+                )
+                verdict = (vresp.message.content or "").strip().upper()
+                if not verdict.startswith("JA"):
+                    log.debug(f"Extraktor: Verifier abgelehnt ('{verdict}'): '{text[:60]}'")
+                    continue
+            except Exception as ve:
+                log.debug(f"Verifier fehlgeschlagen, überspringe Check: {ve}")
 
             # ── 5. Vektor-Dedup via pgvector ──────────────────────────────
             try:

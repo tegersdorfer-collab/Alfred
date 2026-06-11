@@ -57,7 +57,7 @@ IDLE_EVAL_AFTER_S         = 600      # Nach 10 Min Task neu bewerten
 
 # Proaktive Nachrichten
 PROACTIVE_WAIT_AFTER_CONV = 10 * 60  # 10 Min nach Gespräch → Follow-up
-PROACTIVE_INTERVAL        = 30 * 60  # 30 Min Mindestabstand danach
+PROACTIVE_INTERVAL        = 90 * 60  # 90 Min Mindestabstand danach
 
 # Memory
 LZG_EMBED_MODEL  = "nomic-embed-text"   # Lokales Embedding via Ollama
@@ -66,3 +66,8 @@ KZG_MAX_TURNS    = 20                   # Max Turns im Kurzzeitgedächtnis
 
 # Search
 BRAVE_API_KEY = os.getenv("BRAVE_API_KEY", "")
+
+# Google Calendar (OAuth2 – für Jarvis → Google Termine schreiben)
+GOOGLE_CLIENT_ID     = os.getenv("GOOGLE_CLIENT_ID", "")
+GOOGLE_CLIENT_SECRET = os.getenv("GOOGLE_CLIENT_SECRET", "")
+GOOGLE_CALENDAR_ID   = os.getenv("GOOGLE_CALENDAR_ID", "primary")  # 'primary' = Haupt-Kalender

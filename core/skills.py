@@ -110,10 +110,21 @@ async def _recall(query: str):
      "kind": {"type": "string", "description": "task | project | checklist"},
      "due": {"type": "string", "description": "Fälligkeit, z.B. 'morgen 9:00' oder '15.06.2026'"}},
     ["title"], "productivity")
-async def _create_task(title: str, priority: str = "medium", kind: str = "task", due: str = None):
+async def _create_task(title: str, priority: str = "medium", kind: str = "task", due: str = None, notes: str = None):
     due_dt = parse_datetime(due) if due else None
-    tasks_d.create_task(title=title, priority=priority, kind=kind, due=due_dt)
-    return f"Aufgabe erstellt: {title} ({kind}, {priority})"
+    tid = tasks_d.create_task(title=title, notes=notes, priority=priority, kind=kind, due=due_dt)
+    # Auto-Klassifikation: kann Jarvis diese Task erledigen?
+    assignee = "user"
+    if CTX.llm:
+        try:
+            from domains.task_executor import classify
+            assignee = await classify(title, notes, CTX.llm)
+            from core import db as _db
+            _db.execute("UPDATE tasks SET assigned_to=%s WHERE id=%s", (assignee, tid))
+        except Exception:
+            pass
+    who = "Jarvis übernimmt das" if assignee == "jarvis" else "für dich eingetragen"
+    return f"Aufgabe erstellt: {title} ({priority}) – {who}"
 
 
 @T.register("add_subtask",
@@ -198,6 +209,52 @@ async def _get_calendar(days: int = 7):
     return "\n".join(e.format() for e in events) if events else "Keine Termine."
 
 
+@T.register("update_calendar_event",
+    "Ändert einen bestehenden Kalendereintrag (Titel, Zeit, Ort). Nutze dies wenn Timo "
+    "sagt 'verschieb', 'ändere', 'verlege' einen Termin. Sucht per Titel-Stichwort.",
+    {"query": {"type": "string", "description": "Stichwort aus dem Termintitel"},
+     "title": {"type": "string", "description": "Neuer Titel (optional)"},
+     "start": {"type": "string", "description": "Neue Startzeit (optional)"},
+     "end": {"type": "string", "description": "Neue Endzeit (optional)"},
+     "location": {"type": "string", "description": "Neuer Ort (optional)"}},
+    ["query"], "productivity")
+async def _update_event(query: str, title: str = None, start: str = None,
+                        end: str = None, location: str = None):
+    if not CTX.dashboard:
+        return "Kalender nicht verfügbar."
+    s = parse_datetime(start) if start else None
+    e = parse_datetime(end) if end else None
+    return CTX.dashboard.update_event(query, title=title, start=s, end=e, location=location)
+
+
+@T.register("delete_calendar_event",
+    "Löscht einen Kalendereintrag. Nutze dies wenn Timo sagt 'lösch den Termin', "
+    "'streich den Termin', 'cancel', 'absagen' o.ä. Sucht per Titel-Stichwort.",
+    {"query": {"type": "string", "description": "Stichwort aus dem Termintitel, z.B. 'Zahnarzt' oder 'Jarvis Test'"}},
+    ["query"], "productivity")
+async def _delete_event(query: str):
+    if not CTX.dashboard:
+        return "Kalender nicht verfügbar."
+    return CTX.dashboard.delete_event(query)
+
+
+@T.register("reschedule_after_overrun",
+    "Verschiebt flexible Folge-Termine wenn ein Termin länger gedauert hat als geplant. "
+    "Nutze dies wenn Timo sagt 'das Meeting hat X Minuten länger gedauert', "
+    "'wir sind überzogen', 'hat länger als geplant gedauert' o.ä.",
+    {
+        "event_title": {"type": "string", "description": "Titel des Termins der überzogen hat"},
+        "overrun_minutes": {"type": "integer", "description": "Wie viele Minuten länger als geplant"},
+    },
+    ["event_title", "overrun_minutes"], "productivity")
+async def _reschedule_overrun(event_title: str, overrun_minutes: int):
+    if not CTX.dashboard:
+        return "Kalender nicht verfügbar."
+    from domains.calendar_optimizer import reschedule_after_overrun
+    events = CTX.dashboard.get_upcoming_events(days=1)
+    return await reschedule_after_overrun(event_title, overrun_minutes, events, CTX.dashboard, CTX.llm)
+
+
 # ════════════════════════════════════════════════════════════════════════════
 #  HEALTH
 # ════════════════════════════════════════════════════════════════════════════
@@ -226,10 +283,27 @@ async def _log_habit(name: str):
 
 
 @T.register("create_habit", "Legt eine neue Gewohnheit an.",
-    {"name": {"type": "string"}, "emoji": {"type": "string"}}, ["name"], "habits")
-async def _create_habit(name: str, emoji: str = "✅"):
-    habits.create_habit(name=name, emoji=emoji)
-    return f"Gewohnheit angelegt: {emoji} {name}"
+    {"name": {"type": "string"},
+     "emoji": {"type": "string"},
+     "category": {"type": "string", "description": "morning | day | evening (Standard: day)"}},
+    ["name"], "habits")
+async def _create_habit(name: str, emoji: str = "✅", category: str = "day"):
+    # Kategorie normalisieren: deutsche Begriffe → englische Keys
+    cat_map = {
+        "morgen": "morning", "morgens": "morning", "morgenroutine": "morning", "morning routine": "morning",
+        "abend": "evening", "abends": "evening", "abendroutine": "evening", "evening routine": "evening",
+        "tag": "day", "tagsüber": "day", "mittag": "day",
+    }
+    category = cat_map.get(category.lower().strip(), category.lower().strip())
+    if category not in ("morning", "day", "evening"):
+        category = "day"
+    from core import db as _db
+    hid = _db.insert_returning(
+        "INSERT INTO habits (name, emoji, category) VALUES (%s, %s, %s) RETURNING id",
+        (name, emoji, category)
+    )
+    cat_label = {"morning": "Morgenroutine", "day": "Tagsüber", "evening": "Abendroutine"}[category]
+    return f"Gewohnheit angelegt: {emoji} {name} ({cat_label})"
 
 
 @T.register("list_habits", "Listet alle Gewohnheiten mit Streak und Status heute.", {}, [], "habits")

@@ -22,3 +22,8 @@ asyncio-throttle>=1.0
 psutil>=5.9
 httpx>=0.27
 numpy>=1.26
+
+# Google Calendar API (bidirektionale Kalendersynchronisation)
+google-api-python-client>=2.120
+google-auth-oauthlib>=1.2
+google-auth-httplib2>=0.2

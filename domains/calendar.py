@@ -14,11 +14,17 @@ from icalendar import Calendar as ICal
 
 from core import db
 import config
+from domains import gcal_writer
 
 log = logging.getLogger(__name__)
 
 _TZ = ZoneInfo(getattr(config, "OWNER_TIMEZONE", "Europe/Berlin"))
 _cache: dict = {"ts": None, "events": []}
+
+
+def invalidate_cache() -> None:
+    """Cache manuell invalidieren (z.B. nach Neustart oder Zeitkorrektur)."""
+    _cache["ts"] = None
 _CACHE_TTL = 600  # 10 Min
 
 
@@ -74,26 +80,98 @@ def upcoming(days: int = 7) -> list[dict]:
         _cache["events"] = ics
 
     horizon = now + timedelta(days=days)
-    events = [e for e in ics if e["start"] >= now - timedelta(hours=12) and e["start"] <= horizon]
+    # Ganztags-Events: ab Tagesbeginn; Uhrzeittermine: ab jetzt minus 30min (laufende Termine)
+    cutoff = now - timedelta(minutes=30)
+    events = [e for e in ics if e["start"] >= cutoff and e["start"] <= horizon]
 
+    jarvis_events = []
     try:
         rows = db.query(
-            "SELECT title, start_ts, end_ts, all_day, location FROM calendar_events "
+            "SELECT uid, title, start_ts, end_ts, all_day, location FROM calendar_events "
             "WHERE start_ts >= %s AND start_ts <= %s",
-            (now - timedelta(hours=12), horizon),
+            (cutoff, horizon),
         )
         for r in rows:
             s = r["start_ts"]
             if getattr(s, "tzinfo", None):
                 s = s.astimezone(_TZ).replace(tzinfo=None)
-            events.append({"title": r["title"], "start": s, "end": r["end_ts"],
-                           "all_day": r["all_day"], "location": r["location"],
-                           "calendar": "Jarvis", "source": "jarvis"})
+            jarvis_events.append({"uid": r["uid"], "title": r["title"], "start": s,
+                                  "end": r["end_ts"], "all_day": r["all_day"],
+                                  "location": r["location"],
+                                  "calendar": "Jarvis", "source": "jarvis"})
     except Exception as e:
         log.debug(f"Jarvis-Events: {e}")
 
+    # ICS-Duplikate entfernen: Jarvis-Events die via Google Cal zurücksynchronisiert wurden
+    def _is_duplicate(ics_ev: dict) -> bool:
+        t = ics_ev["start"]
+        title_lower = ics_ev["title"].lower()
+        for je in jarvis_events:
+            if je["title"].lower() == title_lower:
+                diff = abs((je["start"] - t).total_seconds())
+                if diff < 300:  # gleicher Titel + max 5min Abweichung
+                    return True
+        return False
+
+    events = [e for e in events if not _is_duplicate(e)]
+    events += jarvis_events
     events.sort(key=lambda e: e["start"])
     return events[:25]
+
+
+def find_event(query: str) -> dict | None:
+    """Findet einen Event per Titelsuche – zuerst in Jarvis-DB, dann Google Calendar."""
+    rows = db.query(
+        "SELECT uid, title, start_ts, end_ts, all_day, location, gcal_id "
+        "FROM calendar_events WHERE LOWER(title) LIKE %s ORDER BY start_ts LIMIT 1",
+        (f"%{query.lower()}%",),
+    )
+    if rows:
+        return rows[0]
+    # Fallback: Google Calendar direkt durchsuchen
+    if gcal_writer.is_available():
+        gcal_hits = gcal_writer.find_by_title(query)
+        if gcal_hits:
+            e = gcal_hits[0]
+            return {"uid": None, "gcal_id": e["id"], "title": e.get("summary", ""),
+                    "source": "gcal"}
+    return None
+
+
+def update_event(uid: str, title: str = None, start: datetime = None,
+                 end: datetime = None, location: str = None, notes: str = None) -> bool:
+    """Aktualisiert einen Jarvis-Event (DB + Google Calendar)."""
+    fields, vals = [], []
+    if title:    fields.append("title = %s");    vals.append(title)
+    if start:    fields.append("start_ts = %s"); vals.append(start)
+    if end:      fields.append("end_ts = %s");   vals.append(end)
+    if location is not None: fields.append("location = %s"); vals.append(location)
+    if notes is not None:    fields.append("notes = %s");    vals.append(notes)
+    if not fields:
+        return False
+    vals.append(uid)
+    db.execute(f"UPDATE calendar_events SET {', '.join(fields)} WHERE uid = %s", vals)
+
+    # Google Calendar sync
+    rows = db.query("SELECT gcal_id FROM calendar_events WHERE uid = %s", (uid,))
+    if rows and rows[0].get("gcal_id") and gcal_writer.is_available():
+        gcal_writer.update_event(rows[0]["gcal_id"], title=title, start=start,
+                                 end=end, location=location, description=notes)
+    invalidate_cache()
+    return True
+
+
+def delete_event(uid: str | None, gcal_id: str | None = None) -> bool:
+    """Löscht einen Event aus DB und/oder Google Calendar."""
+    if uid:
+        rows = db.query("SELECT gcal_id FROM calendar_events WHERE uid = %s", (uid,))
+        if rows and rows[0].get("gcal_id"):
+            gcal_id = gcal_id or rows[0]["gcal_id"]
+        db.execute("DELETE FROM calendar_events WHERE uid = %s", (uid,))
+    if gcal_id and gcal_writer.is_available():
+        gcal_writer.delete_event(gcal_id)
+    invalidate_cache()
+    return True
 
 
 def create_event(title: str, start: datetime, end: datetime = None,
@@ -101,9 +179,29 @@ def create_event(title: str, start: datetime, end: datetime = None,
     uid = f"jarvis-{uuid.uuid4()}"
     if end is None and not all_day:
         end = start + timedelta(hours=1)
+
+    # In Jarvis-DB speichern (immer)
     db.execute(
         "INSERT INTO calendar_events (uid, title, start_ts, end_ts, all_day, location, notes) "
         "VALUES (%s,%s,%s,%s,%s,%s,%s)",
         (uid, title, start, end, all_day, location, notes),
     )
+
+    # Zusätzlich nach Google Calendar pushen (wenn konfiguriert)
+    if gcal_writer.is_available():
+        gcal_id = gcal_writer.create_event(
+            title=title, start=start, end=end,
+            location=location, description=notes, all_day=all_day,
+        )
+        if gcal_id:
+            # Google Event-ID im Datensatz speichern für spätere Updates/Löschungen
+            try:
+                db.execute(
+                    "UPDATE calendar_events SET gcal_id = %s WHERE uid = %s",
+                    (gcal_id, uid),
+                )
+            except Exception:
+                pass  # Spalte existiert noch nicht – Migration läuft separat
+        invalidate_cache()
+
     return uid

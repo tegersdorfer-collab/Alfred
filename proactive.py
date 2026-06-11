@@ -17,26 +17,28 @@ except Exception:
 
 log = logging.getLogger(__name__)
 
-PROACTIVE_PROMPT = """Du bist Jarvis. Antworte IMMER auf Deutsch.
+PROACTIVE_PROMPT = """Du bist Jarvis, Timos persönlicher AI-Assistent. Antworte IMMER auf Deutsch.
 
-Du überlegst ob du Timo jetzt proaktiv schreiben sollst.
+Du überlegst, ob du Timo jetzt proaktiv etwas schreiben sollst.
 
-Generiere EINEN konkreten Gedanken/eine Nachricht an Timo auf Deutsch.
+Generiere EINE kurze, natürliche Nachricht – wie ein Freund, kein Coach oder Therapeut.
 
-Priorität (in dieser Reihenfolge):
-1. Follow-up zu etwas Konkretem aus dem letzten Gespräch – aber NUR wenn noch offen
-2. Beobachtung oder Impuls basierend auf seinen Daten (Gesundheit, Ziele, Habits)
-3. Gezielte Frage zu etwas das du noch NICHT weißt und nicht bereits gefragt hast
+Mögliche Anlässe (Priorität):
+1. Sinnvoller Follow-up zu etwas aus dem letzten Gespräch (nur wenn noch offen/relevant)
+2. Konkrete Beobachtung aus seinen Daten (Training, Gesundheit, Habits) – neutral, kein Urteil
+3. Kurze praktische Info oder Erinnerung die ihm gerade helfen könnte
 
 STRENGE Regeln:
-- Max 2-3 Sätze
-- Kein "Hallo Timo" – direkt rein
-- Kein leeres "Wie geht's?" ohne Kontext
-- KEINE Frage die im letzten Gespräch bereits gestellt oder beantwortet wurde
-- KEINE Wiederholung von Themen die im letzten Gespräch bereits besprochen wurden
-- Wenn du dir nicht sicher bist ob das Thema neu ist: lieber schweigen
-- KEINE Diagnosen, medizinischen Erklärungen oder Ursachen erfinden die Timo nicht selbst genannt hat
-- Nur Fakten verwenden die Timo dir tatsächlich mitgeteilt hat
+- Max 1-2 Sätze
+- Kein "Hallo Timo" – direkt zur Sache
+- KEIN Coaching, Verhaltensanalyse oder Moralpredigten
+- KEINE Bewertung seines Verhaltens oder Charakters
+- KEINE Wiederholung von bereits besprochenen Themen
+- Nur Fakten verwenden die Timo tatsächlich mitgeteilt hat
+- Im Zweifel: lieber schweigen als eine generische Nachricht senden
+- NIEMALS ankündigen etwas zu tun ("ich sende dir gleich...", "ich schicke dir in einer Minute...")
+- NIEMALS behaupten etwas getan zu haben was du nicht wirklich getan hast
+- NIEMALS Code, Skripte oder Visualisierungen versprechen oder vortäuschen sie zu senden – das kannst du in dieser Nachricht nicht tun
 
 Aktuelle Zeit: {time}
 Was du über Timo weißt:
@@ -50,15 +52,20 @@ EVALUATE_PROMPT = """Du bist Jarvis. Du hast gerade diesen Gedanken generiert:
 
 Entscheide: Soll ich das JETZT an Timo schicken?
 
-Kriterien für JA:
-- Echter Mehrwert oder echte Frage
-- Nicht zu ähnlich wie die letzte Nachricht
-- Nicht zu aufdringlich für den Zeitpunkt
+Strenge Kriterien für JA (ALLE müssen erfüllt sein):
+- Konkreter, unmittelbarer Mehrwert für Timo
+- Neue Information die er noch nicht kennt oder eine offene Aktion
+- Kein Coaching, keine Verhaltensanalyse, kein Urteil
+- Würde ein guter Freund das auch schicken?
 
-Kriterien für NEIN:
-- Zu trivial oder generisch
+Kriterien für NEIN (eines reicht):
+- Generisch oder austauschbar
 - Keine neuen Informationen
-- Wirkt aufgesetzt
+- Klingt nach Coaching oder Moralappell
+- Timo könnte es als nervig oder aufdringlich empfinden
+- Kündigt etwas an was nicht in dieser Nachricht passiert ("ich sende dir gleich...", "ich schicke...")
+- Behauptet etwas getan zu haben was nicht wirklich passiert ist
+- Im Zweifel: NEIN
 
 Antworte NUR mit: JA oder NEIN"""
 
@@ -93,12 +100,28 @@ class ProactiveTracker:
     def can_send(self) -> bool:
         self._reset_if_new_day()
 
+        # Nacht-Modus: zwischen 22:30 und 06:30 keine proaktiven Nachrichten
+        now = datetime.now()
+        night_start = now.replace(hour=22, minute=30, second=0, microsecond=0)
+        night_end   = now.replace(hour=6,  minute=30, second=0, microsecond=0)
+        if now >= night_start or now < night_end:
+            return False
+
         # Mindestabstand zum letzten proaktiven Message
         if self._last_sent:
-            elapsed = (datetime.now() - self._last_sent).total_seconds()
+            elapsed = (now - self._last_sent).total_seconds()
             if elapsed < self._interval():
                 return False
 
+        return True
+
+    def can_send_data_event(self) -> bool:
+        """Datenereignis-Bypass: Intervall ignorieren, nur Nacht-Modus beachten."""
+        now = datetime.now()
+        night_start = now.replace(hour=22, minute=30, second=0, microsecond=0)
+        night_end   = now.replace(hour=6,  minute=30, second=0, microsecond=0)
+        if now >= night_start or now < night_end:
+            return False
         return True
 
     def record_sent(self) -> None:
@@ -116,10 +139,11 @@ class ProactiveTracker:
 class ProactiveEngine:
     """Generiert und sendet proaktive Nachrichten."""
 
-    def __init__(self, llm: LLMProvider, lzg: LZG, claude: LLMProvider | None = None):
+    def __init__(self, llm: LLMProvider, lzg: LZG, claude: LLMProvider | None = None, kg=None):
         self.llm    = llm
         self.lzg    = lzg
-        self.claude = claude  # Optional: Claude Code für Bewertung
+        self.claude = claude
+        self.kg     = kg  # KnowledgeGraph (optional)
 
     async def evaluate(self, thought: str) -> bool:
         """
@@ -201,17 +225,33 @@ class ProactiveEngine:
                     )
 
                 # Gesamte Chat-History als Kontext
+                # Ankündigungs-Phrasen filtern damit das Muster nicht verstärkt wird
+                _bad_phrases = ("sende dir", "schicke dir", "ist fertig", "ist bereit",
+                                "gleich zu", "in einer minute", "zugestellt", "gesendet",
+                                "fertiggestellt", "ist unterwegs")
                 rows_conv = list(reversed(rows[:12]))
                 lines = []
                 for r in rows_conv:
                     role_label = "Timo" if r["role"] == "user" else "Jarvis"
-                    lines.append(f"{role_label}: {r['content'][:200]}")
+                    content = r['content'][:200]
+                    # Jarvis-Nachrichten die Ankündigungen enthalten überspringen
+                    if r["role"] == "assistant" and any(p in content.lower() for p in _bad_phrases):
+                        continue
+                    lines.append(f"{role_label}: {content}")
                 recent_chat_ctx = "\nLetztes Gespräch:\n" + "\n".join(lines) + "\n"
         except Exception as e:
             log.debug(f"Chat-History für Proaktiv fehlgeschlagen: {e}")
 
+        # Wissens-Graph Kontext
+        kg_ctx = ""
+        if self.kg:
+            try:
+                kg_ctx = "\n" + self.kg.format_for_context()
+            except Exception as e:
+                log.debug(f"KG-Kontext für Proaktiv fehlgeschlagen: {e}")
+
         now = datetime.now().strftime("%A, %d. %B %Y, %H:%M Uhr")
-        memories_with_dashboard = memory_ctx
+        memories_with_dashboard = memory_ctx + kg_ctx
         if dashboard_ctx:
             memories_with_dashboard += f"\n\nLive-Daten:\n{dashboard_ctx}"
         prompt = PROACTIVE_PROMPT.format(

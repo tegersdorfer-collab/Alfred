@@ -35,6 +35,7 @@ class Agent:
         max_tokens: int = 1500,
         use_tools: bool = True,
         allowed_tools: list[str] | None = None,
+        force_tools: bool = False,
         think: bool = False,
         model: str | None = None,
         keep_alive: str | None = None,
@@ -63,6 +64,8 @@ class Agent:
 
         for step in range(self._max_steps):
             is_first = step == 0
+            # Ersten Schritt erzwingen wenn Aktion erkannt und Tools vorhanden
+            force = force_tools and is_first and bool(schemas)
             BUS.emit("thinking", "Denke nach…", detail=model or self._model)
             content, tool_calls = await self._call(
                 msgs,
@@ -73,11 +76,32 @@ class Agent:
                 think=think and is_first,
                 model=model,
                 keep_alive=keep_alive,
+                force_tool_call=force,
             )
 
             if not tool_calls:
-                # Fertig – wurde bereits live gestreamt
-                return content.strip(), trace
+                # Kein Tool-Call obwohl erwartet → einmal retry mit expliziter Anweisung
+                if force_tools and is_first and schemas:
+                    log.debug("Kein Tool-Call trotz force_tools – retry mit explizitem Hint")
+                    msgs.append({"role": "assistant", "content": content or ""})
+                    msgs.append({
+                        "role": "user",
+                        "content": "[SYSTEM] Du hast gerade KEIN Tool aufgerufen. "
+                                   "Rufe jetzt sofort das passende Tool auf – antworte nicht mit Text."
+                    })
+                    content, tool_calls = await self._call(
+                        msgs, tools=schemas, stream_cb=None,
+                        temperature=0.3, max_tokens=200,
+                        model=model, keep_alive=keep_alive,
+                    )
+                    if not tool_calls:
+                        # Immer noch kein Tool → originale Antwort zurückgeben
+                        return content.strip() or (msgs[-2].get("content", "")).strip(), trace
+                    # Tool-Call kam beim Retry → weiter im Loop
+                    msgs = msgs[:-2]  # Retry-Nachrichten wieder entfernen
+                else:
+                    # Fertig – wurde bereits live gestreamt
+                    return content.strip(), trace
 
             # Tool-Calls: Platzhalter zurücksetzen, dann ausführen
             if stream_cb:
@@ -123,6 +147,7 @@ class Agent:
         think: bool = False,
         model: str | None = None,
         keep_alive: str | None = None,
+        force_tool_call: bool = False,
     ) -> tuple[str, list[dict]]:
         """Ein einzelner LLM-Call. Streamt wenn stream_cb gesetzt und keine Tools."""
         mdl = model or self._model

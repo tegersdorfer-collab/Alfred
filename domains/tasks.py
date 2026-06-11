@@ -20,7 +20,7 @@ def create_task(title: str, kind: str = "task", priority: str = "medium",
 def list_tasks(status: str = "open", include_sub: bool = True) -> list[dict]:
     """status: open (todo+in_progress) | done | archived | all"""
     if status == "open":
-        where = "status IN ('todo','in_progress')"
+        where = "status IN ('todo','in_progress') AND (suggestion_status IS NULL OR suggestion_status != 'proposed')"
     elif status == "all":
         where = "status != 'archived'"
     else:

@@ -108,7 +108,8 @@ import re as _re
 # Aktions-/Bedarfssignale → relevante Kategorien
 _CATEGORY_KEYWORDS = {
     "productivity": ["aufgabe", "task", "todo", "to-do", "erinner", "reminder",
-                     "termin", "kalender", "meeting", "deadline", "fällig"],
+                     "termin", "kalender", "meeting", "deadline", "fällig",
+                     "lösch", "verschieb", "verlege", "ändere den termin", "streich"],
     "habits":       ["gewohnheit", "habit", "abhaken", "abgehakt", "hake", "hak ", "abhak",
                      "streak", "routine", "geschafft", "erledigt für heute"],
     "fitness":      ["training", "workout", "trainiert", "gelaufen", "lauf", "gym",
@@ -129,6 +130,12 @@ _CATEGORY_KEYWORDS = {
 _ACTION_WORDS = ["erstell", "leg ", "lege ", "anlegen", "hak", "trag", "trage", "setz",
                  "lösch", "aktualisier", "update", "plan", "notier", "füg", "add",
                  "starte", "beende", "merk", "erinner", "mach mir", "trag ein"]
+
+
+def is_action(text: str) -> bool:
+    """Gibt True zurück wenn die Nachricht ein Aktionswort enthält (Tool-Call erzwingen)."""
+    t = text.lower()
+    return any(w in t for w in _ACTION_WORDS)
 
 
 def select_tools(text: str) -> list[str]:
@@ -161,4 +168,4 @@ def select_tools(text: str) -> list[str]:
             if n not in names:
                 names.append(n)
 
-    return names[:8]   # Prefill begrenzen
+    return names[:12]   # Prefill begrenzen

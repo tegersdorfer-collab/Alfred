@@ -255,6 +255,14 @@ MIGRATIONS = [
     """,
     "CREATE INDEX IF NOT EXISTS tasks_status_idx ON tasks(status);",
     "CREATE INDEX IF NOT EXISTS tasks_parent_idx ON tasks(parent_id);",
+    "ALTER TABLE tasks ADD COLUMN IF NOT EXISTS assigned_to TEXT DEFAULT 'user';",
+    "ALTER TABLE tasks ADD COLUMN IF NOT EXISTS jarvis_result TEXT;",
+    "ALTER TABLE tasks ADD COLUMN IF NOT EXISTS rejection_reason TEXT;",
+    "ALTER TABLE tasks ADD COLUMN IF NOT EXISTS suggestion_status TEXT;",
+    "ALTER TABLE tasks ADD COLUMN IF NOT EXISTS execution_phase TEXT DEFAULT 'pending';",
+    "ALTER TABLE tasks ADD COLUMN IF NOT EXISTS clarification_question TEXT;",
+    "ALTER TABLE tasks ADD COLUMN IF NOT EXISTS clarification_answer TEXT;",
+    "ALTER TABLE tasks ADD COLUMN IF NOT EXISTS hold_until TIMESTAMPTZ;",
 
     # Jarvis' eigene Agenda (autonome To-dos)
     """
@@ -380,6 +388,7 @@ MIGRATIONS = [
     "CREATE INDEX IF NOT EXISTS workouts_date_idx ON workouts(date);",
     "CREATE INDEX IF NOT EXISTS meals_date_idx ON meals(date);",
     "CREATE INDEX IF NOT EXISTS journal_date_idx ON journal_entries(date);",
+    "ALTER TABLE journal_entries ADD COLUMN IF NOT EXISTS prompts_answers JSONB;",
     "CREATE INDEX IF NOT EXISTS agenda_status_idx ON agenda(status, run_after);",
     "CREATE INDEX IF NOT EXISTS events_log_created_idx ON events_log(created_at DESC);",
     "CREATE INDEX IF NOT EXISTS chat_messages_created_idx ON chat_messages(created_at DESC);",

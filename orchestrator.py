@@ -13,7 +13,6 @@ from llm.base import LLMProvider
 from llm.local import OllamaProvider
 from memory.kzg import KZG
 from memory.lzg import LZG
-from memory.compressor import Compressor
 from memory.consolidator import Consolidator
 from memory.extractor import MemoryExtractor
 from memory.knowledge import KnowledgeGraph
@@ -31,6 +30,7 @@ from core.reflection import Reflection
 from core.db import log_event
 
 from tools.search import WebSearch
+from domains import pattern_detector
 from tools.dashboard import DashboardReader
 from tools.reminders import ReminderStore
 from tools.router import pick_model
@@ -63,7 +63,6 @@ class Orchestrator:
 
         self.kzg          = KZG()
         self.kg           = KnowledgeGraph()
-        self.compressor   = Compressor(llm=llm, kzg=self.kzg, lzg=self.lzg)
         self.consolidator = Consolidator(llm=llm, lzg=self.lzg)
         self.forgetting   = ForgettingCurve()
         self.extractor    = MemoryExtractor(llm_provider=llm, lzg=self.lzg, kg=self.kg)
@@ -75,21 +74,23 @@ class Orchestrator:
         self._reminders = ReminderStore()
 
         self._proactive_tracker = ProactiveTracker()
-        self._proactive_engine  = ProactiveEngine(llm=llm, lzg=lzg, claude=None)
+        self._proactive_engine  = ProactiveEngine(llm=llm, lzg=lzg, claude=None, kg=self.kg)
 
-        self._llm_lock = asyncio.Lock()       # serialisiert schwere LLM-Last
         self._last_user_ts = 0.0              # Zeitpunkt letzter User-Interaktion
 
         self.autopilot = Autopilot(
             llm=llm, lzg=lzg, dashboard=self._dashboard, reminders=self._reminders,
             channel=channel, proactive=self._proactive_engine,
             tracker=self._proactive_tracker, identity=IDENTITY,
-            lock=self._llm_lock, is_user_active=self._user_active,
+            lock=None, is_user_active=self._user_active,
+            search=self._search,
         )
 
         self._state = "idle"
         self._last_consolidation: datetime | None = None
         self._last_compress: datetime | None = None
+        self._last_pattern_run: datetime | None = None
+        self._last_health_refresh: datetime | None = None
         self._idle_task: asyncio.Task | None = None
 
     def _user_active(self) -> bool:
@@ -155,6 +156,10 @@ class Orchestrator:
             "Ernährung, Journal, Ziele, Health-Daten, Wetter, Web-Suche, Gedächtnis). "
             "Nutze sie EIGENSTÄNDIG wenn Timo etwas erledigt oder wissen will – frag nicht um Erlaubnis, "
             "handle. Antworte danach kurz und natürlich auf Deutsch.\n"
+            "KRITISCH: Wenn Timo eine AKTION verlangt (löschen, erstellen, eintragen, verschieben, "
+            "erinnern, abhaken etc.) MUSST du das passende Tool aufrufen. NIEMALS sagen 'ich habe "
+            "keine Funktion dafür' oder 'ich kann das nicht' wenn ein passendes Tool existiert. "
+            "Beispiel: 'Lösch den Termin X' → delete_calendar_event aufrufen.\n"
             "ZEIT/DATUM: Nutze den Wert aus '## Aktuell' weiter unten als aktuelle Zeit (Europe/Berlin). "
             "Rechne Wochentage/relative Angaben IMMER ab heute. Für Termine/Reminder nutze "
             "Formate wie 'morgen 14:00', 'heute 18:30' oder 'TT.MM.JJJJ HH:MM' – immer LOKALE Zeit, "
@@ -199,6 +204,46 @@ class Orchestrator:
         self.kzg.add("user", msg.text)
         self._persist_msg("user", msg.text, channel="telegram")
 
+        # ── Task-Klärungsantwort erkennen ──────────────────────────────────────
+        waiting = db.query(
+            """SELECT id FROM tasks
+               WHERE execution_phase='waiting_clarification'
+               AND clarification_answer IS NULL
+               ORDER BY created_at DESC LIMIT 1"""
+        )
+        if waiting:
+            db.execute(
+                "UPDATE tasks SET clarification_answer=%s, execution_phase='executing', hold_until=NULL WHERE id=%s",
+                (msg.text, waiting[0]["id"])
+            )
+            response = "Danke! Ich mache mit deiner Antwort weiter an der Aufgabe. 👍"
+            self.kzg.add("assistant", response)
+            self._persist_msg("assistant", response)
+            BUS.emit("response", response)
+            return
+        # ───────────────────────────────────────────────────────────────────────
+
+        # ── Alpha Progression Auto-Import ──────────────────────────────────────
+        from domains import alphaprogression as _ap
+        _ap_url = _ap.extract_link(msg.text)
+        if _ap_url:
+            BUS.emit("thinking", "Alpha Progression wird importiert…")
+            try:
+                import asyncio as _asyncio
+                loop = _asyncio.get_running_loop()
+                response = await loop.run_in_executor(None, _ap.fetch_and_log, _ap_url)
+            except Exception as _e:
+                log.error(f"AP import error: {_e}")
+                response = f"❌ Fehler beim Importieren: {_e}"
+            self.kzg.add("assistant", response)
+            self._persist_msg("assistant", response)
+            BUS.emit("response", response)
+            # Task-Vorschlag nach Workout-Import
+            if "✅" in response:
+                asyncio.create_task(self._suggest_from_event(f"Neues Workout eingetragen: {response[:120]}"))
+            return
+        # ───────────────────────────────────────────────────────────────────────
+
         # Kontext bauen
         system = await self._build_system_prompt(msg.text)
 
@@ -207,18 +252,20 @@ class Orchestrator:
 
         allowed = skills.T.select_tools(msg.text)
         model, keep_alive = pick_model(msg.text)
+        # force_tools=True wenn Tools vorhanden UND Aktionswort erkannt
+        force_tools = bool(allowed) and skills.T.is_action(msg.text)
         try:
-            async with self._llm_lock:
-                response, trace = await self.agent.run(
-                    messages=self.kzg.recent_messages(max_tokens=3000),
-                    system=system,
-                    stream_cb=stream_cb,
-                    allowed_tools=allowed,
-                    temperature=0.75,
-                    max_tokens=1500,
-                    model=model,
-                    keep_alive=keep_alive,
-                )
+            response, trace = await self.agent.run(
+                messages=self.kzg.recent_messages(max_tokens=3000),
+                system=system,
+                stream_cb=stream_cb,
+                allowed_tools=allowed,
+                force_tools=force_tools,
+                temperature=0.75,
+                max_tokens=1500,
+                model=model,
+                keep_alive=keep_alive,
+            )
         except Exception as e:
             log.error(f"Agent-Fehler: {e}")
             response, trace = "⚠️ Technisches Problem, versuch es nochmal.", []
@@ -235,7 +282,14 @@ class Orchestrator:
         BUS.emit("idle", "Bereit", detail=f"{elapsed:.1f}s · {model}")
 
         # Hintergrund: Lernen
+        tools_used = [t["tool"] for t in trace]
         asyncio.create_task(self._post_turn(msg.text, response))
+        # Trigger für Task-Vorschlag bei relevanten Tool-Nutzungen
+        trigger_tools = {"create_habit", "create_task", "create_goal", "add_event", "log_workout"}
+        if any(t in trigger_tools for t in tools_used):
+            asyncio.create_task(self._suggest_from_event(
+                f"Jarvis hat gerade '{', '.join(t for t in tools_used if t in trigger_tools)}' ausgeführt: {msg.text[:120]}"
+            ))
         self._resume_idle()
 
     async def dashboard_respond(self, text: str, stream_cb=None) -> tuple[str, list]:
@@ -243,17 +297,37 @@ class Orchestrator:
         self._last_user_ts = time.time()
         self.kzg.add("user", text)
         self._persist_msg("user", text, channel="dashboard")
+
+        # ── Alpha Progression Auto-Import ──────────────────────────────────────
+        from domains import alphaprogression as _ap
+        _ap_url = _ap.extract_link(text)
+        if _ap_url:
+            BUS.emit("thinking", "Alpha Progression wird importiert…")
+            try:
+                import asyncio as _asyncio
+                loop = _asyncio.get_running_loop()
+                response = await loop.run_in_executor(None, _ap.fetch_and_log, _ap_url)
+            except Exception as _e:
+                log.error(f"AP import error: {_e}")
+                response = f"❌ Fehler beim Importieren: {_e}"
+            self.kzg.add("assistant", response)
+            self._persist_msg("assistant", response, channel="dashboard")
+            BUS.emit("response", response)
+            return response, []
+        # ───────────────────────────────────────────────────────────────────────
+
         system = await self._build_system_prompt(text)
         allowed = skills.T.select_tools(text)
         model, keep_alive = pick_model(text)
+        force_tools = bool(allowed) and skills.T.is_action(text)
         try:
-            async with self._llm_lock:
-                response, trace = await self.agent.run(
-                    messages=self.kzg.recent_messages(max_tokens=3000), system=system,
-                    stream_cb=stream_cb, allowed_tools=allowed,
-                    temperature=0.75, max_tokens=1500,
-                    model=model, keep_alive=keep_alive,
-                )
+            response, trace = await self.agent.run(
+                messages=self.kzg.recent_messages(max_tokens=3000), system=system,
+                stream_cb=stream_cb, allowed_tools=allowed,
+                force_tools=force_tools,
+                temperature=0.75, max_tokens=1500,
+                model=model, keep_alive=keep_alive,
+            )
         except Exception as e:
             log.error(f"Dashboard-Agent-Fehler: {e}")
             response, trace = "⚠️ Technisches Problem.", []
@@ -269,8 +343,20 @@ class Orchestrator:
         n = await self.extractor.extract_from_exchange(user_text, response)
         if n > 0:
             BUS.emit("memory", f"🧠 {n} neue{'r' if n == 1 else ''} Fakt{'' if n == 1 else 'en'} gespeichert")
+            # Neue Fakten/Ziele → Task-Vorschlag
+            asyncio.create_task(self._suggest_from_event(
+                f"Neue Information über Timo: {user_text[:100]}"
+            ))
         else:
             BUS.emit("idle", "Bereit")
+
+    async def _suggest_from_event(self, trigger: str) -> None:
+        """Generiert einen Task-Vorschlag aus einem Datenereignis (fire & forget)."""
+        try:
+            from domains.task_executor import suggest_one
+            await suggest_one(trigger, self.llm, self.lzg)
+        except Exception as e:
+            log.debug(f"suggest_from_event: {e}")
 
     # ── Streaming-Helfer ───────────────────────────────────────────────────────
 
@@ -345,19 +431,62 @@ class Orchestrator:
                             log.info(f"🕐 Forgetting: {stats}")
                     except Exception as e:
                         log.debug(f"ForgettingCurve: {e}", exc_info=True)
-                    # Health stündlich aus iCloud nachziehen (billig, Datei ~2KB)
+                    # Health aus iCloud nachziehen: stündlich, oder alle 15min wenn heute fehlt
                     try:
-                        await asyncio.to_thread(self._dashboard.refresh_health)
+                        now_h = datetime.now()
+                        today_missing = not db.query_one(
+                            "SELECT 1 FROM health_data WHERE date=CURRENT_DATE AND steps IS NOT NULL LIMIT 1"
+                        )
+                        health_interval = 900 if today_missing else 3600
+                        since_last = (now_h - self._last_health_refresh).total_seconds() if self._last_health_refresh else health_interval + 1
+                        if since_last >= health_interval:
+                            self._last_health_refresh = now_h
+                        new_days = await asyncio.to_thread(self._dashboard.refresh_health) if since_last >= health_interval else 0
+                        if new_days and self._proactive_tracker.can_send_data_event():
+                            # Neue Gesundheitsdaten → proaktive Nachricht + Task-Vorschlag
+                            thought = await self._proactive_engine.generate()
+                            if thought and await self._proactive_engine.evaluate(thought):
+                                await self.autopilot._send(thought, kind="health_update")
+                                self._proactive_tracker.record_sent()
+                            # Task-Vorschlag aus Health-Daten
+                            try:
+                                from domains.task_executor import suggest_one
+                                await suggest_one(
+                                    f"Neue Gesundheitsdaten für {new_days} Tag(e) importiert",
+                                    self.llm, self.lzg
+                                )
+                            except Exception as _e:
+                                log.debug(f"Health-Suggestion: {_e}")
                     except Exception as e:
                         log.debug(f"Health-Refresh: {e}", exc_info=True)
 
-            # Adaptiver Takt: bis kurz vor den nächsten Reminder schlafen (max 60s)
+                # Pattern-Erkennung 1x täglich (86400s)
+                now_p = datetime.now()
+                if (self._last_pattern_run is None or
+                        (now_p - self._last_pattern_run).total_seconds() > 86400):
+                    self._last_pattern_run = now_p
+                    try:
+                        n = await pattern_detector.update_memories(self.lzg, self.llm)
+                        if n:
+                            log.info(f"🔍 Pattern Detector: {n} neue Muster gespeichert")
+                    except Exception as e:
+                        log.debug(f"Pattern Detector: {e}", exc_info=True)
+
+            # Adaptiver Takt: kürzer wenn Jarvis gerade an Tasks arbeitet
             try:
                 nxt = self._reminders.next_due_seconds()
             except Exception as e:
                 log.debug(f"Reminder-next_due: {e}", exc_info=True)
                 nxt = None
-            delay = 60 if nxt is None else max(5, min(60, nxt + 1))
+            # Aktive Jarvis-Task? → 8s Takt statt 60s
+            from core import db as _db
+            has_active_task = _db.query(
+                "SELECT 1 FROM tasks WHERE assigned_to='jarvis' AND status='in_progress' AND execution_phase IN ('executing','finalizing') LIMIT 1"
+            )
+            if has_active_task:
+                delay = 8
+            else:
+                delay = 60 if nxt is None else max(5, min(60, nxt + 1))
             await asyncio.sleep(delay)
 
     # ── Persistenz ──────────────────────────────────────────────────────────────

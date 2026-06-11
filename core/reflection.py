@@ -7,9 +7,8 @@ Selbst-Verbesserung – Jarvis lernt über sich selbst und über Timo.
    leitet Verhaltensanpassungen ab (z.B. mehr/weniger proaktiv, Tonfall).
 3. behavior_notes(): liefert gelernte Stil-Hinweise für den System-Prompt.
 """
-import json
 import logging
-from datetime import date, datetime
+from datetime import datetime
 
 from core import db, fast
 from core.db import log_event
@@ -69,67 +68,6 @@ class Reflection:
         if out and not out.upper().startswith("NICHTS") and len(out) > 8:
             self._add_note(out)
 
-    # ── Tages-Reflexion (einmal/Tag, tiefer) ──────────────────────────────────
-
-    def _needs_daily(self) -> bool:
-        return db.get_setting("reflection_daily_date") != str(date.today())
-
     async def daily_reflection(self) -> str | None:
-        if not self._needs_daily():
-            return None
-        db.set_setting("reflection_daily_date", str(date.today()))
-
-        msgs = db.query(
-            "SELECT role, content, channel FROM chat_messages ORDER BY created_at DESC LIMIT 30"
-        )
-        if len(msgs) < 4:
-            return None
-        convo = "\n".join(
-            f"{'Timo' if m['role']=='user' else 'Jarvis'}: {m['content'][:200]}"
-            for m in reversed(msgs)
-        )
-        prompt = (
-            "Du bist Jarvis und reflektierst über deine Arbeit mit Timo. "
-            "Analysiere die jüngsten Interaktionen und antworte als JSON:\n"
-            '{"insight": "wichtigste Erkenntnis (1 Satz)", '
-            '"behavior_adjustment": "konkrete Verhaltensänderung oder leer", '
-            '"proactivity": "more|less|keep"}\n\n'
-            f"Interaktionen:\n{convo}\n\nJSON:"
-        )
-        try:
-            from core.jsonutil import extract_json
-            raw = await self.llm.chat(messages=[{"role": "user", "content": prompt}],
-                                      temperature=0.4, max_tokens=300, format="json")
-            data = extract_json(raw, default={})
-        except Exception as ex:
-            log.debug(f"Tages-Reflexion JSON-Fehler: {ex}")
-            return None
-        if not isinstance(data, dict):
-            data = {}
-
-        insight = (data.get("insight") or "").strip()
-        adjustment = (data.get("behavior_adjustment") or "").strip()
-        proactivity = (data.get("proactivity") or "keep").strip().lower()
-
-        if insight:
-            db.execute(
-                "INSERT INTO reflections (kind, content, insights) VALUES ('daily', %s, %s)",
-                (insight, json.dumps(data)),
-            )
-        if adjustment and len(adjustment) > 5:
-            self._add_note(adjustment)
-
-        # Proaktivität anpassen (begrenzt)
-        if proactivity in ("more", "less"):
-            cur = db.get_setting("proactive_interval_override")
-            base = cur if isinstance(cur, (int, float)) else 1800
-            if proactivity == "more":
-                base = max(900, int(base * 0.8))
-            else:
-                base = min(7200, int(base * 1.25))
-            db.set_setting("proactive_interval_override", base)
-            log_event("reflection", f"Proaktivität → {proactivity} (Intervall {base}s)")
-
-        log.info(f"🪞 Tages-Reflexion: {insight[:80]}")
-        log_event("reflection", f"Tages-Reflexion: {insight[:100]}")
-        return insight
+        """Deaktiviert – erzeugte halluzinierte Insights. Ersetzt durch KG + LZG."""
+        return None

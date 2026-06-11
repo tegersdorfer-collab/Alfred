@@ -1,7 +1,7 @@
 """
 Schneller Hilfs-LLM für günstige Entscheidungen:
 Klassifikation, Ja/Nein-Urteile, kurze Zusammenfassungen.
-Nutzt AGENT_MODEL_FAST (qwen3.5:4b) – kein drittes Modell im RAM.
+Nutzt AGENT_MODEL_FAST (standardmäßig qwen3.5:9b via .env) – gleiches Modell wie Hauptgespräche, kein extra RAM.
 """
 import logging
 

@@ -15,11 +15,12 @@ def list_habits(active_only: bool = True) -> list[dict]:
 
 
 def create_habit(name: str, emoji: str = "✅", cadence: str = "daily",
-                 target_per_week: int = 7, color: str = "#0ea5e9") -> int:
+                 target_per_week: int = 7, color: str = "#0ea5e9",
+                 category: str = "day") -> int:
     return db.insert_returning(
-        """INSERT INTO habits (name, emoji, cadence, target_per_week, color)
-           VALUES (%s,%s,%s,%s,%s) RETURNING id""",
-        (name, emoji, cadence, target_per_week, color),
+        """INSERT INTO habits (name, emoji, cadence, target_per_week, color, category)
+           VALUES (%s,%s,%s,%s,%s,%s) RETURNING id""",
+        (name, emoji, cadence, target_per_week, color, category),
     )
 
 

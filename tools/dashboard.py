@@ -6,7 +6,7 @@ Klassenname/Methoden bleiben kompatibel zu den bestehenden Aufrufstellen.
 """
 import logging
 from dataclasses import dataclass
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from typing import Optional
 
 from domains import health as health_d
@@ -18,8 +18,17 @@ _WD = ["Montag", "Dienstag", "Mittwoch", "Donnerstag", "Freitag", "Samstag", "So
 
 
 def _de_date(dt: datetime, with_time: bool) -> str:
-    s = f"{_WD[dt.weekday()]} {dt.strftime('%d.%m.%Y')}"
-    return s + dt.strftime(" %H:%M") if with_time else s
+    today = date.today()
+    d = dt.date() if isinstance(dt, datetime) else dt
+    if d == today:
+        label = "Heute"
+    elif d == today + timedelta(days=1):
+        label = "Morgen"
+    elif d == today + timedelta(days=2):
+        label = "Übermorgen"
+    else:
+        label = f"{_WD[dt.weekday()]} {dt.strftime('%d.%m.')}"
+    return label + dt.strftime(" %H:%M") if with_time else label
 
 
 @dataclass
@@ -55,6 +64,8 @@ class CalendarItem:
     all_day: bool
     calendar: Optional[str]
     location: Optional[str]
+    uid: Optional[str] = None
+    source: Optional[str] = None
 
     def format(self) -> str:
         time_str = _de_date(self.start, with_time=not self.all_day)
@@ -93,12 +104,29 @@ class DashboardReader:
         return [CalendarItem(
             title=e["title"], start=e["start"], end=e.get("end"),
             all_day=e["all_day"], calendar=e.get("calendar"), location=e.get("location"),
+            uid=e.get("uid"), source=e.get("source"),
         ) for e in evs]
 
     def create_event(self, title: str, start, end=None, location: str = None,
                      notes: str = None, all_day: bool = False) -> str:
         return calendar_d.create_event(title=title, start=start, end=end,
                                        location=location, notes=notes, all_day=all_day)
+
+    def update_event(self, query: str, title: str = None, start=None,
+                     end=None, location: str = None) -> str:
+        ev = calendar_d.find_event(query)
+        if not ev:
+            return f"Kein Termin gefunden für '{query}'."
+        calendar_d.update_event(ev["uid"], title=title, start=start, end=end, location=location)
+        return f"Termin '{ev['title']}' aktualisiert."
+
+    def delete_event(self, query: str) -> str:
+        ev = calendar_d.find_event(query)
+        if not ev:
+            return f"Kein Termin gefunden für '{query}'."
+        title = ev.get("title", query)
+        calendar_d.delete_event(uid=ev.get("uid"), gcal_id=ev.get("gcal_id"))
+        return f"Termin '{title}' gelöscht."
 
     # ── Kontext für System-Prompt ──────────────────────────────────────────────
     def format_for_context(self) -> str:

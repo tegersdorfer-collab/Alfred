@@ -92,6 +92,27 @@ def create_app(orch=None) -> FastAPI:
             return []
         return [_health_dict(h) for h in orch._dashboard.get_recent_health(days=days)]
 
+    @app.post("/api/health/import")
+    async def health_import():
+        n = await asyncio.to_thread(lambda: __import__("domains.health", fromlist=["import_from_icloud"]).import_from_icloud())
+        return {"ok": True, "days": n}
+
+    @app.post("/api/health/manual")
+    async def health_manual(req: Request):
+        d = await req.json()
+        allowed = {"hrv", "resting_hr", "weight", "sleep_duration", "steps", "body_fat"}
+        fields = {k: v for k, v in d.items() if k in allowed and v is not None}
+        if not fields:
+            return {"ok": False, "error": "Keine gültigen Felder"}
+        date_str = d.get("date") or __import__("datetime").date.today().isoformat()
+        cols = list(fields.keys())
+        updates = ", ".join(f"{c}=EXCLUDED.{c}" for c in cols)
+        sql = (f"INSERT INTO health_data (date, {', '.join(cols)}, updated_at) "
+               f"VALUES (%s, {', '.join(['%s']*len(cols))}, NOW()) "
+               f"ON CONFLICT (date) DO UPDATE SET {updates}, updated_at=NOW()")
+        db.execute(sql, tuple([date_str] + [fields[c] for c in cols]))
+        return {"ok": True}
+
     # ── Habits ──────────────────────────────────────────────────────────────────
     @app.get("/api/habits")
     def get_habits():
@@ -106,8 +127,35 @@ def create_app(orch=None) -> FastAPI:
         hid = habits.create_habit(name=name, emoji=d.get("emoji", "✅"),
                                   cadence=d.get("cadence", "daily"),
                                   target_per_week=d.get("target_per_week", 7),
-                                  color=d.get("color", "#0ea5e9"))
+                                  color=d.get("color", "#0ea5e9"),
+                                  category=d.get("category", "day"))
         return {"id": hid}
+
+    @app.post("/api/habits/reorder")
+    async def reorder_habits(req: Request):
+        """Body: [{id: 1, sort_order: 0}, ...]"""
+        items = await req.json()
+        from core import db as _db
+        for item in items:
+            _db.execute("UPDATE habits SET sort_order = %s WHERE id = %s",
+                        (item["sort_order"], item["id"]))
+        return {"ok": True}
+
+    @app.patch("/api/habits/{hid}")
+    async def update_habit(hid: int, req: Request):
+        d = await req.json()
+        fields, vals = [], []
+        if "category" in d:
+            fields.append("category = %s"); vals.append(d["category"])
+        if "name" in d:
+            fields.append("name = %s"); vals.append(d["name"])
+        if "emoji" in d:
+            fields.append("emoji = %s"); vals.append(d["emoji"])
+        if fields:
+            vals.append(hid)
+            from core import db as _db
+            _db.execute(f"UPDATE habits SET {', '.join(fields)} WHERE id = %s", vals)
+        return {"ok": True}
 
     @app.post("/api/habits/{hid}/log")
     async def log_habit(hid: int, req: Request):
@@ -140,7 +188,59 @@ def create_app(orch=None) -> FastAPI:
         tid = tasks_d.create_task(title=d["title"], priority=d.get("priority", "medium"),
                                   kind=d.get("kind", "task"), due=due,
                                   notes=d.get("notes"), parent_id=d.get("parent_id"))
+        # Zuweisung: explizit > auto-klassifizieren
+        explicit = d.get("assigned_to")
+        if explicit in ("user", "jarvis"):
+            db.execute("UPDATE tasks SET assigned_to=%s WHERE id=%s", (explicit, tid))
+        elif orch:
+            try:
+                from domains.task_executor import classify
+                assignee = await classify(d["title"], d.get("notes"), orch.llm)
+                db.execute("UPDATE tasks SET assigned_to=%s WHERE id=%s", (assignee, tid))
+            except Exception:
+                pass
         return {"id": tid}
+
+    @app.get("/api/tasks/suggestions")
+    def get_suggestions():
+        rows = db.query(
+            "SELECT * FROM tasks WHERE suggestion_status='proposed' ORDER BY created_at DESC"
+        )
+        return _jsonable(rows)
+
+    @app.post("/api/tasks/{tid}/accept")
+    def accept_suggestion(tid: int):
+        db.execute(
+            "UPDATE tasks SET suggestion_status='accepted', status='todo' WHERE id=%s", (tid,)
+        )
+        return {"ok": True}
+
+    @app.post("/api/tasks/{tid}/reject")
+    async def reject_suggestion(tid: int, req: Request):
+        d = await req.json()
+        reason = d.get("reason", "")
+        db.execute(
+            "UPDATE tasks SET suggestion_status='rejected', rejection_reason=%s, status='archived' WHERE id=%s",
+            (reason, tid)
+        )
+        # Jarvis lernt daraus
+        if orch and reason:
+            try:
+                from domains.task_executor import learn_from_rejection
+                import asyncio
+                asyncio.create_task(learn_from_rejection(tid, reason, orch.lzg, orch.llm))
+            except Exception:
+                pass
+        return {"ok": True}
+
+    @app.post("/api/tasks/generate")
+    async def generate_task_suggestion():
+        """Manueller Trigger: Jarvis überlegt sich sofort einen neuen Task-Vorschlag."""
+        if not orch:
+            return {"ok": False, "error": "Kein Orchestrator"}
+        import asyncio as _aio
+        _aio.create_task(orch._suggest_from_event("Manueller Trigger durch Timo im Hub"))
+        return {"ok": True}
 
     @app.post("/api/tasks/{tid}/complete")
     def complete_task(tid: int):
@@ -175,9 +275,42 @@ def create_app(orch=None) -> FastAPI:
     async def create_event(req: Request):
         d = await req.json()
         from core.timeparse import parse_datetime
-        s = parse_datetime(d["start"])
-        e = parse_datetime(d["end"]) if d.get("end") else None
-        orch._dashboard.create_event(title=d["title"], start=s, end=e, location=d.get("location"))
+        from datetime import datetime as dt_
+        def _parse(s):
+            if not s: return None
+            # ISO datetime (from <input type="datetime-local">)
+            for fmt in ("%Y-%m-%dT%H:%M", "%Y-%m-%d %H:%M", "%Y-%m-%dT%H:%M:%S"):
+                try: return dt_.strptime(s, fmt)
+                except ValueError: pass
+            return parse_datetime(s)
+        s = _parse(d["start"])
+        e = _parse(d["end"]) if d.get("end") else None
+        if not s:
+            return JSONResponse({"error": "Ungültiges Datum"}, status_code=400)
+        orch._dashboard.create_event(title=d["title"], start=s, end=e,
+                                     location=d.get("location"), notes=d.get("notes"))
+        return {"ok": True}
+
+    @app.put("/api/calendar/{uid}")
+    async def update_event(uid: str, req: Request):
+        from domains import calendar as cal_d
+        from datetime import datetime as dt_
+        d = await req.json()
+        def _parse(s):
+            if not s: return None
+            for fmt in ("%Y-%m-%dT%H:%M", "%Y-%m-%d %H:%M", "%Y-%m-%dT%H:%M:%S"):
+                try: return dt_.strptime(s, fmt)
+                except ValueError: pass
+            return None
+        cal_d.update_event(uid,
+            title=d.get("title"), start=_parse(d.get("start")),
+            end=_parse(d.get("end")), location=d.get("location"), notes=d.get("notes"))
+        return {"ok": True}
+
+    @app.delete("/api/calendar/{uid}")
+    def delete_event(uid: str):
+        from domains import calendar as cal_d
+        cal_d.delete_event(uid)
         return {"ok": True}
 
     # ── Fitness ──────────────────────────────────────────────────────────────────
@@ -279,11 +412,67 @@ def create_app(orch=None) -> FastAPI:
     def get_journal(limit: int = 30):
         return _jsonable(journal.recent_entries(limit))
 
+    @app.get("/api/journal/today")
+    def get_journal_today():
+        return _jsonable(journal.today_entry()) or {}
+
+    @app.get("/api/journal/prompts")
+    async def get_journal_prompts():
+        """Generiert 3 personalisierte Journalfragen per LLM."""
+        if not orch:
+            return {"prompts": ["Wie war dein Tag?", "Was hat dich beschäftigt?", "Worauf bist du stolz?"]}
+        # Kontext sammeln
+        recent = journal.recent_entries(5)
+        moods = journal.mood_trend(7)
+        ctx_lines = []
+        if recent:
+            ctx_lines.append("Letzte Einträge (Themen): " + "; ".join(
+                e.get("content", "")[:60] for e in recent if e.get("content")
+            ))
+        if moods:
+            avg_mood = sum(m["mood"] for m in moods if m.get("mood")) / max(len(moods), 1)
+            ctx_lines.append(f"Durchschnittliche Stimmung letzte 7 Tage: {avg_mood:.1f}/5")
+        ctx = "\n".join(ctx_lines) or "Keine bisherigen Einträge."
+        prompt = (
+            f"Du bist Jarvis, ein persönlicher AI-Begleiter. Generiere genau 3 kurze, "
+            f"persönliche Journalfragen für den Abend-Check-in von Timo. "
+            f"Die Fragen sollen zur Selbstreflexion anregen, variieren und nicht zu allgemein sein. "
+            f"Kontext:\n{ctx}\n\n"
+            f"Antworte NUR mit den 3 Fragen, eine pro Zeile, ohne Nummerierung oder Formatierung."
+        )
+        resp = await orch.llm.chat(
+            messages=[{"role": "user", "content": prompt}],
+            temperature=0.9, max_tokens=200,
+        )
+        lines = [l.strip() for l in resp.strip().splitlines() if l.strip()][:3]
+        while len(lines) < 3:
+            lines.append("Was nimmst du aus dem heutigen Tag mit?")
+        return {"prompts": lines}
+
     @app.post("/api/journal")
     async def add_journal(req: Request):
         d = await req.json()
-        jid = journal.add_entry(content=d["content"], mood=d.get("mood"),
-                                energy=d.get("energy"), tags=d.get("tags"))
+        jid = journal.add_entry(
+            content=d.get("content", ""),
+            mood=d.get("mood"),
+            energy=d.get("energy"),
+            tags=d.get("tags"),
+            prompts_answers=d.get("prompts_answers"),
+        )
+        # Memory-Extraktion im Hintergrund
+        if orch and (d.get("content") or d.get("prompts_answers")):
+            import asyncio as _aio
+            parts = []
+            if d.get("prompts_answers"):
+                for qa in d["prompts_answers"]:
+                    if qa.get("answer"):
+                        parts.append(f"Frage: {qa['question']}\nAntwort: {qa['answer']}")
+            if d.get("content"):
+                parts.append(f"Freier Text: {d['content']}")
+            combined = "\n\n".join(parts)
+            _aio.create_task(orch.extractor.extract_from_exchange(
+                f"Journal-Eintrag vom {date.today()}:\n{combined}", ""
+            ))
         return {"id": jid}
 
     @app.get("/api/journal/mood")
@@ -334,6 +523,28 @@ def create_app(orch=None) -> FastAPI:
     @app.delete("/api/memories/{mid}")
     def del_memory(mid: int):
         db.execute("DELETE FROM memories WHERE id=%s", (mid,)); return {"ok": True}
+
+    @app.get("/api/knowledge")
+    def knowledge_graph():
+        """Wissens-Graph: alle Entitäten und Relationen."""
+        entities = db.query("SELECT id, name, type, description FROM kg_entities ORDER BY type, name")
+        relations = db.query("""
+            SELECT r.id, s.name AS subject, r.predicate, o.name AS object,
+                   r.context, r.confidence
+            FROM kg_relations r
+            JOIN kg_entities s ON r.subject_id = s.id
+            JOIN kg_entities o ON r.object_id   = o.id
+            ORDER BY r.confidence DESC, r.created_at DESC
+        """)
+        return {"entities": _jsonable(entities), "relations": _jsonable(relations)}
+
+    @app.delete("/api/knowledge/entity/{eid}")
+    def del_kg_entity(eid: int):
+        db.execute("DELETE FROM kg_entities WHERE id=%s", (eid,)); return {"ok": True}
+
+    @app.delete("/api/knowledge/relation/{rid}")
+    def del_kg_relation(rid: int):
+        db.execute("DELETE FROM kg_relations WHERE id=%s", (rid,)); return {"ok": True}
 
     # ── Jarvis Mind (Events, Reflexionen, Agenda) ────────────────────────────────
     @app.get("/api/mind")
@@ -548,4 +759,5 @@ def _event_dict(e):
     return {"title": e.title,
             "start": e.start.strftime("%d.%m. %H:%M") if not e.all_day else e.start.strftime("%d.%m."),
             "start_iso": e.start.isoformat(), "all_day": e.all_day,
-            "calendar": e.calendar, "location": e.location}
+            "calendar": e.calendar, "location": e.location,
+            "uid": getattr(e, "uid", None), "source": getattr(e, "source", None)}
