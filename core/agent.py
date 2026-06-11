@@ -5,6 +5,7 @@ Unterstützt Streaming der finalen Antwort (live-edit nach Telegram/Dashboard).
 """
 import json
 import logging
+import re
 from typing import Awaitable, Callable
 
 import ollama as _ollama
@@ -80,6 +81,29 @@ class Agent:
             )
 
             if not tool_calls:
+                # Math-Guard: Antwort enthält berechnete Zahlen ohne calculate aufgerufen?
+                if schemas and _needs_calculate(content) and not any(
+                    t["tool"] == "calculate" for t in trace
+                ):
+                    log.debug("Math-Guard: Antwort enthält Rechnung ohne calculate → erzwinge Tool-Call")
+                    msgs.append({"role": "assistant", "content": content or ""})
+                    msgs.append({
+                        "role": "user",
+                        "content": "[SYSTEM] Du hast gerade eine Zahl berechnet ohne das calculate-Tool zu nutzen. "
+                                   "Das ist verboten. Rufe jetzt calculate mit dem korrekten Ausdruck auf "
+                                   "und gib danach die korrigierte Antwort."
+                    })
+                    content, tool_calls = await self._call(
+                        msgs, tools=schemas, stream_cb=None,
+                        temperature=0.2, max_tokens=300,
+                        model=model, keep_alive=keep_alive,
+                    )
+                    msgs = msgs[:-2]
+                    if tool_calls:
+                        continue  # weiter im Loop, Tool wird ausgeführt
+                    # Kein Tool-Call beim Retry → trotzdem zurückgeben
+                    return content.strip(), trace
+
                 # Kein Tool-Call obwohl erwartet → einmal retry mit expliziter Anweisung
                 if force_tools and is_first and schemas:
                     log.debug("Kein Tool-Call trotz force_tools – retry mit explizitem Hint")
@@ -224,6 +248,22 @@ class Agent:
             log.info(f"🔥 Modell {mdl} aufgewärmt")
         except Exception as e:
             log.debug(f"Warmup fehlgeschlagen: {e}")
+
+
+# Muster die auf selbst-gerechnete Zahlen hindeuten
+_MATH_PATTERNS = re.compile(
+    r"(~?\d+[\.,]\d+\s*/\s*\w+|"   # z.B. ~3.08/min oder 20/min
+    r"Mittelwert\s*[~≈]?\s*\d+|"   # z.B. Mittelwert ~20
+    r"Durchschnitt\s*[~≈]?\s*\d+|"
+    r"\d+\s*[÷/]\s*\d+\s*=|"       # z.B. 111 / 36 =
+    r"[~≈]\s*\d+\s*(pro|per|/)\s*\w+)",  # z.B. ~3 pro Minute
+    re.IGNORECASE,
+)
+
+
+def _needs_calculate(text: str) -> bool:
+    """True wenn der Text Anzeichen selbst-berechneter Zahlen enthält."""
+    return bool(_MATH_PATTERNS.search(text or ""))
 
 
 def _short(args: dict) -> str:
