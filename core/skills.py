@@ -470,6 +470,25 @@ async def _list_goals():
 
 
 # ════════════════════════════════════════════════════════════════════════════
+#  RECHNER
+
+@T.register("calculate",
+    "Führt eine mathematische Berechnung exakt aus. "
+    "Nutze dies IMMER wenn du Zahlen addierst, subtrahierst, multiplizierst, dividierst "
+    "oder Durchschnitte, Prozente, Verhältnisse berechnest — niemals im Kopf rechnen.",
+    {"expression": {"type": "string", "description": "Mathematischer Ausdruck z.B. '111 / 36' oder '(80 + 90) / 2'"}},
+    ["expression"], "utility")
+async def _calculate(expression: str) -> str:
+    import math, statistics
+    allowed = {k: v for k, v in vars(math).items() if not k.startswith("_")}
+    allowed["statistics"] = statistics
+    try:
+        result = eval(expression, {"__builtins__": {}}, allowed)  # noqa: S307
+        return f"{expression} = {result}"
+    except Exception as e:
+        return f"Fehler: {e}"
+
+
 #  SELF-MODIFICATION
 
 @T.register("read_own_code",
