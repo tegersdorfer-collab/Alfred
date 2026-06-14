@@ -272,8 +272,6 @@ class Orchestrator:
                 force_tools=force_tools,
                 temperature=0.75,
                 max_tokens=1500,
-                model=model,
-                keep_alive=keep_alive,
             )
         except Exception as e:
             log.error(f"Agent-Fehler: {e}")
@@ -335,7 +333,6 @@ class Orchestrator:
                 stream_cb=stream_cb, allowed_tools=allowed,
                 force_tools=force_tools,
                 temperature=0.75, max_tokens=1500,
-                model=model, keep_alive=keep_alive,
             )
         except Exception as e:
             log.error(f"Dashboard-Agent-Fehler: {e}")
