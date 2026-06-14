@@ -228,7 +228,7 @@ def create_app(orch=None) -> FastAPI:
             try:
                 from domains.task_executor import learn_from_rejection
                 import asyncio
-                asyncio.create_task(learn_from_rejection(tid, reason, orch.lzg, orch.llm))
+                asyncio.create_task(learn_from_rejection(tid, reason, orch.lzg, orch.embed_llm))
             except Exception:
                 pass
         return {"ok": True}
@@ -515,7 +515,7 @@ def create_app(orch=None) -> FastAPI:
     async def add_memory(req: Request):
         d = await req.json()
         if orch:
-            emb = await orch.llm.embed(d["content"])
+            emb = await orch.embed_llm.embed(d["content"])
             orch.lzg.save(content=d["content"], embedding=emb,
                           category=d.get("category", "fact"), confidence=d.get("confidence", 0.85))
         return {"ok": True}

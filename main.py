@@ -36,7 +36,7 @@ async def main():
 
     print("""
     ╔═══════════════════════════════╗
-    ║         J A R V I S           ║
+    ║         A L F R E D           ║
     ║   Persönlicher AI-Begleiter   ║
     ╚═══════════════════════════════╝
     """)
@@ -45,17 +45,41 @@ async def main():
         log.error("TELEGRAM_BOT_TOKEN nicht gesetzt in .env")
         sys.exit(1)
 
+    import config as cfg
     from llm.local import OllamaProvider
     from memory.lzg import LZG
     from communication.telegram import TelegramChannel
     from thermal import ThermalMonitor
     from orchestrator import Orchestrator
 
-    llm         = OllamaProvider()
-    lzg         = LZG()
-    thermal     = ThermalMonitor()
-    channel     = TelegramChannel()
-    orchestrator = Orchestrator(llm=llm, channel=channel, lzg=lzg, thermal=thermal)
+    # Chat-LLM: Haiku wenn API-Key gesetzt, sonst Ollama
+    if cfg.ANTHROPIC_API_KEY:
+        from llm.claude import ClaudeProvider
+        chat_llm = ClaudeProvider(model=cfg.CLAUDE_CHAT_MODEL)
+        log.info(f"💬 Chat-LLM: {cfg.CLAUDE_CHAT_MODEL} (Haiku API)")
+    else:
+        chat_llm = OllamaProvider()
+        log.info(f"💬 Chat-LLM: Ollama {cfg.OLLAMA_MODEL} (kein API-Key gesetzt)")
+
+    # Background-LLM: MLX wenn aktiviert + Modell gesetzt, sonst gleich wie Chat
+    if cfg.MLX_ENABLED and cfg.MLX_MODEL:
+        from llm.mlx_provider import MLXProvider
+        bg_llm = MLXProvider(model_id=cfg.MLX_MODEL)
+        log.info(f"🧠 Background-LLM: MLX {cfg.MLX_MODEL}")
+    else:
+        bg_llm = chat_llm
+        log.info("🧠 Background-LLM: gleich wie Chat-LLM")
+
+    # Embed-LLM bleibt immer Ollama (MLX/Claude haben kein Embedding-API)
+    embed_llm = OllamaProvider()
+
+    lzg      = LZG()
+    thermal  = ThermalMonitor()
+    channel  = TelegramChannel()
+    orchestrator = Orchestrator(
+        chat_llm=chat_llm, bg_llm=bg_llm, embed_llm=embed_llm,
+        channel=channel, lzg=lzg, thermal=thermal,
+    )
 
     # Dashboard-API im selben Prozess (geteilter State mit dem Agent)
     import uvicorn

@@ -54,32 +54,38 @@ IDENTITY = _load_identity()
 
 
 class Orchestrator:
-    def __init__(self, llm: LLMProvider, channel: CommunicationChannel,
-                 lzg: LZG, thermal: ThermalMonitor):
-        self.llm     = llm
-        self.channel = channel
-        self.lzg     = lzg
-        self.thermal = thermal
+    def __init__(self, channel: CommunicationChannel, lzg: LZG, thermal: ThermalMonitor,
+                 chat_llm: LLMProvider, bg_llm: LLMProvider, embed_llm: LLMProvider):
+        # chat_llm  → Echtzeit-Chat mit Timo (Haiku oder Ollama)
+        # bg_llm    → Background-Tasks, Proaktiv, Briefing (MLX oder gleich wie chat)
+        # embed_llm → Embeddings für Memory (immer Ollama)
+        self.llm       = chat_llm   # Alias für Kompatibilität (embed-Calls etc.)
+        self.chat_llm  = chat_llm
+        self.bg_llm    = bg_llm
+        self.embed_llm = embed_llm
+        self.channel   = channel
+        self.lzg       = lzg
+        self.thermal   = thermal
 
         self.kzg          = KZG()
         self.kg           = KnowledgeGraph()
-        self.consolidator = Consolidator(llm=llm, lzg=self.lzg)
+        self.consolidator = Consolidator(llm=bg_llm, lzg=self.lzg)
         self.forgetting   = ForgettingCurve()
-        self.extractor    = MemoryExtractor(llm_provider=llm, lzg=self.lzg, kg=self.kg)
-        self.reflection   = Reflection(llm=llm, lzg=self.lzg)
-        self.agent        = Agent(max_steps=8)   # längere Tool-Ketten erlauben
+        self.extractor    = MemoryExtractor(llm_provider=embed_llm, lzg=self.lzg, kg=self.kg)
+        self.reflection   = Reflection(llm=bg_llm, lzg=self.lzg)
+        self.agent        = Agent(max_steps=8)
 
         self._search    = WebSearch()
         self._dashboard = DashboardReader()
         self._reminders = ReminderStore()
 
         self._proactive_tracker = ProactiveTracker()
-        self._proactive_engine  = ProactiveEngine(llm=llm, lzg=lzg, claude=None, kg=self.kg)
+        self._proactive_engine  = ProactiveEngine(llm=bg_llm, lzg=lzg, claude=None, kg=self.kg)
 
-        self._last_user_ts = 0.0              # Zeitpunkt letzter User-Interaktion
+        self._last_user_ts = 0.0
 
         self.autopilot = Autopilot(
-            llm=llm, lzg=lzg, dashboard=self._dashboard, reminders=self._reminders,
+            llm=bg_llm, lzg=lzg, dashboard=self._dashboard, reminders=self._reminders,
             channel=channel, proactive=self._proactive_engine,
             tracker=self._proactive_tracker, identity=IDENTITY,
             lock=None, is_user_active=self._user_active,
@@ -132,7 +138,7 @@ class Orchestrator:
         # embed → mem_ctx (Kette) läuft parallel zu dash_ctx + task_ctx
         async def _embed_and_mem():
             try:
-                embedding = await self.llm.embed(user_text)
+                embedding = await self.embed_llm.embed(user_text)
             except Exception as e:
                 log.debug(f"Embed fehlgeschlagen: {e}", exc_info=True)
                 embedding = None
