@@ -76,9 +76,13 @@ async def main():
     if bg_model:
         bg_llm = OllamaProvider(model=bg_model)
         log.info(f"🧠 Background-LLM: {bg_model} (Ollama MLX)")
+    elif cfg.ANTHROPIC_API_KEY:
+        from llm.claude import ClaudeProvider as _CP
+        bg_llm = _CP(model=cfg.CLAUDE_CHAT_MODEL)
+        log.info(f"🧠 Background-LLM: {cfg.CLAUDE_CHAT_MODEL} (Haiku — kein lokales MLX)")
     else:
-        bg_llm = chat_llm
-        log.info("🧠 Background-LLM: gleich wie Chat-LLM")
+        bg_llm = OllamaProvider()
+        log.info(f"🧠 Background-LLM: Ollama {cfg.OLLAMA_MODEL}")
 
     # ── Embed-LLM: immer Ollama (kein Embedding via Claude/MLX) ──────────────
     embed_llm = OllamaProvider()

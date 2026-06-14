@@ -100,6 +100,8 @@ class Orchestrator:
         self._last_compress: datetime | None = None
         self._last_pattern_run: datetime | None = None
         self._last_health_refresh: datetime | None = None
+        self._last_health_suggestion: datetime | None = None  # Cooldown für Health-Vorschläge
+        self._last_insight_run: datetime | None = None        # Cooldown für Insight-Tasks
         self._idle_task: asyncio.Task | None = None
 
     def _user_active(self) -> bool:
@@ -454,15 +456,22 @@ class Orchestrator:
                             if thought and await self._proactive_engine.evaluate(thought):
                                 await self.autopilot._send(thought, kind="health_update")
                                 self._proactive_tracker.record_sent()
-                            # Task-Vorschlag aus Health-Daten
-                            try:
-                                from domains.task_executor import suggest_one
-                                await suggest_one(
-                                    f"Neue Gesundheitsdaten für {new_days} Tag(e) importiert",
-                                    self.llm, self.lzg
-                                )
-                            except Exception as _e:
-                                log.debug(f"Health-Suggestion: {_e}")
+                            # Task-Vorschlag aus Health-Daten (max 1x/24h)
+                            _since_last_sug = (
+                                (now_h - self._last_health_suggestion).total_seconds()
+                                if self._last_health_suggestion else 86401
+                            )
+                            if _since_last_sug > 86400:
+                                try:
+                                    from domains.task_executor import suggest_one
+                                    ok = await suggest_one(
+                                        f"Neue Gesundheitsdaten für {new_days} Tag(e) importiert",
+                                        self.llm, self.lzg
+                                    )
+                                    if ok:
+                                        self._last_health_suggestion = now_h
+                                except Exception as _e:
+                                    log.debug(f"Health-Suggestion: {_e}")
                     except Exception as e:
                         log.debug(f"Health-Refresh: {e}", exc_info=True)
 
@@ -477,6 +486,25 @@ class Orchestrator:
                             log.info(f"🔍 Pattern Detector: {n} neue Muster gespeichert")
                     except Exception as e:
                         log.debug(f"Pattern Detector: {e}", exc_info=True)
+
+                # Insight-Engine: alle 4h wenn keine aktiven Alfred-Tasks
+                now_i = datetime.now()
+                _since_insight = (
+                    (now_i - self._last_insight_run).total_seconds()
+                    if self._last_insight_run else 14401
+                )
+                if _since_insight > 14400:
+                    has_active = db.query(
+                        "SELECT 1 FROM tasks WHERE assigned_to='alfred' AND status NOT IN ('done','archived') "
+                        "AND (suggestion_status IS NULL OR suggestion_status='accepted') LIMIT 1"
+                    )
+                    if not has_active:
+                        self._last_insight_run = now_i
+                        try:
+                            from domains.insight_engine import generate_insight_task
+                            await generate_insight_task(self.llm, self.lzg)
+                        except Exception as e:
+                            log.debug(f"Insight-Engine: {e}", exc_info=True)
 
             # Adaptiver Takt: kürzer wenn Alfred gerade an Tasks arbeitet
             try:

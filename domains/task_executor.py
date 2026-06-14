@@ -186,11 +186,34 @@ async def plan_task(task: dict, llm: LLMProvider, lzg=None) -> dict:
             ))],
             temperature=0.4, max_tokens=800,
         )
-        # JSON aus Antwort extrahieren
+        # JSON aus Antwort extrahieren (robuster Parser)
         import re
-        json_match = re.search(r'\{.*\}', resp, re.S)
-        if json_match:
-            return json.loads(json_match.group(0))
+        # Finde den ersten { und den zugehörigen schließenden }
+        start = resp.find('{')
+        if start >= 0:
+            depth, end = 0, start
+            in_str, escape = False, False
+            for i, ch in enumerate(resp[start:], start):
+                if escape:
+                    escape = False
+                elif ch == '\\' and in_str:
+                    escape = True
+                elif ch == '"':
+                    in_str = not in_str
+                elif not in_str:
+                    if ch == '{':
+                        depth += 1
+                    elif ch == '}':
+                        depth -= 1
+                        if depth == 0:
+                            end = i
+                            break
+            try:
+                return json.loads(resp[start:end+1])
+            except json.JSONDecodeError:
+                # Letzter Versuch: Trailing-Kommas und häufige Fehler beheben
+                cleaned = re.sub(r',\s*([}\]])', r'\1', resp[start:end+1])
+                return json.loads(cleaned)
     except Exception as e:
         log.warning(f"Planning fehlgeschlagen: {e}")
 
@@ -231,7 +254,8 @@ async def execute_next_subtask(task: dict, llm: LLMProvider, search=None) -> boo
 
     # Webrecherche falls nötig
     research_section = ""
-    payload = json.loads(sub.get("notes") or "{}") if sub.get("notes", "").startswith("{") else {}
+    _notes = sub.get("notes") or ""
+    payload = json.loads(_notes) if _notes.startswith("{") else {}
     needs_research = payload.get("needs_research", False)
     research_query = payload.get("research_query")
 
@@ -255,7 +279,7 @@ async def execute_next_subtask(task: dict, llm: LLMProvider, search=None) -> boo
         except Exception:
             pass
 
-    subtask_title = sub["title"] if not sub.get("notes", "").startswith("{") else payload.get("title", sub["title"])
+    subtask_title = sub["title"] if not _notes.startswith("{") else payload.get("title", sub["title"])
 
     try:
         result = await exec_llm.chat(
@@ -413,23 +437,27 @@ async def suggest_one(trigger: str, llm: LLMProvider, lzg=None) -> bool:
         log.warning(f"Suggestion-Bewertung fehlgeschlagen: {e}")
         return False
 
-    # Duplikat-Check: ähnliche Titel in den letzten 30 Tagen blockieren
+    # Duplikat-Check: ähnliche Titel erkennen (Wort-Jaccard + Thema-Keywords)
     try:
         recent = _db.query(
-            "SELECT title FROM tasks WHERE created_at > NOW() - INTERVAL '30 days' "
-            "AND status != 'archived' ORDER BY created_at DESC LIMIT 30"
+            "SELECT title FROM tasks WHERE status != 'archived' ORDER BY created_at DESC LIMIT 50"
         )
         title_lower = title.lower()
-        # Schlüsselwörter aus dem neuen Titel extrahieren (Wörter >4 Zeichen)
-        new_keywords = {w for w in title_lower.split() if len(w) > 4}
+        # Stopwörter herausfiltern, nur echte Inhaltswörter
+        _stopwords = {"python", "skript", "einer", "einen", "eines", "basierend", "durch",
+                      "durch", "sowie", "oder", "dass", "nicht", "werden", "können",
+                      "diese", "dieses", "diese", "beim", "nach", "über", "unter", "vor",
+                      "analyse", "erstellung", "generierung", "berechnung", "validierung",
+                      "erstellen", "berechnen", "validieren", "identifikation", "isolierung"}
+        new_kw = {w for w in title_lower.split() if len(w) > 5 and w not in _stopwords}
         for r in recent:
             existing = r["title"].lower()
-            existing_keywords = {w for w in existing.split() if len(w) > 4}
-            if not new_keywords or not existing_keywords:
+            existing_kw = {w for w in existing.split() if len(w) > 5 and w not in _stopwords}
+            if not new_kw or not existing_kw:
                 continue
-            overlap = len(new_keywords & existing_keywords) / len(new_keywords | existing_keywords)
-            if overlap >= 0.45:
-                log.debug(f"Suggestion als Duplikat verworfen (overlap={overlap:.2f}): {title}")
+            overlap = len(new_kw & existing_kw) / max(1, len(new_kw | existing_kw))
+            if overlap >= 0.30:
+                log.debug(f"Suggestion als Duplikat verworfen (overlap={overlap:.2f}): {title[:60]}")
                 return False
     except Exception as e:
         log.debug(f"Duplikat-Check fehlgeschlagen: {e}")
