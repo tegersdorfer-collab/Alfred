@@ -168,6 +168,13 @@ status();setInterval(status,60000);
 // ── Live-Status-Stream ────────────────────────────────────────────────────────
 const STATUS_ICONS={thinking:'💭',tool:'🔧',memory:'🧠',learning:'💡',idle:'✅',autopilot:'🤖',error:'⚠️',task_working:'⚙️'};
 const STATUS_LABELS={thinking:'Denkt…',tool:'Tool',memory:'Erinnerung',learning:'Lernt',idle:'Bereit',autopilot:'Autopilot',error:'Fehler',task_working:'Arbeitet…'};
+const MODEL_BADGES={
+  'claude-haiku-4-5-20251001':'<span style="font-size:10px;background:#1a3a2a;color:#4ade80;padding:1px 6px;border-radius:99px;margin-left:6px">Haiku ⚡</span>',
+  'gemma4:31b-mlx':'<span style="font-size:10px;background:#1e2a3a;color:#60a5fa;padding:1px 6px;border-radius:99px;margin-left:6px">Gemma4 🧠</span>',
+  'qwen3.5:9b':'<span style="font-size:10px;background:#2a1a3a;color:#c084fc;padding:1px 6px;border-radius:99px;margin-left:6px">Qwen 🔧</span>',
+};
+function modelBadge(m){return MODEL_BADGES[m]||'';}
+let _activeModel='';
 let _actLog=[]; // letzten N Status-Events für Activity-Feed
 let _actSeen=new Set(); // Dedup: bereits gesehene Event-Timestamps
 
@@ -177,28 +184,32 @@ function applyStatus(evt){
   const text=evt.text||'';
   const detail=evt.detail||'';
 
+  // Modell aus detail extrahieren und merken
+  if(detail && MODEL_BADGES[detail]) _activeModel=detail;
+
+  const badge=_activeModel?modelBadge(_activeModel):'';
+  const fullText=`${STATUS_ICONS[type]||'·'} ${text}${detail&&!MODEL_BADGES[detail]?' · '+detail:''}`;
+
   // Dot in Header
   const dot=$('#dot');
   if(dot){dot.style.background=type==='idle'?'#22c55e':type==='error'?'#ef4444':'#3b82f6';}
 
-  // Sub-Zeile Header aktualisieren
+  // Sub-Zeile Header
   const sub=$('#sub');
-  if(sub&&(type!=='idle'||text)){
-    sub.textContent = type==='idle' ? sub.textContent : `${STATUS_ICONS[type]||'·'} ${text}${detail?' · '+detail:''}`;
-  }
+  if(sub&&type!=='idle') sub.innerHTML=fullText+badge;
 
   // Sidebar
   const ss=$('#sideStatus');
-  if(ss&&type!=='idle'){ss.textContent=`${STATUS_ICONS[type]||'·'} ${text}`;}
+  if(ss&&type!=='idle') ss.textContent=`${STATUS_ICONS[type]||'·'} ${text}`;
 
-  // Home-Status-Bar updaten (wenn sichtbar)
+  // Home-Status-Bar
   const bar=$('#homeStatus');
   if(bar){
     bar.className=`status-bar ${type}`;
     const sdot=bar.querySelector('.sdot');
-    if(sdot){sdot.className=`sdot ${type}`;}
+    if(sdot) sdot.className=`sdot ${type}`;
     const stxt=bar.querySelector('.stxt');
-    if(stxt){stxt.textContent=`${STATUS_ICONS[type]||'·'} ${text}${detail?' · '+detail:''}`;}
+    if(stxt) stxt.innerHTML=fullText+badge;
   }
 
   // Activity-Log Buffer – mit Dedup über Timestamp
@@ -659,7 +670,7 @@ VIEWS.tasks=async(root)=>{
   const kindIcon={task:'',project:'📁 ',checklist:'☑️ '};
   let filtered=ts;
   if(taskFilter==='alfred') filtered=ts.filter(t=>t.assigned_to==='alfred');
-  else if(taskFilter==='open') filtered=ts.filter(t=>t.assigned_to!=='alfred'||t.status==='in_progress');
+  // "Offen" zeigt alle offenen Tasks — Alfred-Tasks mit blauem Rand erkennbar
 
   if(!filtered.length){
     $('#tl').innerHTML='<div class="card" style="padding:24px;text-align:center;color:#5b6b8c">'+(taskFilter==='alfred'?'Keine Alfred-Aufgaben 🤖':'Nichts hier 🎉')+'</div>';

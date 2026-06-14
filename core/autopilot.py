@@ -181,8 +181,11 @@ class Autopilot:
         # ── Phase 1: Planning ──────────────────────────────────────────────────
         if phase == "pending":
             log.info(f"📋 Plane Task: {task['title']}")
-            BUS.emit("task_working", f"📋 Plant: {title_short}")
+            BUS.emit("task_working", f"📋 Plant: {title_short}", detail=getattr(self.llm,'model_name',''))
             db.execute("UPDATE tasks SET execution_phase='planning', status='in_progress' WHERE id=%s", (tid,))
+            # RAM freimachen falls bg_llm ein großes lokales Modell ist
+            if hasattr(self.llm, 'unload_others'):
+                await self.llm.unload_others()
             plan = await plan_task(task, self.llm, self.lzg)
 
             # Unteraufgaben anlegen
@@ -235,7 +238,9 @@ class Autopilot:
             total_count = len(db.query("SELECT 1 FROM tasks WHERE parent_id=%s", (tid,)))
             step_info = f"{done_count+1}/{total_count}" if total_count else ""
             sub_title = next_sub[0]["title"][:30] if next_sub else "…"
-            BUS.emit("task_working", f"🤖 {step_info} {sub_title}")
+            BUS.emit("task_working", f"🤖 {step_info} {sub_title}", detail=getattr(self.llm,'model_name',''))
+            if hasattr(self.llm, 'unload_others'):
+                await self.llm.unload_others()
             search = self.search
             more = await execute_next_subtask(task, self.llm, search=search)
             if not more:
@@ -244,7 +249,7 @@ class Autopilot:
 
         # ── Phase 4: Zusammenfassen & senden ──────────────────────────────────
         elif phase == "finalizing":
-            BUS.emit("task_working", f"✍️ Fasst zusammen: {title_short}")
+            BUS.emit("task_working", f"✍️ Fasst zusammen: {title_short}", detail=getattr(self.llm,'model_name',''))
             result = await finalize_task(task, self.llm)
             db.execute(
                 "UPDATE tasks SET status='done', execution_phase='done', completed_at=NOW(), alfred_result=%s WHERE id=%s",

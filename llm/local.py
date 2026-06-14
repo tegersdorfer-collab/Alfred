@@ -37,6 +37,22 @@ class OllamaProvider(LLMProvider):
                 result.append({"role": m.role, "content": m.content})
         return result
 
+    async def unload_others(self) -> None:
+        """Entlädt alle anderen Ollama-Modelle um RAM für dieses freizumachen."""
+        try:
+            running = await self._client.ps()
+            for m in (running.models or []):
+                name = getattr(m, "name", None) or getattr(m, "model", None) or ""
+                if name and not name.startswith(self._model.split(":")[0]):
+                    await self._client.chat(
+                        model=name,
+                        messages=[{"role": "user", "content": ""}],
+                        options={"keep_alive": 0, "num_predict": 1},
+                    )
+                    import logging; logging.getLogger(__name__).info(f"🗑️  Entlade {name} für {self._model}")
+        except Exception:
+            pass
+
     async def chat(
         self,
         messages: list[Message],
@@ -45,7 +61,10 @@ class OllamaProvider(LLMProvider):
         max_tokens: int = 1024,
         think: bool = False,
         format: str | dict | None = None,
+        free_ram: bool = False,
     ) -> str:
+        if free_ram:
+            await self.unload_others()
         kwargs = dict(
             model=self._model,
             messages=self._build_messages(messages, system),
@@ -53,7 +72,7 @@ class OllamaProvider(LLMProvider):
                      "keep_alive": config.OLLAMA_KEEP_ALIVE},
             think=think,
         )
-        if format:                       # 'json' oder JSON-Schema → erzwingt valides JSON
+        if format:
             kwargs["format"] = format
         async with GATE:
             response = await self._client.chat(**kwargs)
