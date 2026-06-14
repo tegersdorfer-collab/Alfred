@@ -52,32 +52,43 @@ async def main():
     from thermal import ThermalMonitor
     from orchestrator import Orchestrator
 
-    # Chat-LLM: Haiku wenn API-Key gesetzt, sonst Ollama
+    # ── Chat-LLM: Haiku wenn API-Key gesetzt, sonst Ollama ───────────────────
     if cfg.ANTHROPIC_API_KEY:
         from llm.claude import ClaudeProvider
         chat_llm = ClaudeProvider(model=cfg.CLAUDE_CHAT_MODEL)
-        log.info(f"💬 Chat-LLM: {cfg.CLAUDE_CHAT_MODEL} (Haiku API)")
+        log.info(f"💬 Chat-LLM: {cfg.CLAUDE_CHAT_MODEL}")
     else:
         chat_llm = OllamaProvider()
-        log.info(f"💬 Chat-LLM: Ollama {cfg.OLLAMA_MODEL} (kein API-Key gesetzt)")
+        log.info(f"💬 Chat-LLM: Ollama {cfg.OLLAMA_MODEL} (kein API-Key)")
 
-    # Background-LLM: MLX wenn aktiviert + Modell gesetzt, sonst gleich wie Chat
-    if cfg.MLX_ENABLED and cfg.MLX_MODEL:
-        from llm.mlx_provider import MLXProvider
-        bg_llm = MLXProvider(model_id=cfg.MLX_MODEL)
-        log.info(f"🧠 Background-LLM: MLX {cfg.MLX_MODEL}")
+    # ── Agent-Backend: Claude wenn API-Key, sonst Ollama ─────────────────────
+    if cfg.ANTHROPIC_API_KEY:
+        from core.backends.claude import ClaudeBackend
+        agent_backend = ClaudeBackend(model=cfg.CLAUDE_CHAT_MODEL)
+        log.info(f"🔧 Agent-Backend: Claude ({cfg.CLAUDE_CHAT_MODEL})")
+    else:
+        from core.backends.ollama import OllamaBackend
+        agent_backend = OllamaBackend()
+        log.info(f"🔧 Agent-Backend: Ollama ({cfg.AGENT_MODEL_STRONG})")
+
+    # ── Background-LLM: Ollama MLX-Modell wenn gesetzt, sonst gleich wie Chat ─
+    bg_model = cfg.MLX_BG_MODEL if cfg.MLX_BG_MODEL else None
+    if bg_model:
+        bg_llm = OllamaProvider(model=bg_model)
+        log.info(f"🧠 Background-LLM: {bg_model} (Ollama MLX)")
     else:
         bg_llm = chat_llm
         log.info("🧠 Background-LLM: gleich wie Chat-LLM")
 
-    # Embed-LLM bleibt immer Ollama (MLX/Claude haben kein Embedding-API)
+    # ── Embed-LLM: immer Ollama (kein Embedding via Claude/MLX) ──────────────
     embed_llm = OllamaProvider()
 
-    lzg      = LZG()
-    thermal  = ThermalMonitor()
-    channel  = TelegramChannel()
+    lzg     = LZG()
+    thermal = ThermalMonitor()
+    channel = TelegramChannel()
     orchestrator = Orchestrator(
         chat_llm=chat_llm, bg_llm=bg_llm, embed_llm=embed_llm,
+        agent_backend=agent_backend,
         channel=channel, lzg=lzg, thermal=thermal,
     )
 

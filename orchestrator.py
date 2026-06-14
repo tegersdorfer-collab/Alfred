@@ -11,6 +11,7 @@ from pathlib import Path
 
 from llm.base import LLMProvider
 from llm.local import OllamaProvider
+from core.backends.base import AgentBackend
 from memory.kzg import KZG
 from memory.lzg import LZG
 from memory.consolidator import Consolidator
@@ -55,17 +56,19 @@ IDENTITY = _load_identity()
 
 class Orchestrator:
     def __init__(self, channel: CommunicationChannel, lzg: LZG, thermal: ThermalMonitor,
-                 chat_llm: LLMProvider, bg_llm: LLMProvider, embed_llm: LLMProvider):
-        # chat_llm  → Echtzeit-Chat mit Timo (Haiku oder Ollama)
-        # bg_llm    → Background-Tasks, Proaktiv, Briefing (MLX oder gleich wie chat)
-        # embed_llm → Embeddings für Memory (immer Ollama)
-        self.llm       = chat_llm   # Alias für Kompatibilität (embed-Calls etc.)
-        self.chat_llm  = chat_llm
-        self.bg_llm    = bg_llm
-        self.embed_llm = embed_llm
-        self.channel   = channel
-        self.lzg       = lzg
-        self.thermal   = thermal
+                 chat_llm: LLMProvider, bg_llm: LLMProvider, embed_llm: LLMProvider,
+                 agent_backend: AgentBackend):
+        # chat_llm      → Echtzeit-Chat (Haiku)
+        # bg_llm        → Background-Tasks, Proaktiv, Briefing (Gemma4 oder Ollama)
+        # embed_llm     → Embeddings für Memory (immer Ollama)
+        # agent_backend → Tool-Calling im ReAct-Loop (Claude oder Ollama)
+        self.llm          = chat_llm   # Alias für Kompatibilität
+        self.chat_llm     = chat_llm
+        self.bg_llm       = bg_llm
+        self.embed_llm    = embed_llm
+        self.channel      = channel
+        self.lzg          = lzg
+        self.thermal      = thermal
 
         self.kzg          = KZG()
         self.kg           = KnowledgeGraph()
@@ -73,7 +76,7 @@ class Orchestrator:
         self.forgetting   = ForgettingCurve()
         self.extractor    = MemoryExtractor(llm_provider=embed_llm, lzg=self.lzg, kg=self.kg)
         self.reflection   = Reflection(llm=bg_llm, lzg=self.lzg)
-        self.agent        = Agent(max_steps=8)
+        self.agent        = Agent(backend=agent_backend, max_steps=8)
 
         self._search    = WebSearch()
         self._dashboard = DashboardReader()
@@ -559,8 +562,7 @@ class Orchestrator:
 
         # Modelle aufwärmen (parallel) – vermeidet Cold-Start.
         # Bei Routing das residente schnelle Modell warm halten (nicht den Fallback).
-        warm_model = config.AGENT_MODEL_FAST if config.LLM_ROUTING else None
-        asyncio.create_task(self.agent.warmup(warm_model))
+        asyncio.create_task(self.agent.warmup())
         asyncio.create_task(fast.warmup())
 
         self.channel.on_message(self.handle_message)

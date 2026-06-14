@@ -1,20 +1,22 @@
 """
-Agentischer Kern – ReAct-Loop mit nativem Tool-Calling (Qwen3 via Ollama).
+Agentischer Kern – ReAct-Loop mit nativem Tool-Calling.
 Das Modell entscheidet selbst, welche Tools es in welcher Reihenfolge nutzt.
-Unterstützt Streaming der finalen Antwort (live-edit nach Telegram/Dashboard).
+
+Backends (core/backends/) übernehmen den LLM-spezifischen Teil:
+    OllamaBackend  → Ollama-API (lokal)
+    ClaudeBackend  → Anthropic-API (Haiku)
+
+Dieser Loop kennt nur backend.call() — egal welcher Anbieter dahintersteckt.
 """
 import json
 import logging
 import re
 from typing import Awaitable, Callable
 
-import ollama as _ollama
-
 from core import tools as toolreg
 from core.db import log_event
-from core.llm_gate import GATE
 from core.status import BUS
-import config
+from core.backends.base import AgentBackend
 
 log = logging.getLogger(__name__)
 
@@ -22,10 +24,13 @@ StreamCb = Callable[[str], Awaitable[None]]
 
 
 class Agent:
-    def __init__(self, model: str | None = None, max_steps: int = 5):
-        self._model = model or config.OLLAMA_MODEL
-        self._client = _ollama.AsyncClient(host=config.OLLAMA_BASE_URL)
+    def __init__(self, backend: AgentBackend, max_steps: int = 8):
+        self._backend = backend
         self._max_steps = max_steps
+
+    @property
+    def model_name(self) -> str:
+        return self._backend.model_name
 
     async def run(
         self,
@@ -38,106 +43,99 @@ class Agent:
         allowed_tools: list[str] | None = None,
         force_tools: bool = False,
         think: bool = False,
-        model: str | None = None,
-        keep_alive: str | None = None,
     ) -> tuple[str, list[dict]]:
         """
-        Führt den Agent-Loop aus.
-        `model`/`keep_alive` überschreiben pro Aufruf das Default-Modell (für Routing).
+        Führt den ReAct-Loop aus.
         Gibt (finale_antwort, tool_trace) zurück.
         tool_trace = [{"tool": name, "args": {...}, "result": "..."}]
         """
-        # Messages zu dicts normalisieren (akzeptiert Message-Dataclass oder dict)
         norm: list[dict] = []
         for m in messages:
             if isinstance(m, dict):
                 norm.append(m)
             else:
                 norm.append({"role": m.role, "content": m.content})
+
         msgs: list[dict] = [{"role": "system", "content": system}] + norm
+
         if not use_tools or allowed_tools == []:
-            schemas = None                       # reines Gespräch → kein Tool-Prefill
+            schemas = None
         elif allowed_tools:
             schemas = toolreg.ollama_schemas(only=allowed_tools)
         else:
             schemas = toolreg.ollama_schemas()
+
         trace: list[dict] = []
 
         for step in range(self._max_steps):
             is_first = step == 0
-            # Ersten Schritt erzwingen wenn Aktion erkannt und Tools vorhanden
             force = force_tools and is_first and bool(schemas)
-            BUS.emit("thinking", "Denke nach…", detail=model or self._model)
-            content, tool_calls = await self._call(
+            BUS.emit("thinking", "Denke nach…", detail=self._backend.model_name)
+
+            content, tool_calls = await self._backend.call(
                 msgs,
                 tools=schemas,
-                stream_cb=stream_cb,   # live streamen; bei Tool-Calls danach resetten
+                stream_cb=stream_cb,
                 temperature=temperature,
                 max_tokens=max_tokens,
                 think=think and is_first,
-                model=model,
-                keep_alive=keep_alive,
                 force_tool_call=force,
             )
 
             if not tool_calls:
-                # Math-Guard: Antwort enthält berechnete Zahlen ohne calculate aufgerufen?
+                # Math-Guard: Antwort enthält Rechnung ohne calculate aufgerufen?
                 if schemas and _needs_calculate(content) and not any(
                     t["tool"] == "calculate" for t in trace
                 ):
-                    log.debug("Math-Guard: Antwort enthält Rechnung ohne calculate → erzwinge Tool-Call")
+                    log.debug("Math-Guard: erzwinge calculate-Tool-Call")
                     msgs.append({"role": "assistant", "content": content or ""})
                     msgs.append({
                         "role": "user",
                         "content": "[SYSTEM] Du hast gerade eine Zahl berechnet ohne das calculate-Tool zu nutzen. "
                                    "Das ist verboten. Rufe jetzt calculate mit dem korrekten Ausdruck auf "
-                                   "und gib danach die korrigierte Antwort."
+                                   "und gib danach die korrigierte Antwort.",
                     })
-                    content, tool_calls = await self._call(
+                    content, tool_calls = await self._backend.call(
                         msgs, tools=schemas, stream_cb=None,
                         temperature=0.2, max_tokens=300,
-                        model=model, keep_alive=keep_alive,
                     )
                     msgs = msgs[:-2]
                     if tool_calls:
-                        continue  # weiter im Loop, Tool wird ausgeführt
-                    # Kein Tool-Call beim Retry → trotzdem zurückgeben
+                        continue
                     return content.strip(), trace
 
-                # Kein Tool-Call obwohl erwartet → einmal retry mit expliziter Anweisung
+                # Kein Tool-Call obwohl erwartet → einmal retry
                 if force_tools and is_first and schemas:
-                    log.debug("Kein Tool-Call trotz force_tools – retry mit explizitem Hint")
+                    log.debug("Kein Tool-Call trotz force_tools – retry")
                     msgs.append({"role": "assistant", "content": content or ""})
                     msgs.append({
                         "role": "user",
                         "content": "[SYSTEM] Du hast gerade KEIN Tool aufgerufen. "
-                                   "Rufe jetzt sofort das passende Tool auf – antworte nicht mit Text."
+                                   "Rufe jetzt sofort das passende Tool auf – antworte nicht mit Text.",
                     })
-                    content, tool_calls = await self._call(
+                    content, tool_calls = await self._backend.call(
                         msgs, tools=schemas, stream_cb=None,
                         temperature=0.3, max_tokens=200,
-                        model=model, keep_alive=keep_alive,
                     )
                     if not tool_calls:
-                        # Immer noch kein Tool → originale Antwort zurückgeben
                         return content.strip() or (msgs[-2].get("content", "")).strip(), trace
-                    # Tool-Call kam beim Retry → weiter im Loop
-                    msgs = msgs[:-2]  # Retry-Nachrichten wieder entfernen
+                    msgs = msgs[:-2]
                 else:
-                    # Fertig – wurde bereits live gestreamt
                     return content.strip(), trace
 
-            # Tool-Calls: Platzhalter zurücksetzen, dann ausführen
+            # Tool-Calls ausführen
             if stream_cb:
                 try:
                     await stream_cb("🔧 …")
                 except Exception:
                     pass
+
             msgs.append({
                 "role": "assistant",
                 "content": content or "",
                 "tool_calls": tool_calls,
             })
+
             for tc in tool_calls:
                 fn = tc.get("function", {})
                 name = fn.get("name", "")
@@ -151,124 +149,42 @@ class Agent:
                 result = await toolreg.execute(name, args)
                 trace.append({"tool": name, "args": args, "result": result[:500]})
                 log_event("tool", f"{name}({_short(args)})", {"result": result[:300]})
-                msgs.append({"role": "tool", "content": result, "name": name})
+                msgs.append({
+                    "role": "tool",
+                    "content": result,
+                    "name": name,
+                    "tool_use_id": tc.get("tool_use_id") or tc.get("id", ""),
+                })
 
-        # Max-Steps erreicht → finale Antwort ohne Tools (streamen)
-        content, _ = await self._call(
+        # Max-Steps erreicht
+        content, _ = await self._backend.call(
             msgs, tools=None, stream_cb=stream_cb,
             temperature=temperature, max_tokens=max_tokens,
-            model=model, keep_alive=keep_alive,
         )
         return content.strip(), trace
 
-    async def _call(
-        self,
-        msgs: list[dict],
-        tools: list[dict] | None,
-        stream_cb: StreamCb | None,
-        temperature: float,
-        max_tokens: int,
-        think: bool = False,
-        model: str | None = None,
-        keep_alive: str | None = None,
-        force_tool_call: bool = False,
-    ) -> tuple[str, list[dict]]:
-        """Ein einzelner LLM-Call. Streamt wenn stream_cb gesetzt und keine Tools."""
-        mdl = model or self._model
-        options = {
-            "temperature": temperature,
-            "num_predict": max_tokens,
-            "keep_alive": keep_alive or config.OLLAMA_KEEP_ALIVE,
-        }
-
-        def _extract_calls(m):
-            calls = []
-            if getattr(m, "tool_calls", None):
-                for tc in m.tool_calls:
-                    calls.append({
-                        "function": {
-                            "name": tc.function.name,
-                            "arguments": dict(tc.function.arguments)
-                                         if hasattr(tc.function.arguments, "items")
-                                         else tc.function.arguments,
-                        }
-                    })
-            return calls
-
-        # Streaming-Call (auch mit Tools – moderne Ollama-Versionen liefern tool_calls im Stream)
-        if stream_cb:
-            parts: list[str] = []
-            tool_calls: list[dict] = []
-            last_len = 0
-            kwargs = dict(model=mdl, messages=msgs, options=options,
-                          stream=True, think=think)
-            if tools:
-                kwargs["tools"] = tools
-            async with GATE:
-                async for chunk in await self._client.chat(**kwargs):
-                    m = chunk.message
-                    if m.content:
-                        parts.append(m.content)
-                        full = "".join(parts)
-                        if len(full) - last_len >= 50:   # Telegram-Ratelimit schonen
-                            last_len = len(full)
-                            try:
-                                await stream_cb(full)
-                            except Exception:
-                                pass
-                    calls = _extract_calls(m)
-                    if calls:
-                        tool_calls.extend(calls)
-            full = "".join(parts)
-            if full and not tool_calls:
-                try:
-                    await stream_cb(full)
-                except Exception:
-                    pass
-            return full, tool_calls
-
-        # Nicht-Streaming Call (mit oder ohne Tools)
-        kwargs = dict(model=mdl, messages=msgs, options=options, think=think)
-        if tools:
-            kwargs["tools"] = tools
-        async with GATE:
-            resp = await self._client.chat(**kwargs)
-        m = resp.message
-        return m.content or "", _extract_calls(m)
-
-    async def warmup(self, model: str | None = None) -> None:
-        """Lädt das Modell in den RAM (vermeidet Cold-Start bei erster Nachricht)."""
-        mdl = model or self._model
-        try:
-            await self._client.chat(
-                model=mdl,
-                messages=[{"role": "user", "content": "ok"}],
-                options={"num_predict": 1, "keep_alive": config.OLLAMA_KEEP_ALIVE},
-            )
-            log.info(f"🔥 Modell {mdl} aufgewärmt")
-        except Exception as e:
-            log.debug(f"Warmup fehlgeschlagen: {e}")
+    async def warmup(self) -> None:
+        await self._backend.warmup()
 
 
-# Muster die auf selbst-gerechnete Zahlen hindeuten
+# ── Hilfsfunktionen ───────────────────────────────────────────────────────────
+
 _MATH_PATTERNS = re.compile(
-    r"(~?\d+[\.,]\d+\s*/\s*\w+|"   # z.B. ~3.08/min oder 20/min
-    r"Mittelwert\s*[~≈]?\s*\d+|"   # z.B. Mittelwert ~20
+    r"(~?\d+[\.,]\d+\s*/\s*\w+|"
+    r"Mittelwert\s*[~≈]?\s*\d+|"
     r"Durchschnitt\s*[~≈]?\s*\d+|"
-    r"\d+\s*[÷/]\s*\d+\s*=|"       # z.B. 111 / 36 =
-    r"[~≈]\s*\d+\s*(pro|per|/)\s*\w+)",  # z.B. ~3 pro Minute
+    r"\d+\s*[÷/]\s*\d+\s*=|"
+    r"[~≈]\s*\d+\s*(pro|per|/)\s*\w+)",
     re.IGNORECASE,
 )
 
 
 def _needs_calculate(text: str) -> bool:
-    """True wenn der Text Anzeichen selbst-berechneter Zahlen enthält."""
     return bool(_MATH_PATTERNS.search(text or ""))
 
 
 def _short(args: dict) -> str:
     try:
-        s = json.dumps(args, ensure_ascii=False)
-        return s[:60]
+        return json.dumps(args, ensure_ascii=False)[:60]
     except Exception:
         return str(args)[:60]

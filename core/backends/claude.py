@@ -1,0 +1,171 @@
+"""
+Claude-Backend für den Agent-Loop.
+Übersetzt das einheitliche Backend-Interface in Anthropic-API-Calls mit Tool-Use.
+"""
+import json
+import logging
+
+import anthropic
+
+from core.backends.base import AgentBackend, StreamCb
+import config
+
+log = logging.getLogger(__name__)
+
+
+def _ollama_tools_to_anthropic(tools: list[dict]) -> list[dict]:
+    """Konvertiert Ollama/OpenAI Tool-Schema → Anthropic Tool-Schema."""
+    result = []
+    for t in tools:
+        # Ollama-Format: {"type": "function", "function": {"name": ..., "description": ..., "parameters": ...}}
+        fn = t.get("function", t)
+        result.append({
+            "name": fn["name"],
+            "description": fn.get("description", ""),
+            "input_schema": fn.get("parameters", {"type": "object", "properties": {}}),
+        })
+    return result
+
+
+def _ollama_msgs_to_anthropic(messages: list[dict]) -> tuple[str | None, list[dict]]:
+    """
+    Trennt System-Prompt ab und konvertiert Messages ins Anthropic-Format.
+    Tool-Results werden korrekt als tool_result-Blöcke eingebettet.
+    Gibt (system, messages) zurück.
+    """
+    system = None
+    result = []
+    i = 0
+    while i < len(messages):
+        m = messages[i]
+        role = m.get("role")
+
+        if role == "system":
+            system = m.get("content", "")
+            i += 1
+            continue
+
+        if role == "tool":
+            # Tool-Results gehören als user-Nachricht mit tool_result-Block
+            tool_use_id = m.get("tool_use_id") or f"tool_{i}"
+            result.append({
+                "role": "user",
+                "content": [{
+                    "type": "tool_result",
+                    "tool_use_id": tool_use_id,
+                    "content": str(m.get("content", "")),
+                }]
+            })
+            i += 1
+            continue
+
+        if role == "assistant":
+            content_parts = []
+            text = m.get("content", "")
+            if text:
+                content_parts.append({"type": "text", "text": text})
+            # Tool-Calls aus Ollama-Format → Anthropic tool_use-Blöcke
+            for tc in m.get("tool_calls", []):
+                fn = tc.get("function", {})
+                args = fn.get("arguments", {})
+                if isinstance(args, str):
+                    try:
+                        args = json.loads(args)
+                    except Exception:
+                        args = {}
+                content_parts.append({
+                    "type": "tool_use",
+                    "id": tc.get("id") or f"toolu_{len(result)}",
+                    "name": fn.get("name", ""),
+                    "input": args,
+                })
+            result.append({"role": "assistant", "content": content_parts or text})
+            i += 1
+            continue
+
+        # user
+        result.append({"role": "user", "content": m.get("content", "")})
+        i += 1
+
+    return system, result
+
+
+def _extract_tool_calls(response) -> list[dict]:
+    """Extrahiert Tool-Calls aus Anthropic-Response ins einheitliche Format."""
+    calls = []
+    for block in response.content:
+        if block.type == "tool_use":
+            calls.append({
+                "id": block.id,
+                "function": {
+                    "name": block.name,
+                    "arguments": block.input or {},
+                },
+            })
+    return calls
+
+
+def _extract_text(response) -> str:
+    parts = [b.text for b in response.content if b.type == "text"]
+    return "".join(parts)
+
+
+class ClaudeBackend(AgentBackend):
+    def __init__(self, model: str | None = None):
+        self._model = model or config.CLAUDE_CHAT_MODEL
+        self._client = anthropic.AsyncAnthropic(api_key=config.ANTHROPIC_API_KEY)
+
+    @property
+    def model_name(self) -> str:
+        return self._model
+
+    async def call(
+        self,
+        messages: list[dict],
+        tools: list[dict] | None,
+        stream_cb: StreamCb | None,
+        temperature: float,
+        max_tokens: int,
+        think: bool = False,
+        force_tool_call: bool = False,
+    ) -> tuple[str, list[dict]]:
+        system, anthropic_msgs = _ollama_msgs_to_anthropic(messages)
+
+        kwargs: dict = dict(
+            model=self._model,
+            max_tokens=max_tokens,
+            messages=anthropic_msgs,
+            temperature=temperature,
+        )
+        if system:
+            kwargs["system"] = system
+        if tools:
+            kwargs["tools"] = _ollama_tools_to_anthropic(tools)
+        if force_tool_call and tools:
+            kwargs["tool_choice"] = {"type": "any"}
+
+        if stream_cb:
+            collected = ""
+            async with self._client.messages.stream(**kwargs) as stream:
+                async for text in stream.text_stream:
+                    collected += text
+                    try:
+                        await stream_cb(collected)
+                    except Exception:
+                        pass
+            final = await stream.get_final_message()
+            tool_calls = _extract_tool_calls(final)
+            return _extract_text(final) or collected, tool_calls
+
+        response = await self._client.messages.create(**kwargs)
+        tool_calls = _extract_tool_calls(response)
+
+        # Tool-Result-Messages brauchen tool_use_id → rückwärts befüllen
+        # (wird beim nächsten Call aus dem trace rekonstruiert)
+        for tc in tool_calls:
+            tc["tool_use_id"] = tc["id"]
+
+        return _extract_text(response), tool_calls
+
+    async def warmup(self) -> None:
+        log.info(f"☁️  Claude-Backend bereit ({self._model})")

@@ -21,8 +21,7 @@ ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY", "")
 CLAUDE_CHAT_MODEL = os.getenv("CLAUDE_CHAT_MODEL", "claude-haiku-4-5-20251001")  # Echtzeit-Chat
 
 # MLX (großes lokales Modell für Background-Tasks)
-MLX_ENABLED  = os.getenv("MLX_ENABLED", "false").strip().lower() in ("1", "true", "yes", "on", "ja")
-MLX_MODEL    = os.getenv("MLX_MODEL", "")   # z.B. mlx-community/Qwen3-30B-A3B-4bit
+MLX_BG_MODEL = os.getenv("MLX_BG_MODEL", "")  # z.B. gemma4:31b-mlx — Ollama MLX Background-Modell
 
 # Telegram
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "")

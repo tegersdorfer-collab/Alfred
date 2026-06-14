@@ -1,0 +1,40 @@
+"""
+Abstrakte Schnittstelle für Agent-Backends.
+Jedes Backend implementiert genau einen LLM-Anbieter (Ollama, Claude, …).
+Der Agent-Loop in agent.py kennt nur dieses Interface.
+"""
+from abc import ABC, abstractmethod
+from typing import Awaitable, Callable
+
+StreamCb = Callable[[str], Awaitable[None]]
+
+
+class AgentBackend(ABC):
+    @abstractmethod
+    async def call(
+        self,
+        messages: list[dict],
+        tools: list[dict] | None,
+        stream_cb: StreamCb | None,
+        temperature: float,
+        max_tokens: int,
+        think: bool = False,
+        force_tool_call: bool = False,
+    ) -> tuple[str, list[dict]]:
+        """
+        Ruft das LLM einmalig auf.
+
+        Gibt (antwort_text, tool_calls) zurück.
+        tool_calls-Format (einheitlich für alle Backends):
+            [{"function": {"name": str, "arguments": dict}}]
+        """
+        ...
+
+    @abstractmethod
+    async def warmup(self) -> None:
+        """Lädt das Modell in den RAM (Cold-Start vermeiden)."""
+        ...
+
+    @property
+    @abstractmethod
+    def model_name(self) -> str: ...
