@@ -17,8 +17,9 @@ AGENT_MODEL_FAST   = os.getenv("AGENT_MODEL_FAST", "qwen3.5:4b")   # residentes 
 AGENT_MODEL_STRONG = os.getenv("AGENT_MODEL_STRONG", "qwen3.5:9b") # nur bei komplexen Anfragen
 # Starkes Modell schnell wieder entladen (16-GB-RAM: nicht beide dauerhaft warm halten)
 OLLAMA_KEEP_ALIVE_STRONG = os.getenv("OLLAMA_KEEP_ALIVE_STRONG", "2m")
-ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY", "")
-CLAUDE_CHAT_MODEL = os.getenv("CLAUDE_CHAT_MODEL", "claude-haiku-4-5-20251001")  # Echtzeit-Chat
+ANTHROPIC_API_KEY  = os.getenv("ANTHROPIC_API_KEY", "")
+CLAUDE_CHAT_MODEL  = os.getenv("CLAUDE_CHAT_MODEL",  "claude-sonnet-4-6")          # Haupt-Chat + Agenten
+CLAUDE_FAST_MODEL  = os.getenv("CLAUDE_FAST_MODEL",  "claude-haiku-4-5-20251001")  # Routing, Klassifikation, kurze Calls
 
 # MLX (großes lokales Modell für Background-Tasks)
 MLX_BG_MODEL = os.getenv("MLX_BG_MODEL", "")  # z.B. gemma4:31b-mlx — Ollama MLX Background-Modell

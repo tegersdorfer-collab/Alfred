@@ -11,7 +11,7 @@ import config
 
 class ClaudeProvider(LLMProvider):
     def __init__(self, model: str | None = None):
-        self._model = model or config.CLAUDE_MODEL
+        self._model = model or config.CLAUDE_CHAT_MODEL
         self._client = anthropic.AsyncAnthropic(api_key=config.ANTHROPIC_API_KEY)
 
     @property
