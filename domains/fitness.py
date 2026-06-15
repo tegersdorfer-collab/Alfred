@@ -102,28 +102,31 @@ _MUSCLE_KEYWORDS = {
     "cardio": ["running", "lauf", "joggen", "cycling", "stationary bike", "treadmill",
                "rad", "bike", "schwimm", "cardio", "rowing erg", "elliptical"],
     "legs": ["squat", "kniebeuge", "leg press", "leg extension", "leg curl", "lying leg",
-             "split squat", "hack squat", "lunge", "calf", "wadenheben", "beinpresse",
-             "hip adduction", "hip abduction", "romanian", "rdl"],
+             "split squat", "hack squat", "lunge", "calf", "wadenheben", " bein",
+             "beinpresse", "hip adduction", "hip abduction", "romanian", "rdl"],
     "back": ["row", "rudern", "pulldown", "lat ", "pull-up", "pull up", "pullup", "klimmzug",
              "latzug", "deadlift", "kreuzheben", "shrug", "face pull", "single arm lat",
-             "t-bar", "bent-over", "high row", " rücken", "rückenstrecker"],
-    "chest": ["bench", "bankdrück", "bank drück", "schrägbank", "schräg bank",
-              "flachbank", "flach bank", "chest press", "chest",
-              "brust", "butterfly", "fly", "flys", "dips", "pec", "incline press",
-              "push-up", "pushup"],
+             "t-bar", "bent-over", "high row", " rücken", "rückenstrecker",
+             "reverse butterfly", "reverse fly", "reverse flys", "butterfly reverse",
+             "hyperextension", "back extension"],
+    "chest": ["bench press", "bankdrück", "bank drück", "flachbankdrück", "flach bank drück",
+              "chest press", "chest fly", "chest", "brust", "butterfly", "fly", "flys",
+              "dips", "pec", "incline press", "push-up", "pushup"],
     "shoulders": ["shoulder press", "overhead press", "military", "ohp", "lateral raise",
-                  "seitheben", "lateral raises", "reverse butterfly", "reverse fly",
-                  "reverse flys", "shoulder", "schulter", "delt"],
-    "arms": ["curl", "biceps", "bizeps", "triceps", "trizeps", "pushdown", "extension",
-             "preacher", "wrist curl", "unterarme", "forearm", "farmers"],
-    "core": ["crunch", "plank", "sit-up", "situp", "ab ", "abs", "bauch", "leg raise",
-             "hanging leg", "knee raise", "core"],
+                  "seitheben", "lateral raises", "shoulder", "schulter", "delt",
+                  "front raise", "arnold press"],
+    "arms": ["curl", "bizeps", "biceps", "triceps", "trizeps", "pushdown",
+             "skull crusher", "preacher", "wrist curl", "unterarme", "forearm", "farmers"],
+    "core": ["crunch", "plank", "sit up", "situp", "sit-up", "ab ", "abs", "bauch",
+             "leg raise", "hanging leg", "knee raise", "core", "russian twist", "twister"],
 }
 
 
 def guess_muscle(exercise_name: str, workout_type: str = "") -> str:
-    # Bindestriche normalisieren damit "Schräg-Bank-Drücken" → "schräg bank drücken"
-    t = " " + (exercise_name + " " + workout_type).lower().replace("-", " ") + " "
+    # Soft-Hyphen + HTML-Entities entfernen, dann Bindestriche zu Leerzeichen normalisieren
+    cleaned = (exercise_name + " " + workout_type)
+    cleaned = cleaned.replace("­", "").replace("&shy;", "").replace("-", " ")
+    t = " " + cleaned.lower() + " "
     for grp, kws in _MUSCLE_KEYWORDS.items():
         if any(k in t for k in kws):
             return grp
