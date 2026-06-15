@@ -335,7 +335,7 @@ label.field-label{display:block;font-size:11px;letter-spacing:.5px;text-transfor
   .cnt{padding:20px 28px 40px;max-width:none;}
   .grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px;align-items:start;}
   .grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;align-items:start;}
-  .chat-wrap{max-width:740px;}
+  .chat-wrap{max-width:none;}
   .sheet-card{
     max-width:520px;border-radius:12px;
     bottom:auto;top:50%;left:50%;right:auto;
@@ -863,7 +863,7 @@ VIEWS.habits=async(root)=>{
     const dt=new Date(dateCols[i]);
     const lbl=['So','Mo','Di','Mi','Do','Fr','Sa'][dt.getDay()];
     const isMon=lbl==='Mo';
-    hdrGrid.insertAdjacentHTML('beforeend',`<div style="text-align:center;font-size:9px;color:${isMon?'#555':'#2d3f5a'};padding:5px 0;${isMon?'border-left:1px solid #0a0a0c':''}">${isMon||lbl==='So'?lbl:''}</div>`);
+    hdrGrid.insertAdjacentHTML('beforeend',`<div style="text-align:center;font-size:9px;color:${isMon?'var(--t2)':'var(--t3)'};padding:5px 0;${isMon?'border-left:1px solid var(--bd)':''}">${isMon||lbl==='So'?lbl:''}</div>`);
   }
   hdrGrid.insertAdjacentHTML('beforeend',`<div style="text-align:center;font-size:10px;font-weight:700;color:var(--t2);padding:5px 0">Heu</div>`);
   hdrGrid.insertAdjacentHTML('beforeend','<div></div>');
@@ -876,7 +876,7 @@ VIEWS.habits=async(root)=>{
     const doneToday=inCat.filter(h=>h.today_done).length;
 
     // Trennlinie zwischen Sektionen
-    if(ci>0) masterCard.insertAdjacentHTML('beforeend',`<div style="height:2px;background:linear-gradient(90deg,${cat.color}44,transparent)"></div>`);
+    if(ci>0) masterCard.insertAdjacentHTML('beforeend',`<div style="height:1px;background:var(--bd)"></div>`);
 
     // Sektion: vertikales Label links + Habit-Zeilen rechts
     const section=document.createElement('div');
@@ -884,7 +884,7 @@ VIEWS.habits=async(root)=>{
 
     // Vertikales Kategorie-Label
     const label=document.createElement('div');
-    label.style.cssText=`width:28px;flex-shrink:0;background:${cat.bg};display:flex;align-items:center;justify-content:center;border-right:2px solid ${cat.color}44;cursor:default`;
+    label.style.cssText=`width:28px;flex-shrink:0;background:${cat.color}18;display:flex;align-items:center;justify-content:center;border-right:2px solid ${cat.color};cursor:default`;
     const labelInner=document.createElement('div');
     labelInner.style.cssText=`writing-mode:vertical-rl;transform:rotate(180deg);font-size:11px;font-weight:700;color:${cat.color};letter-spacing:.5px;padding:8px 0;user-select:none;display:flex;align-items:center;gap:4px`;
     labelInner.innerHTML=`<span>${cat.label.split(' ').slice(1).join(' ')}</span>`;
@@ -911,7 +911,7 @@ VIEWS.habits=async(root)=>{
       const row=document.createElement('div');
       row.dataset.hid=h.id;
       row.draggable=false; // nur per Handle aktivierbar
-      row.style.cssText=`display:grid;grid-template-columns:${COLS};align-items:center;padding:0 6px 0 4px;border-top:1px solid var(--bd);background:${hi%2?'rgba(255,255,255,0.012)':'transparent'};transition:opacity .15s`;
+      row.style.cssText=`display:grid;grid-template-columns:${COLS};align-items:center;padding:0 6px 0 4px;border-top:1px solid var(--bd);background:${hi%2?'rgba(255,255,255,0.025)':'transparent'};transition:opacity .15s`;
       row.addEventListener('dragstart',e=>{if(!row.draggable)return e.preventDefault();dragSrc=row;e.dataTransfer.effectAllowed='move';setTimeout(()=>row.style.opacity='0.35',0);});
       row.addEventListener('dragend',()=>{row.draggable=false;row.style.opacity='1';saveCatOrder();});
       row.addEventListener('dragover',e=>{if(!dragSrc)return;e.preventDefault();if(dragSrc!==row){const mid=row.getBoundingClientRect().top+row.getBoundingClientRect().height/2;rows.insertBefore(dragSrc,e.clientY<mid?row:row.nextSibling);}});
@@ -930,7 +930,7 @@ VIEWS.habits=async(root)=>{
       const pct=Math.min(s/Math.max(s,7),1);
       const streakDiv=document.createElement('div');
       streakDiv.style.cssText='display:flex;align-items:center;justify-content:center;padding:6px 0';
-      streakDiv.innerHTML=`<svg width="26" height="26" viewBox="0 0 26 26"><circle cx="13" cy="13" r="10" fill="none" stroke="#0a0a0c" stroke-width="3"/><circle cx="13" cy="13" r="10" fill="none" stroke="${s>=7?'#f59e0b':s>=1?cat.color:'#1a1a1e'}" stroke-width="3" stroke-dasharray="${Math.round(pct*62.8)} 62.8" stroke-linecap="round" transform="rotate(-90 13 13)"/>${s>0?`<text x="13" y="17" text-anchor="middle" font-size="8" fill="#e2e8f0" font-weight="bold">${s}</text>`:`<text x="13" y="17" text-anchor="middle" font-size="8" fill="#1e1e22">–</text>`}</svg>`;
+      streakDiv.innerHTML=`<svg width="26" height="26" viewBox="0 0 26 26"><circle cx="13" cy="13" r="10" fill="none" stroke="#1e1e28" stroke-width="3"/><circle cx="13" cy="13" r="10" fill="none" stroke="${s>=7?'#f5c400':s>=1?cat.color:'#2a2a35'}" stroke-width="3" stroke-dasharray="${Math.round(pct*62.8)} 62.8" stroke-linecap="round" transform="rotate(-90 13 13)"/>${s>0?`<text x="13" y="17" text-anchor="middle" font-size="8" fill="#e2e8f0" font-weight="bold">${s}</text>`:`<text x="13" y="17" text-anchor="middle" font-size="8" fill="#444">–</text>`}</svg>`;
       row.appendChild(streakDiv);
 
       // Name
@@ -946,7 +946,7 @@ VIEWS.habits=async(root)=>{
         const isMon=['Mo'][0]===['So','Mo','Di','Mi','Do','Fr','Sa'][dt.getDay()];
         const dotDiv=document.createElement('div');
         dotDiv.style.cssText=`display:flex;align-items:center;justify-content:center;${isMon?'border-left:1px solid #0a0a0c':''}`;
-        dotDiv.innerHTML=`<div title="${dateCols[i]}" style="width:${done?20:9}px;height:${done?20:9}px;border-radius:${done?5:10}px;background:${done?cat.color:'#0a0a0c'}"></div>`;
+        dotDiv.innerHTML=`<div title="${dateCols[i]}" style="width:${done?14:7}px;height:${done?14:7}px;border-radius:${done?4:50}px;background:${done?cat.color:'#222228'};box-shadow:${done?'0 0 6px '+cat.color+'66':'none'}"></div>`;
         row.appendChild(dotDiv);
       }
 
