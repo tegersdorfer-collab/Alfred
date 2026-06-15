@@ -52,7 +52,7 @@ async def main():
     from thermal import ThermalMonitor
     from orchestrator import Orchestrator
 
-    # ── Chat-LLM: Sonnet für Haupt-Chat, sonst Ollama ────────────────────────
+    # ── Chat-LLM: Haiku für schnelle Echtzeit-Antworten im Chat ─────────────
     if cfg.ANTHROPIC_API_KEY:
         from llm.claude import ClaudeProvider
         chat_llm = ClaudeProvider(model=cfg.CLAUDE_CHAT_MODEL)
@@ -61,25 +61,16 @@ async def main():
         chat_llm = OllamaProvider()
         log.info(f"💬 Chat-LLM: Ollama {cfg.OLLAMA_MODEL} (kein API-Key)")
 
-    # ── Agent-Backend: Sonnet für Tool-Use/Agenten, sonst Ollama ─────────────
-    if cfg.ANTHROPIC_API_KEY:
-        from core.backends.claude import ClaudeBackend
-        agent_backend = ClaudeBackend(model=cfg.CLAUDE_CHAT_MODEL)
-        log.info(f"🔧 Agent-Backend: Claude ({cfg.CLAUDE_CHAT_MODEL})")
-    else:
-        from core.backends.ollama import OllamaBackend
-        agent_backend = OllamaBackend()
-        log.info(f"🔧 Agent-Backend: Ollama ({cfg.AGENT_MODEL_STRONG})")
+    # ── Agent-Backend: immer Ollama (lokales Modell für Agenten/Tools) ────────
+    from core.backends.ollama import OllamaBackend
+    agent_backend = OllamaBackend()
+    log.info(f"🔧 Agent-Backend: Ollama ({cfg.AGENT_MODEL_STRONG})")
 
-    # ── Background-LLM: Haiku für Insight/Zusammenfassungen im Hintergrund ───
+    # ── Background-LLM: gemma4:31b-mlx wenn gesetzt, sonst Ollama ────────────
     bg_model = cfg.MLX_BG_MODEL if cfg.MLX_BG_MODEL else None
     if bg_model:
         bg_llm = OllamaProvider(model=bg_model)
         log.info(f"🧠 Background-LLM: {bg_model} (Ollama MLX)")
-    elif cfg.ANTHROPIC_API_KEY:
-        from llm.claude import ClaudeProvider as _CP
-        bg_llm = _CP(model=cfg.CLAUDE_FAST_MODEL)
-        log.info(f"🧠 Background-LLM: {cfg.CLAUDE_FAST_MODEL} (Haiku — Hintergrund-Tasks)")
     else:
         bg_llm = OllamaProvider()
         log.info(f"🧠 Background-LLM: Ollama {cfg.OLLAMA_MODEL}")
