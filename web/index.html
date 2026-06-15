@@ -5,94 +5,102 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="theme-color" content="#0a0f1e">
+<meta name="theme-color" content="#060608">
 <link rel="manifest" href="/manifest.json">
 <title>Alfred</title>
 <script src="https://cdn.tailwindcss.com"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/marked@9.1.6/marked.min.js"></script>
 <style>
-  :root { --bg:#0a0f1e; --card:#121a2e; --card2:#1a2540; --line:#1f2c4a; --accent:#3b82f6; --accent2:#8b5cf6; --muted:#7c8db5; }
+  :root { --bg:#060608; --card:#0e0e10; --card2:#141416; --line:#1e1e22; --accent:#eab308; --accent2:#f59e0b; --muted:#6b7280; }
   * { -webkit-tap-highlight-color:transparent; box-sizing:border-box; }
-  body { background:radial-gradient(1200px 700px at 50% -10%, #16213f 0%, var(--bg) 55%); color:#e8eefc;
-         font-family:-apple-system,BlinkMacSystemFont,'SF Pro Display',system-ui,sans-serif; margin:0; overscroll-behavior:none; }
-  .card { background:linear-gradient(160deg,var(--card) 0%,#0f1729 100%); border:1px solid var(--line); border-radius:20px; }
-  .soft { background:rgba(26,37,64,.35); border:none; border-radius:18px; }
-  .glass { backdrop-filter:blur(20px); background:rgba(10,15,30,.82); }
-  .grad-text { background:linear-gradient(120deg,#60a5fa,#a78bfa);-webkit-background-clip:text;background-clip:text;color:transparent; }
-  .btn { background:linear-gradient(120deg,var(--accent),var(--accent2));color:#fff;border:none;border-radius:14px;padding:11px 16px;font-weight:600;font-size:14px;transition:.15s;cursor:pointer; }
+  body { background:var(--bg); color:#e8e8e8;
+         font-family:'SF Pro Display',-apple-system,BlinkMacSystemFont,system-ui,sans-serif; margin:0; overscroll-behavior:none; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:16px; }
+  .soft { background:rgba(255,255,255,.04); border:none; border-radius:14px; }
+  .glass { backdrop-filter:blur(20px); background:rgba(6,6,8,.88); }
+  .grad-text { background:linear-gradient(120deg,#eab308,#f59e0b);-webkit-background-clip:text;background-clip:text;color:transparent; }
+  .btn { background:linear-gradient(120deg,#eab308,#d97706);color:#000;border:none;border-radius:12px;padding:11px 16px;font-weight:700;font-size:14px;transition:.15s;cursor:pointer;letter-spacing:.3px; }
   .btn:active{transform:scale(.96);}
-  .btn-ghost{background:var(--card2);color:#c7d2fe;border:none;cursor:pointer;}
-  .chip{background:var(--card2);border:1px solid var(--line);border-radius:999px;padding:3px 10px;font-size:11px;color:#a5b4fc;}
+  .btn-ghost{background:var(--card2);color:#c8c8c8;border:none;cursor:pointer;}
+  .chip{background:rgba(234,179,8,.1);border:1px solid rgba(234,179,8,.2);border-radius:999px;padding:3px 10px;font-size:11px;color:#eab308;}
   .jring{transform:rotate(-90deg);box-shadow:none!important;}
-  input,textarea,select{background:var(--card2);border:1px solid var(--line);border-radius:12px;color:#e8eefc;padding:11px 13px;font-size:15px;width:100%;outline:none;}
-  input:focus,textarea:focus,select:focus{border-color:var(--accent);}
+  input,textarea,select{background:#0a0a0c;border:1px solid var(--line);border-radius:10px;color:#e8e8e8;padding:11px 13px;font-size:15px;width:100%;outline:none;}
+  input:focus,textarea:focus,select:focus{border-color:var(--accent);box-shadow:0 0 0 2px rgba(234,179,8,.15);}
   ::-webkit-scrollbar{width:0;height:0;}
-  .fade{animation:fade .35s ease;}@keyframes fade{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
-  .pill-h{height:8px;border-radius:999px;background:var(--card2);overflow:hidden;}
-  .pill-f{height:100%;background:linear-gradient(90deg,var(--accent),var(--accent2));border-radius:999px;transition:width .5s;}
-  .heat{width:11px;height:11px;border-radius:3px;background:#1a2540;}
-  .msg{max-width:80%;padding:10px 14px;border-radius:18px;font-size:14px;line-height:1.45;white-space:pre-wrap;word-wrap:break-word;}
-  .msg-u{background:linear-gradient(120deg,var(--accent),#2563eb);color:#fff;border-bottom-right-radius:5px;margin-left:auto;}
-  .msg-a{background:var(--card2);color:#e8eefc;border-bottom-left-radius:5px;}
+  .fade{animation:fade .3s ease;}@keyframes fade{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+  .pill-h{height:6px;border-radius:999px;background:var(--card2);overflow:hidden;}
+  .pill-f{height:100%;background:linear-gradient(90deg,#eab308,#d97706);border-radius:999px;transition:width .5s;}
+  .heat{width:11px;height:11px;border-radius:3px;background:#1a1a1e;}
+  .md-result h1,.md-result h2,.md-result h3{color:#f0f0f0;font-weight:700;margin:12px 0 6px;}
+  .md-result h1{font-size:15px;}.md-result h2{font-size:14px;}.md-result h3{font-size:13px;}
+  .md-result p{margin:6px 0;}
+  .md-result ul,.md-result ol{padding-left:18px;margin:6px 0;}
+  .md-result li{margin:3px 0;}
+  .md-result code{background:#0a0a0c;border-radius:4px;padding:1px 5px;font-size:12px;color:#eab308;}
+  .md-result pre{background:#0a0a0c;border-radius:8px;padding:10px;overflow-x:auto;margin:8px 0;}
+  .md-result pre code{background:none;padding:0;}
+  .md-result hr{border:none;border-top:1px solid var(--line);margin:12px 0;}
+  .md-result strong{color:#f0f0f0;}
+  .msg{max-width:80%;padding:10px 14px;border-radius:16px;font-size:14px;line-height:1.45;white-space:pre-wrap;word-wrap:break-word;}
+  .msg-u{background:linear-gradient(120deg,#eab308,#d97706);color:#000;font-weight:600;border-bottom-right-radius:4px;margin-left:auto;}
+  .msg-a{background:var(--card2);color:#e8e8e8;border-bottom-left-radius:4px;border:1px solid var(--line);}
 
   /* Layout */
   .shell{display:flex;min-height:100vh;}
   .sidebar{display:none;}
   .main{flex:1;min-width:0;}
-  .app{max-width:560px;margin:0 auto;padding-bottom:96px;}
-  .header{position:sticky;top:0;z-index:40;padding:14px 18px;padding-top:max(14px,env(safe-area-inset-top));border-bottom:1px solid var(--line);}
+  .app{max-width:560px;margin:0 auto;padding-bottom:88px;}
+  .header{position:sticky;top:0;z-index:40;padding:12px 18px;padding-top:max(12px,env(safe-area-inset-top));border-bottom:1px solid var(--line);}
   .nav{position:fixed;bottom:0;left:0;right:0;z-index:50;}
-  .nav-inner{max-width:560px;margin:0 auto;display:flex;justify-content:space-around;align-items:center;padding:8px 8px calc(8px + env(safe-area-inset-bottom));border-top:1px solid var(--line);}
-  .nav-btn{display:flex;flex-direction:column;align-items:center;gap:3px;font-size:10px;color:#5b6b8c;background:none;border:none;padding:4px 10px;cursor:pointer;}
-  .nav-btn.active{color:#fff;}
-  .nav-btn.active .ni{background:linear-gradient(120deg,var(--accent),var(--accent2));box-shadow:0 4px 14px rgba(59,130,246,.5);}
-  .ni{width:42px;height:30px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:18px;transition:.2s;}
+  .nav-inner{max-width:560px;margin:0 auto;display:flex;justify-content:space-around;align-items:center;padding:6px 8px calc(6px + env(safe-area-inset-bottom));border-top:1px solid var(--line);}
+  .nav-btn{display:flex;flex-direction:column;align-items:center;gap:2px;font-size:10px;color:#555;background:none;border:none;padding:4px 10px;cursor:pointer;transition:.15s;}
+  .nav-btn.active{color:#eab308;}
+  .nav-btn.active .ni{background:rgba(234,179,8,.15);box-shadow:0 0 12px rgba(234,179,8,.3);}
+  .ni{width:40px;height:28px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:17px;transition:.2s;}
   .sheet{position:fixed;inset:0;z-index:60;display:none;}
   .sheet.open{display:block;}
-  .sheet-bg{position:absolute;inset:0;background:rgba(0,0,0,.55);}
-  .sheet-card{position:absolute;bottom:0;left:0;right:0;max-width:560px;margin:0 auto;border-radius:24px 24px 0 0;background:var(--card);border-top:1px solid var(--line);padding:20px 18px calc(20px + env(safe-area-inset-bottom));animation:up .25s;max-height:88vh;overflow-y:auto;}
+  .sheet-bg{position:absolute;inset:0;background:rgba(0,0,0,.7);}
+  .sheet-card{position:absolute;bottom:0;left:0;right:0;max-width:560px;margin:0 auto;border-radius:20px 20px 0 0;background:#0e0e10;border-top:1px solid var(--line);padding:18px 18px calc(20px + env(safe-area-inset-bottom));animation:up .22s;max-height:88vh;overflow-y:auto;}
   @keyframes up{from{transform:translateY(100%)}to{transform:none}}
   .tabbar{display:flex;gap:6px;margin-bottom:14px;}
-  .tab{flex:1;text-align:center;padding:8px;border-radius:12px;background:var(--card2);color:var(--muted);font-size:13px;cursor:pointer;}
-  .tab.active{background:linear-gradient(120deg,var(--accent),var(--accent2));color:#fff;}
+  .tab{flex:1;text-align:center;padding:8px;border-radius:10px;background:var(--card2);color:var(--muted);font-size:13px;cursor:pointer;transition:.15s;}
+  .tab.active{background:rgba(234,179,8,.15);color:#eab308;border:1px solid rgba(234,179,8,.3);}
 
   /* Live-Status */
-  .status-bar{display:flex;align-items:center;gap:8px;padding:9px 14px;border-radius:14px;background:rgba(26,37,64,.5);border:1px solid var(--line);font-size:12px;color:#9fb0d6;transition:.3s;}
-  .status-bar.thinking{border-color:rgba(59,130,246,.4);background:rgba(59,130,246,.08);}
-  .status-bar.tool{border-color:rgba(139,92,246,.4);background:rgba(139,92,246,.08);}
-  .status-bar.memory{border-color:rgba(34,197,94,.4);background:rgba(34,197,94,.08);}
-  .status-bar.learning{border-color:rgba(251,191,36,.3);background:rgba(251,191,36,.06);}
-  .status-bar.error{border-color:rgba(239,68,68,.4);background:rgba(239,68,68,.08);}
-  .status-bar.task_working{border-color:rgba(165,180,252,.4);background:rgba(165,180,252,.08);}
-  .sdot{width:8px;height:8px;border-radius:50%;flex-shrink:0;background:#475569;transition:.3s;}
-  .sdot.task_working{background:#a5b4fc;animation:pulse-indigo 1s infinite;}
-  .sdot.thinking{background:#3b82f6;animation:pulse-blue 1.2s infinite;}
-  .sdot.tool{background:#8b5cf6;animation:pulse-purple 1s infinite;}
+  .status-bar{display:flex;align-items:center;gap:8px;padding:9px 14px;border-radius:12px;background:rgba(20,20,22,.8);border:1px solid var(--line);font-size:12px;color:#888;transition:.3s;}
+  .status-bar.thinking{border-color:rgba(234,179,8,.3);background:rgba(234,179,8,.05);}
+  .status-bar.tool{border-color:rgba(234,179,8,.4);background:rgba(234,179,8,.07);}
+  .status-bar.memory{border-color:rgba(34,197,94,.3);background:rgba(34,197,94,.05);}
+  .status-bar.learning{border-color:rgba(234,179,8,.3);background:rgba(234,179,8,.06);}
+  .status-bar.error{border-color:rgba(239,68,68,.4);background:rgba(239,68,68,.07);}
+  .status-bar.task_working{border-color:rgba(234,179,8,.4);background:rgba(234,179,8,.08);}
+  .sdot{width:7px;height:7px;border-radius:50%;flex-shrink:0;background:#333;transition:.3s;}
+  .sdot.task_working{background:#eab308;animation:pulse-yellow 1s infinite;}
+  .sdot.thinking{background:#eab308;animation:pulse-yellow 1.2s infinite;}
+  .sdot.tool{background:#f59e0b;animation:pulse-yellow 1s infinite;}
   .sdot.memory{background:#22c55e;}
-  .sdot.learning{background:#fbbf24;animation:pulse-yellow 1.4s infinite;}
+  .sdot.learning{background:#eab308;animation:pulse-yellow 1.4s infinite;}
   .sdot.idle{background:#22c55e;}
   .sdot.error{background:#ef4444;}
-  @keyframes pulse-blue{0%,100%{box-shadow:0 0 0 0 rgba(59,130,246,.6)}50%{box-shadow:0 0 0 5px rgba(59,130,246,0)}}
-  @keyframes pulse-purple{0%,100%{box-shadow:0 0 0 0 rgba(139,92,246,.6)}50%{box-shadow:0 0 0 5px rgba(139,92,246,0)}}
-  @keyframes pulse-yellow{0%,100%{box-shadow:0 0 0 0 rgba(251,191,36,.5)}50%{box-shadow:0 0 0 5px rgba(251,191,36,0)}}
-  @keyframes pulse-indigo{0%,100%{box-shadow:0 0 0 0 rgba(165,180,252,.6)}50%{box-shadow:0 0 0 5px rgba(165,180,252,0)}}
-  .act-row{display:flex;gap:8px;padding:5px 0;font-size:12px;color:#9fb0d6;border-bottom:1px solid rgba(31,44,74,.6);animation:fade .2s ease;}
+  @keyframes pulse-yellow{0%,100%{box-shadow:0 0 0 0 rgba(234,179,8,.6)}50%{box-shadow:0 0 0 5px rgba(234,179,8,0)}}
+  .act-row{display:flex;gap:8px;padding:5px 0;font-size:12px;color:#888;border-bottom:1px solid rgba(30,30,34,.8);animation:fade .2s ease;}
   .act-row:last-child{border-bottom:none;}
 
   /* Desktop */
   @media(min-width:900px){
     .app{max-width:1100px;padding:0 28px 40px;}
     .nav{display:none;}
-    .sidebar{display:flex;flex-direction:column;width:230px;flex-shrink:0;border-right:1px solid var(--line);
-             padding:20px 14px;position:sticky;top:0;height:100vh;gap:4px;}
-    .side-btn{display:flex;align-items:center;gap:12px;padding:11px 14px;border-radius:13px;color:#9fb0d6;background:none;border:none;font-size:14px;cursor:pointer;text-align:left;width:100%;}
-    .side-btn:hover{background:var(--card2);}
-    .side-btn.active{background:linear-gradient(120deg,rgba(59,130,246,.25),rgba(139,92,246,.2));color:#fff;}
-    .header{border-bottom:none;padding-top:24px;}
-    .grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:start;}
-    .grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;align-items:start;}
+    .sidebar{display:flex;flex-direction:column;width:220px;flex-shrink:0;border-right:1px solid var(--line);
+             padding:20px 12px;position:sticky;top:0;height:100vh;gap:2px;}
+    .side-btn{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:10px;color:#888;background:none;border:none;font-size:13px;cursor:pointer;text-align:left;width:100%;transition:.15s;}
+    .side-btn:hover{background:var(--card2);color:#ccc;}
+    .side-btn.active{background:rgba(234,179,8,.12);color:#eab308;border-left:2px solid #eab308;}
+    .header{border-bottom:none;padding-top:22px;}
+    .grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px;align-items:start;}
+    .grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;align-items:start;}
     .chat-wrap{max-width:760px;}
-    .sheet-card{max-width:560px;border-radius:24px;bottom:auto;top:50%;left:50%;right:auto;transform:translate(-50%,-50%);}
+    .sheet-card{max-width:540px;border-radius:20px;bottom:auto;top:50%;left:50%;right:auto;transform:translate(-50%,-50%);}
     @keyframes up{from{opacity:0}to{opacity:1}}
   }
 </style>
@@ -102,7 +110,7 @@
   <!-- Desktop Sidebar -->
   <aside class="sidebar">
     <div style="display:flex;align-items:center;gap:11px;padding:6px 10px 18px">
-      <div style="width:38px;height:38px;border-radius:12px;background:linear-gradient(135deg,var(--accent),var(--accent2));display:flex;align-items:center;justify-content:center;font-size:19px">🤖</div>
+      <div style="width:38px;height:38px;border-radius:10px;background:linear-gradient(135deg,#eab308,#d97706);display:flex;align-items:center;justify-content:center;font-size:19px;box-shadow:0 0 16px rgba(234,179,8,.3)">🤖</div>
       <div><div style="font-weight:700">Alfred</div><div id="sideStatus" style="font-size:11px;color:var(--muted)">…</div></div>
     </div>
     <div id="sideNav" style="flex:1;overflow-y:auto"></div>
@@ -113,11 +121,11 @@
       <div class="header glass" id="topHeader">
         <div style="display:flex;align-items:center;justify-content:space-between">
           <div style="display:flex;align-items:center;gap:11px">
-            <div class="hmob" style="width:40px;height:40px;border-radius:13px;background:linear-gradient(135deg,var(--accent),var(--accent2));display:flex;align-items:center;justify-content:center;font-size:20px">🤖</div>
-            <div><div style="font-weight:700;font-size:18px" id="hello">Alfred</div><div style="font-size:11px;color:var(--muted)" id="sub">verbinde…</div></div>
+            <div class="hmob" style="width:40px;height:40px;border-radius:11px;background:linear-gradient(135deg,#eab308,#d97706);display:flex;align-items:center;justify-content:center;font-size:20px;box-shadow:0 0 18px rgba(234,179,8,.3)">🤖</div>
+            <div><div style="font-weight:800;font-size:18px;letter-spacing:.5px;color:#eab308" id="hello">ALFRED</div><div style="font-size:11px;color:var(--muted)" id="sub">verbinde…</div></div>
           </div>
           <div style="display:flex;align-items:center;gap:8px">
-            <span id="dot" style="width:9px;height:9px;border-radius:50%;background:#475569"></span>
+            <span id="dot" style="width:9px;height:9px;border-radius:50%;background:#333"></span>
             <span id="clock" style="font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums"></span>
           </div>
         </div>
@@ -154,10 +162,10 @@ async function api(p,o){const r=await fetch(API+p,o);return r.json();}
 async function post(p,b){return api(p,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(b||{})});}
 async function del(p){return api(p,{method:'DELETE'});}
 function esc(s){return(s||'').replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));}
-function md(s){return esc(s).replace(/\*\*(.+?)\*\*/g,'<b>$1</b>').replace(/\*(.+?)\*/g,'<i>$1</i>').replace(/`(.+?)`/g,'<code style="background:#0b1220;padding:1px 5px;border-radius:5px">$1</code>');}
+function md(s){return esc(s).replace(/\*\*(.+?)\*\*/g,'<b>$1</b>').replace(/\*(.+?)\*/g,'<i>$1</i>').replace(/`(.+?)`/g,'<code style="background:#0a0a0c;padding:1px 5px;border-radius:5px">$1</code>');}
 function toast(t){const x=el(`<div style="position:fixed;bottom:110px;left:50%;transform:translateX(-50%);background:var(--card2);border:1px solid var(--line);color:#e8eefc;padding:10px 18px;border-radius:14px;z-index:90;font-size:13px;box-shadow:0 8px 24px rgba(0,0,0,.4)">${esc(t)}</div>`);document.body.appendChild(x);setTimeout(()=>x.remove(),1900);}
-function confirmAction(text,onyes){sheet(`<div style="width:40px;height:4px;background:#33415a;border-radius:99px;margin:0 auto 16px"></div><div style="font-size:16px;margin-bottom:18px;text-align:center">${esc(text)}</div><div style="display:flex;gap:10px"><button class="btn-ghost" style="flex:1;padding:12px;border-radius:13px" onclick="closeSheet()">Abbrechen</button><button class="btn" style="flex:1;background:linear-gradient(120deg,#ef4444,#dc2626)" id="cfYes">Löschen</button></div>`);$('#cfYes').onclick=()=>{closeSheet();onyes();};}
-function ring(pct,size=64,stroke=7,color='#3b82f6'){const r=(size-stroke)/2,c=2*Math.PI*r,off=c*(1-Math.min(1,pct||0));return `<svg width="${size}" height="${size}" class="jring"><circle cx="${size/2}" cy="${size/2}" r="${r}" stroke="#1a2540" stroke-width="${stroke}" fill="none"/><circle cx="${size/2}" cy="${size/2}" r="${r}" stroke="${color}" stroke-width="${stroke}" fill="none" stroke-linecap="round" stroke-dasharray="${c}" stroke-dashoffset="${off}"/></svg>`;}
+function confirmAction(text,onyes){sheet(`<div style="width:40px;height:4px;background:#222224;border-radius:99px;margin:0 auto 16px"></div><div style="font-size:16px;margin-bottom:18px;text-align:center">${esc(text)}</div><div style="display:flex;gap:10px"><button class="btn-ghost" style="flex:1;padding:12px;border-radius:13px" onclick="closeSheet()">Abbrechen</button><button class="btn" style="flex:1;background:linear-gradient(120deg,#ef4444,#dc2626)" id="cfYes">Löschen</button></div>`);$('#cfYes').onclick=()=>{closeSheet();onyes();};}
+function ring(pct,size=64,stroke=7,color='#eab308'){const r=(size-stroke)/2,c=2*Math.PI*r,off=c*(1-Math.min(1,pct||0));return `<svg width="${size}" height="${size}" class="jring"><circle cx="${size/2}" cy="${size/2}" r="${r}" stroke="#1a1a1e" stroke-width="${stroke}" fill="none"/><circle cx="${size/2}" cy="${size/2}" r="${r}" stroke="${color}" stroke-width="${stroke}" fill="none" stroke-linecap="round" stroke-dasharray="${c}" stroke-dashoffset="${off}"/></svg>`;}
 function sheet(h){$('#sheetCard').innerHTML=h;$('#sheet').classList.add('open');}
 function closeSheet(){$('#sheet').classList.remove('open');}
 
@@ -170,8 +178,8 @@ const STATUS_ICONS={thinking:'💭',tool:'🔧',memory:'🧠',learning:'💡',id
 const STATUS_LABELS={thinking:'Denkt…',tool:'Tool',memory:'Erinnerung',learning:'Lernt',idle:'Bereit',autopilot:'Autopilot',error:'Fehler',task_working:'Arbeitet…'};
 const MODEL_BADGES={
   'claude-haiku-4-5-20251001':'<span style="font-size:10px;background:#1a3a2a;color:#4ade80;padding:1px 6px;border-radius:99px;margin-left:6px">Haiku ⚡</span>',
-  'gemma4:31b-mlx':'<span style="font-size:10px;background:#1e2a3a;color:#60a5fa;padding:1px 6px;border-radius:99px;margin-left:6px">Gemma4 🧠</span>',
-  'qwen3.5:9b':'<span style="font-size:10px;background:#2a1a3a;color:#c084fc;padding:1px 6px;border-radius:99px;margin-left:6px">Qwen 🔧</span>',
+  'gemma4:31b-mlx':'<span style="font-size:10px;background:#1a1500;color:#eab308;padding:1px 6px;border-radius:99px;margin-left:6px">Gemma4 🧠</span>',
+  'qwen3.5:9b':'<span style="font-size:10px;background:#1a1200;color:#d97706;padding:1px 6px;border-radius:99px;margin-left:6px">Qwen 🔧</span>',
 };
 function modelBadge(m){return MODEL_BADGES[m]||'';}
 let _activeModel='';
@@ -192,7 +200,7 @@ function applyStatus(evt){
 
   // Dot in Header
   const dot=$('#dot');
-  if(dot){dot.style.background=type==='idle'?'#22c55e':type==='error'?'#ef4444':'#3b82f6';}
+  if(dot){dot.style.background=type==='idle'?'#22c55e':type==='error'?'#ef4444':'#eab308';}
 
   // Sub-Zeile Header
   const sub=$('#sub');
@@ -229,7 +237,7 @@ function applyStatus(evt){
       // Live-Feed in Mind-View einblenden falls offen
       const feed=$('#actFeed');
       if(feed){
-        const row=el(`<div class="act-row"><span>${STATUS_ICONS[type]||'·'}</span><span style="flex:1;color:#c7d2fe">${esc(text)}${detail?` <span style="color:var(--muted)">${esc(detail)}</span>`:''}</span><span style="color:#4a5980">${new Date(ts*1000).toLocaleTimeString('de-DE',{hour:'2-digit',minute:'2-digit',second:'2-digit'})}</span></div>`);
+        const row=el(`<div class="act-row"><span>${STATUS_ICONS[type]||'·'}</span><span style="flex:1;color:#fef3c7">${esc(text)}${detail?` <span style="color:var(--muted)">${esc(detail)}</span>`:''}</span><span style="color:#444">${new Date(ts*1000).toLocaleTimeString('de-DE',{hour:'2-digit',minute:'2-digit',second:'2-digit'})}</span></div>`);
         feed.prepend(row);
         while(feed.children.length>60) feed.lastChild.remove();
       }
@@ -260,7 +268,7 @@ function go(v){
   (VIEWS[v]||(()=>{}))(root);
 }
 document.querySelectorAll('.nav-btn').forEach(b=>b.onclick=()=>go(b.dataset.v));
-function openMore(){const items=NAV.slice(4);sheet(`<div style="width:40px;height:4px;background:#33415a;border-radius:99px;margin:0 auto 16px"></div><div style="font-weight:700;font-size:18px;margin-bottom:14px">Mehr</div><div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px">${items.map(i=>`<button class="soft" style="padding:18px 8px;display:flex;flex-direction:column;gap:8px;align-items:center;cursor:pointer" onclick="closeSheet();go('${i[0]}')"><span style="font-size:26px">${i[1]}</span><span style="font-size:12px;color:#c7d2fe">${i[2]}</span></button>`).join('')}</div>`);}
+function openMore(){const items=NAV.slice(4);sheet(`<div style="width:40px;height:4px;background:#222224;border-radius:99px;margin:0 auto 16px"></div><div style="font-weight:700;font-size:18px;margin-bottom:14px">Mehr</div><div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px">${items.map(i=>`<button class="soft" style="padding:18px 8px;display:flex;flex-direction:column;gap:8px;align-items:center;cursor:pointer" onclick="closeSheet();go('${i[0]}')"><span style="font-size:26px">${i[1]}</span><span style="font-size:12px;color:#fef3c7">${i[2]}</span></button>`).join('')}</div>`);}
 function feedIcon(t){return {thought:'💭',action:'⚡',tool:'🔧',reflection:'🪞',briefing:'☀️',review:'🌙',reminder:'⏰',health:'🩺',system:'⚙️'}[t]||'•';}
 
 // ════════ HOME (clean, kein Box-Rahmen-Overkill) ════════
@@ -274,7 +282,7 @@ VIEWS.home=async(root)=>{
   // Wetter – nahtlos, ohne Box
   try{const w=await api('/api/weather');if(!w.error){const n=w.now,f=w.forecast||[];
     $('#h-top').appendChild(el(`<div style="display:flex;align-items:center;justify-content:space-between;padding:4px 6px">
-      <div><div style="font-size:13px;color:var(--muted)">${w.city}</div><div style="font-size:38px;font-weight:800;line-height:1">${Math.round(n.temp)}°</div><div style="font-size:13px;color:#a5b4fc">${n.desc}, gefühlt ${Math.round(n.feels)}°</div></div>
+      <div><div style="font-size:13px;color:var(--muted)">${w.city}</div><div style="font-size:38px;font-weight:800;line-height:1">${Math.round(n.temp)}°</div><div style="font-size:13px;color:#fcd34d">${n.desc}, gefühlt ${Math.round(n.feels)}°</div></div>
       <div style="text-align:right;font-size:12px;color:var(--muted);line-height:1.7">${f.slice(0,3).map(d=>`<div>${new Date(d.date).toLocaleDateString('de',{weekday:'short'})} &nbsp;${Math.round(d.min)}–${Math.round(d.max)}° &nbsp;💧${d.rain_prob??0}%</div>`).join('')}</div>
     </div>`));}}catch(e){}
   // Rings – nahtlos
@@ -288,8 +296,8 @@ VIEWS.home=async(root)=>{
   const hrVal=hdY.resting_hr||hd.resting_hr;
   const hrFill=hrVal?Math.min(1,Math.max(0,(80-hrVal)/40)):0;
   $('#h-rings').appendChild(el(`<div style="display:flex;justify-content:space-around;text-align:center">
-    ${ringStat(Math.min(1,stepsVal/10000),'👟',stepsLabel,'#3b82f6')}
-    ${ringStat(Math.min(1,(hd.sleep||0)/8),'😴',hd.sleep?hd.sleep.toFixed(1)+'h':'–','#8b5cf6')}
+    ${ringStat(Math.min(1,stepsVal/10000),'👟',stepsLabel,'#eab308')}
+    ${ringStat(Math.min(1,(hd.sleep||0)/8),'😴',hd.sleep?hd.sleep.toFixed(1)+'h':'–','#d97706')}
     ${ringStat(hrFill,'❤️',hrVal?hrVal+' bpm':'–','#22c55e')}
   </div>`));
   // Quick add – flache Buttons
@@ -306,7 +314,7 @@ VIEWS.home=async(root)=>{
   $('#h-status').appendChild(el(`<div id="homeStatus" class="status-bar ${hsType}" onclick="go('mind')" style="cursor:pointer">
     <span class="sdot ${hsType}"></span>
     <span class="stxt" style="flex:1">${STATUS_ICONS[hsType]||'·'} ${esc(hsCur.text||'Bereit')}${hsCur.detail?' · '+esc(hsCur.detail):''}</span>
-    <span style="font-size:11px;color:#4a5980">Alfred Aktivität ›</span>
+    <span style="font-size:11px;color:#444">Alfred Aktivität ›</span>
   </div>`));
   const L=$('#h-left'),R=$('#h-right');
   // Habits
@@ -317,12 +325,12 @@ VIEWS.home=async(root)=>{
     L.appendChild(el(`<div style="margin-top:22px;padding:0 2px"><div style="display:flex;justify-content:space-between;margin-bottom:8px"><b>Aufgaben</b><span class="chip">${ov.tasks.length}</span></div>${ov.tasks.slice(0,5).map(t=>taskRow(t,true)).join('')}</div>`));}
   // Events
   if(ov.events&&ov.events.length){
-    R.appendChild(el(`<div style="margin-top:22px;padding:0 2px"><b>Termine</b>${ov.events.slice(0,5).map(e=>`<div style="display:flex;gap:10px;padding:7px 0;align-items:center"><span class="chip" style="color:#60a5fa">${e.start}</span><span style="font-size:14px">${esc(e.title)}</span></div>`).join('')}</div>`));}
+    R.appendChild(el(`<div style="margin-top:22px;padding:0 2px"><b>Termine</b>${ov.events.slice(0,5).map(e=>`<div style="display:flex;gap:10px;padding:7px 0;align-items:center"><span class="chip" style="color:#fde047">${e.start}</span><span style="font-size:14px">${esc(e.title)}</span></div>`).join('')}</div>`));}
   // Goals
   if(ov.goals&&ov.goals.length){
-    R.appendChild(el(`<div style="margin-top:22px;padding:0 2px"><b>Ziele</b>${ov.goals.slice(0,4).map(g=>`<div style="margin-top:10px"><div style="display:flex;justify-content:space-between;font-size:13px"><span>${esc(g.title)}</span><span style="color:#a5b4fc">${g.progress_pct}%</span></div><div class="pill-h" style="margin-top:5px"><div class="pill-f" style="width:${g.progress_pct}%"></div></div></div>`).join('')}</div>`));}
+    R.appendChild(el(`<div style="margin-top:22px;padding:0 2px"><b>Ziele</b>${ov.goals.slice(0,4).map(g=>`<div style="margin-top:10px"><div style="display:flex;justify-content:space-between;font-size:13px"><span>${esc(g.title)}</span><span style="color:#fcd34d">${g.progress_pct}%</span></div><div class="pill-h" style="margin-top:5px"><div class="pill-f" style="width:${g.progress_pct}%"></div></div></div>`).join('')}</div>`));}
   // Feed
-  try{const m=await api('/api/mind');R.appendChild(el(`<div style="margin-top:22px;padding:0 2px"><b>Alfred Aktivität</b>${(m.events||[]).slice(0,6).map(e=>`<div style="display:flex;gap:8px;padding:5px 0;font-size:12px;color:#9fb0d6"><span>${feedIcon(e.type)}</span><span style="flex:1">${esc(e.summary)}</span></div>`).join('')||'<div style="color:#5b6b8c;font-size:13px;margin-top:8px">Noch ruhig…</div>'}</div>`));}catch(e){}
+  try{const m=await api('/api/mind');R.appendChild(el(`<div style="margin-top:22px;padding:0 2px"><b>Alfred Aktivität</b>${(m.events||[]).slice(0,6).map(e=>`<div style="display:flex;gap:8px;padding:5px 0;font-size:12px;color:#888"><span>${feedIcon(e.type)}</span><span style="flex:1">${esc(e.summary)}</span></div>`).join('')||'<div style="color:#555;font-size:13px;margin-top:8px">Noch ruhig…</div>'}</div>`));}catch(e){}
 };
 function ringStat(p,icon,val,col){return `<div style="position:relative;border:none!important;background:none!important;outline:none!important;box-shadow:none!important">${ring(p,76,8,col)}<div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center"><div style="font-size:16px">${icon}</div><div style="font-size:13px;font-weight:700">${val}</div></div></div>`;}
 function taskRow(t,compact){const pr={high:'🔴',medium:'🟡',low:'🟢'};const hasSub=t.subtasks&&t.subtasks.length;return `<div style="display:flex;align-items:center;gap:10px;padding:7px 0"><button onclick="event.stopPropagation();completeTask(${t.id})" style="width:20px;height:20px;border-radius:6px;border:2px solid #3b5;background:none;cursor:pointer;flex-shrink:0"></button><div style="flex:1;min-width:0"><div style="font-size:14px">${esc(t.title)} ${hasSub?`<span class="chip" style="font-size:10px">${t.progress_pct}%</span>`:''}</div>${hasSub&&!compact?`<div class="pill-h" style="margin-top:5px"><div class="pill-f" style="width:${t.progress_pct}%"></div></div>`:''}</div>${t.due?`<span class="chip">${fmtDue(t.due)}</span>`:''}<span>${pr[t.priority]||''}</span></div>`;}
@@ -385,8 +393,8 @@ VIEWS.body=async(root)=>{
   const hrvVal=last.hrv?Math.round(last.hrv):'–';
   $('#b-cards').appendChild(el(`<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px">${card('😴','Schlaf',last.sleep?last.sleep.toFixed(1):'–','h')}${card('👟','Schritte',stepsYest,'','gestern')}${card('❤️','Ruhepuls',lastBpm,'bpm')}<div class="card" style="padding:10px;text-align:center;cursor:pointer" onclick="logHRV()"><div style="font-size:20px">📊</div><div style="font-size:11px;color:var(--muted);margin-top:2px">HRV</div><div style="font-size:18px;font-weight:700;margin-top:2px">${hrvVal}</div><div style="font-size:10px;color:#6366f1;margin-top:3px">+ eintragen</div></div>${card('🔥','Aktiv',kcalYest,'kcal','gestern')}${card('⚖️','Gewicht',lastWeight,'kg')}</div>`));
   const rev=[...h].reverse();
-  lineChart('cSleep',rev.map(x=>x.date?.slice(5)),[{label:'Schlaf',data:rev.map(x=>x.sleep),color:'#8b5cf6'}]);
-  lineChart('cWeight',rev.filter(x=>x.weight).map(x=>x.date?.slice(5)),[{label:'kg',data:rev.filter(x=>x.weight).map(x=>x.weight),color:'#3b82f6'}]);
+  lineChart('cSleep',rev.map(x=>x.date?.slice(5)),[{label:'Schlaf',data:rev.map(x=>x.sleep),color:'#d97706'}]);
+  lineChart('cWeight',rev.filter(x=>x.weight).map(x=>x.date?.slice(5)),[{label:'kg',data:rev.filter(x=>x.weight).map(x=>x.weight),color:'#eab308'}]);
   // Muscle body
   const mus=await api('/api/fitness/muscles?days=3');
   $('#b-muscle').appendChild(el(`<div class="card" style="padding:16px"><b>Muskelgruppen (3T)</b>${muscleBody(mus)}</div>`));
@@ -396,7 +404,7 @@ VIEWS.body=async(root)=>{
   barChart('cVol',vol.map(x=>x.date.slice(5)),vol.map(x=>x.mins||x.km*6||x.n*20));
   // Recent workouts with sets
   const wo=await api('/api/workouts?limit=10');
-  $('#b-wo').appendChild(el(`<div class="card" style="padding:16px"><b>Letzte Trainings</b>${wo.length?wo.map(w=>`<div style="padding:9px 0;border-bottom:1px solid var(--line)"><div style="display:flex;justify-content:space-between"><div style="font-weight:600">${esc(w.title)}</div><span class="chip">${fmtDue(w.date)}</span></div><div style="font-size:11px;color:var(--muted)">${w.type}${w.distance_km?' · '+w.distance_km+'km':''}${w.duration_min?' · '+w.duration_min+'min':''}</div>${(w.sets&&w.sets.length)?`<div style="font-size:12px;color:#9fb0d6;margin-top:4px">${w.sets.map(s=>`${esc(s.exercise||'?')} ${s.reps||''}×${s.weight_kg||''}kg`).join(' · ')}</div>`:''}</div>`).join(''):'<div style="color:#5b6b8c;font-size:13px;margin-top:8px">Noch keine Trainings.</div>'}</div>`));
+  $('#b-wo').appendChild(el(`<div class="card" style="padding:16px"><b>Letzte Trainings</b>${wo.length?wo.map(w=>`<div style="padding:9px 0;border-bottom:1px solid var(--line)"><div style="display:flex;justify-content:space-between"><div style="font-weight:600">${esc(w.title)}</div><span class="chip">${fmtDue(w.date)}</span></div><div style="font-size:11px;color:var(--muted)">${w.type}${w.distance_km?' · '+w.distance_km+'km':''}${w.duration_min?' · '+w.duration_min+'min':''}</div>${(w.sets&&w.sets.length)?`<div style="font-size:12px;color:#888;margin-top:4px">${w.sets.map(s=>`${esc(s.exercise||'?')} ${s.reps||''}×${s.weight_kg||''}kg`).join(' · ')}</div>`:''}</div>`).join(''):'<div style="color:#555;font-size:13px;margin-top:8px">Noch keine Trainings.</div>'}</div>`));
 };
 function muscleBody(m){
   const max=Math.max(1,...Object.values(m));
@@ -444,8 +452,8 @@ VIEWS.habits=async(root)=>{
   const DAYS=14;
   const CATS=[
     {key:'morning',label:'🌅 Morning Routine',color:'#f59e0b',bg:'rgba(245,158,11,0.08)'},
-    {key:'day',    label:'☀️ Rest of Day',    color:'#3b82f6',bg:'rgba(59,130,246,0.08)'},
-    {key:'evening',label:'🌙 Evening Routine',color:'#8b5cf6',bg:'rgba(139,92,246,0.08)'},
+    {key:'day',    label:'☀️ Rest of Day',    color:'#eab308',bg:'rgba(234,179,8,0.06)'},
+    {key:'evening',label:'🌙 Evening Routine',color:'#d97706',bg:'rgba(245,158,11,0.06)'},
   ];
   root.innerHTML=`<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px"><b style="font-size:18px">Routinen</b><button class="btn" onclick="addHabit()" style="padding:8px 14px;font-size:13px">＋ Neu</button></div><div id="hbody"></div>`;
   const [hs,cm]=await Promise.all([api('/api/habits'),api('/api/habits/commit?days='+DAYS)]);
@@ -454,11 +462,11 @@ VIEWS.habits=async(root)=>{
   // Commit-Bar
   if(cm.length){
     const avg=Math.round(cm.reduce((a,b)=>a+b.pct,0)/cm.length);
-    const barsHtml=cm.map(d=>`<div title="${d.date}: ${d.pct}%" style="flex:1;height:${Math.max(3,d.pct*0.36)}px;border-radius:2px 2px 0 0;align-self:flex-end;background:${d.pct>=100?'#22c55e':d.pct>=50?'#3b82f6':d.pct>0?'#334155':'#1a2540'}"></div>`).join('');
-    body.insertAdjacentHTML('beforeend',`<div class="card" style="padding:12px 16px;margin-bottom:16px;display:flex;align-items:center;gap:14px"><svg width="44" height="44" viewBox="0 0 44 44" style="flex-shrink:0"><circle cx="22" cy="22" r="18" fill="none" stroke="#1e293b" stroke-width="4"/><circle cx="22" cy="22" r="18" fill="none" stroke="${avg>=80?'#22c55e':avg>=50?'#3b82f6':'#f59e0b'}" stroke-width="4" stroke-dasharray="${Math.round(avg*1.13)} 113" stroke-linecap="round" transform="rotate(-90 22 22)"/><text x="22" y="27" text-anchor="middle" font-size="10" fill="#e2e8f0" font-weight="bold">${avg}%</text></svg><div style="flex:1;display:flex;gap:2px;align-items:flex-end;height:36px">${barsHtml}</div></div>`);
+    const barsHtml=cm.map(d=>`<div title="${d.date}: ${d.pct}%" style="flex:1;height:${Math.max(3,d.pct*0.36)}px;border-radius:2px 2px 0 0;align-self:flex-end;background:${d.pct>=100?'#22c55e':d.pct>=50?'#eab308':d.pct>0?'#1e1e22':'#1a1a1e'}"></div>`).join('');
+    body.insertAdjacentHTML('beforeend',`<div class="card" style="padding:12px 16px;margin-bottom:16px;display:flex;align-items:center;gap:14px"><svg width="44" height="44" viewBox="0 0 44 44" style="flex-shrink:0"><circle cx="22" cy="22" r="18" fill="none" stroke="#0a0a0c" stroke-width="4"/><circle cx="22" cy="22" r="18" fill="none" stroke="${avg>=80?'#22c55e':avg>=50?'#eab308':'#f59e0b'}" stroke-width="4" stroke-dasharray="${Math.round(avg*1.13)} 113" stroke-linecap="round" transform="rotate(-90 22 22)"/><text x="22" y="27" text-anchor="middle" font-size="10" fill="#e2e8f0" font-weight="bold">${avg}%</text></svg><div style="flex:1;display:flex;gap:2px;align-items:flex-end;height:36px">${barsHtml}</div></div>`);
   }
 
-  if(!hs.length){body.insertAdjacentHTML('beforeend','<div class="card" style="padding:24px;text-align:center;color:#5b6b8c">Noch keine Routinen – leg welche an!</div>');return;}
+  if(!hs.length){body.insertAdjacentHTML('beforeend','<div class="card" style="padding:24px;text-align:center;color:#555">Noch keine Routinen – leg welche an!</div>');return;}
 
   // Datumsspalten
   const today=new Date();
@@ -473,20 +481,20 @@ VIEWS.habits=async(root)=>{
 
   // Datums-Header (einmalig ganz oben)
   const hdrRow=document.createElement('div');
-  hdrRow.style.cssText=`display:flex;align-items:center;border-bottom:1px solid #1e293b`;
+  hdrRow.style.cssText=`display:flex;align-items:center;border-bottom:1px solid #0a0a0c`;
   // Platz für vertikales Label
   hdrRow.insertAdjacentHTML('beforeend','<div style="width:28px;flex-shrink:0"></div>');
   // Grid-Header
   const hdrGrid=document.createElement('div');
   hdrGrid.style.cssText=`flex:1;display:grid;grid-template-columns:${COLS};align-items:center;padding:0 6px 0 8px`;
   hdrGrid.insertAdjacentHTML('beforeend','<div></div>');
-  hdrGrid.insertAdjacentHTML('beforeend','<div style="text-align:center;font-size:9px;color:#475569;padding:5px 0">🔥</div>');
-  hdrGrid.insertAdjacentHTML('beforeend','<div style="font-size:10px;color:#475569;padding:5px 0 5px 4px">Routine</div>');
+  hdrGrid.insertAdjacentHTML('beforeend','<div style="text-align:center;font-size:9px;color:#333;padding:5px 0">🔥</div>');
+  hdrGrid.insertAdjacentHTML('beforeend','<div style="font-size:10px;color:#333;padding:5px 0 5px 4px">Routine</div>');
   for(let i=0;i<DAYS;i++){
     const dt=new Date(dateCols[i]);
     const lbl=['So','Mo','Di','Mi','Do','Fr','Sa'][dt.getDay()];
     const isMon=lbl==='Mo';
-    hdrGrid.insertAdjacentHTML('beforeend',`<div style="text-align:center;font-size:9px;color:${isMon?'#64748b':'#2d3f5a'};padding:5px 0;${isMon?'border-left:1px solid #1e293b':''}">${isMon||lbl==='So'?lbl:''}</div>`);
+    hdrGrid.insertAdjacentHTML('beforeend',`<div style="text-align:center;font-size:9px;color:${isMon?'#555':'#2d3f5a'};padding:5px 0;${isMon?'border-left:1px solid #0a0a0c':''}">${isMon||lbl==='So'?lbl:''}</div>`);
   }
   hdrGrid.insertAdjacentHTML('beforeend',`<div style="text-align:center;font-size:10px;font-weight:700;color:#94a3b8;padding:5px 0">Heu</div>`);
   hdrGrid.insertAdjacentHTML('beforeend','<div></div>');
@@ -543,7 +551,7 @@ VIEWS.habits=async(root)=>{
       const handle=document.createElement('div');
       handle.style.cssText='display:flex;align-items:center;justify-content:center;cursor:grab;color:#2d3f5a;font-size:14px;padding:0 2px;user-select:none;line-height:1';
       handle.innerHTML='<span style="letter-spacing:-1px">⠿</span>';
-      handle.onmouseenter=()=>handle.style.color='#64748b';
+      handle.onmouseenter=()=>handle.style.color='#555';
       handle.onmouseleave=()=>handle.style.color='#2d3f5a';
       handle.addEventListener('mousedown',e=>{e.stopPropagation();row.draggable=true;});
       row.appendChild(handle);
@@ -553,7 +561,7 @@ VIEWS.habits=async(root)=>{
       const pct=Math.min(s/Math.max(s,7),1);
       const streakDiv=document.createElement('div');
       streakDiv.style.cssText='display:flex;align-items:center;justify-content:center;padding:6px 0';
-      streakDiv.innerHTML=`<svg width="26" height="26" viewBox="0 0 26 26"><circle cx="13" cy="13" r="10" fill="none" stroke="#1e293b" stroke-width="3"/><circle cx="13" cy="13" r="10" fill="none" stroke="${s>=7?'#f59e0b':s>=1?cat.color:'#243450'}" stroke-width="3" stroke-dasharray="${Math.round(pct*62.8)} 62.8" stroke-linecap="round" transform="rotate(-90 13 13)"/>${s>0?`<text x="13" y="17" text-anchor="middle" font-size="8" fill="#e2e8f0" font-weight="bold">${s}</text>`:`<text x="13" y="17" text-anchor="middle" font-size="8" fill="#334155">–</text>`}</svg>`;
+      streakDiv.innerHTML=`<svg width="26" height="26" viewBox="0 0 26 26"><circle cx="13" cy="13" r="10" fill="none" stroke="#0a0a0c" stroke-width="3"/><circle cx="13" cy="13" r="10" fill="none" stroke="${s>=7?'#f59e0b':s>=1?cat.color:'#1a1a1e'}" stroke-width="3" stroke-dasharray="${Math.round(pct*62.8)} 62.8" stroke-linecap="round" transform="rotate(-90 13 13)"/>${s>0?`<text x="13" y="17" text-anchor="middle" font-size="8" fill="#e2e8f0" font-weight="bold">${s}</text>`:`<text x="13" y="17" text-anchor="middle" font-size="8" fill="#1e1e22">–</text>`}</svg>`;
       row.appendChild(streakDiv);
 
       // Name
@@ -568,8 +576,8 @@ VIEWS.habits=async(root)=>{
         const dt=new Date(dateCols[i]);
         const isMon=['Mo'][0]===['So','Mo','Di','Mi','Do','Fr','Sa'][dt.getDay()];
         const dotDiv=document.createElement('div');
-        dotDiv.style.cssText=`display:flex;align-items:center;justify-content:center;${isMon?'border-left:1px solid #1e293b':''}`;
-        dotDiv.innerHTML=`<div title="${dateCols[i]}" style="width:${done?20:9}px;height:${done?20:9}px;border-radius:${done?5:10}px;background:${done?cat.color:'#1e293b'}"></div>`;
+        dotDiv.style.cssText=`display:flex;align-items:center;justify-content:center;${isMon?'border-left:1px solid #0a0a0c':''}`;
+        dotDiv.innerHTML=`<div title="${dateCols[i]}" style="width:${done?20:9}px;height:${done?20:9}px;border-radius:${done?5:10}px;background:${done?cat.color:'#0a0a0c'}"></div>`;
         row.appendChild(dotDiv);
       }
 
@@ -578,7 +586,7 @@ VIEWS.habits=async(root)=>{
       const cb=document.createElement('div');
       cb.style.cssText='display:flex;align-items:center;justify-content:center';
       const cbBtn=document.createElement('button');
-      cbBtn.style.cssText=`width:26px;height:26px;border-radius:7px;border:2px solid ${todayDone?cat.color:'#334155'};background:${todayDone?cat.color:'transparent'};cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:13px;color:#fff;padding:0;transition:all .15s`;
+      cbBtn.style.cssText=`width:26px;height:26px;border-radius:7px;border:2px solid ${todayDone?cat.color:'#1e1e22'};background:${todayDone?cat.color:'transparent'};cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:13px;color:#fff;padding:0;transition:all .15s`;
       cbBtn.textContent=todayDone?'✓':'';
       let _done=todayDone;
       cbBtn.onclick=async(e)=>{
@@ -588,7 +596,7 @@ VIEWS.habits=async(root)=>{
           _done=false;
           cbBtn.textContent='';
           cbBtn.style.background='transparent';
-          cbBtn.style.borderColor='#334155';
+          cbBtn.style.borderColor='#1e1e22';
           toast('Zurückgesetzt');
         } else {
           await fetch('/api/habits/'+h.id+'/log',{method:'POST',headers:{'Content-Type':'application/json'},body:'{}'});
@@ -638,12 +646,12 @@ VIEWS.tasks=async(root)=>{
     </div>
     ${suggestions.length ? `
     <div style="margin-bottom:16px">
-      <div style="font-size:12px;font-weight:700;color:#a5b4fc;letter-spacing:.5px;margin-bottom:8px">💡 ALFRED SCHLÄGT VOR</div>
+      <div style="font-size:12px;font-weight:700;color:#fcd34d;letter-spacing:.5px;margin-bottom:8px">💡 ALFRED SCHLÄGT VOR</div>
       <div id="sugg-list"></div>
     </div>` : ''}
     <div class="tabbar">
       <div class="tab ${taskFilter==='open'?'active':''}" onclick="setTaskFilter('open')">Offen</div>
-      <div class="tab" onclick="setTaskFilter('alfred')" style="${taskFilter==='alfred'?'border-bottom:2px solid #a5b4fc;color:#a5b4fc':''}">🤖 Alfred</div>
+      <div class="tab" onclick="setTaskFilter('alfred')" style="${taskFilter==='alfred'?'border-bottom:2px solid #fcd34d;color:#fcd34d':''}">🤖 Alfred</div>
       <div class="tab ${taskFilter==='done'?'active':''}" onclick="setTaskFilter('done')">Erledigt</div>
       <div class="tab ${taskFilter==='archived'?'active':''}" onclick="setTaskFilter('archived')">Archiv</div>
     </div>
@@ -653,10 +661,10 @@ VIEWS.tasks=async(root)=>{
   if(suggestions.length){
     const sl=$('#sugg-list');
     suggestions.forEach(s=>{
-      const who=s.assigned_to==='alfred'?'<span style="font-size:10px;background:#1e3a5f;color:#a5b4fc;padding:2px 7px;border-radius:99px;margin-left:6px">Alfred erledigt</span>':'';
-      const node=el(`<div class="card" style="padding:14px;margin-bottom:8px;border:1px solid #1e3a5f">
+      const who=s.assigned_to==='alfred'?'<span style="font-size:10px;background:#1e1e22;color:#fcd34d;padding:2px 7px;border-radius:99px;margin-left:6px">Alfred erledigt</span>':'';
+      const node=el(`<div class="card" style="padding:14px;margin-bottom:8px;border:1px solid #1e1e22">
         <div style="font-size:14px;font-weight:600;margin-bottom:4px">${esc(s.title)}${who}</div>
-        ${s.notes?`<div style="font-size:12px;color:#5b6b8c;margin-bottom:10px">${esc(s.notes)}</div>`:''}
+        ${s.notes?`<div style="font-size:12px;color:#555;margin-bottom:10px">${esc(s.notes)}</div>`:''}
         <div style="display:flex;gap:8px">
           <button onclick="acceptSuggestion(${s.id})" class="btn" style="flex:1;padding:8px;font-size:13px">✓ Annehmen</button>
           <button onclick="rejectSuggestion(${s.id},'${esc(s.title)}')" class="soft" style="flex:1;padding:8px;font-size:13px;border:none;cursor:pointer">✕ Ablehnen</button>
@@ -673,25 +681,25 @@ VIEWS.tasks=async(root)=>{
   // "Offen" zeigt alle offenen Tasks — Alfred-Tasks mit blauem Rand erkennbar
 
   if(!filtered.length){
-    $('#tl').innerHTML='<div class="card" style="padding:24px;text-align:center;color:#5b6b8c">'+(taskFilter==='alfred'?'Keine Alfred-Aufgaben 🤖':'Nichts hier 🎉')+'</div>';
+    $('#tl').innerHTML='<div class="card" style="padding:24px;text-align:center;color:#555">'+(taskFilter==='alfred'?'Keine Alfred-Aufgaben 🤖':'Nichts hier 🎉')+'</div>';
     return;
   }
   filtered.forEach(t=>{
     const subs=t.subtasks||[];
     const isAlfred=t.assigned_to==='alfred';
-    const alfredChip=isAlfred?`<span style="font-size:10px;background:#1e3a5f;color:#a5b4fc;padding:2px 7px;border-radius:99px">🤖</span>`:'';
+    const alfredChip=isAlfred?`<span style="font-size:10px;background:#1e1e22;color:#fcd34d;padding:2px 7px;border-radius:99px">🤖</span>`:'';
     const node=el(`<div class="card" style="padding:15px;margin-bottom:10px${isAlfred?';border-left:3px solid #3b5fc0':''}">
       <div style="display:flex;align-items:center;gap:11px">
         ${taskFilter==='open'?`<button onclick="completeTask(${t.id})" style="width:24px;height:24px;border-radius:7px;border:2px solid #3b5;background:none;cursor:pointer;flex-shrink:0"></button>`:''}
         <div style="flex:1;min-width:0">
           <div style="display:flex;align-items:center;gap:6px;font-size:15px;font-weight:600">${kindIcon[t.kind]||''}${esc(t.title)}${alfredChip}</div>
           ${subs.length?`<div style="font-size:11px;color:var(--muted);margin-top:3px">${subs.filter(s=>s.status==='done').length}/${subs.length} erledigt · ${t.progress_pct}%</div><div class="pill-h" style="margin-top:5px"><div class="pill-f" style="width:${t.progress_pct}%"></div></div>`:''}
-          ${t.alfred_result?`<div style="margin-top:8px;padding:8px;background:#0d1b2a;border-radius:8px;font-size:12px;color:#94a3b8;cursor:pointer" onclick="showResult(${t.id})">📄 Ergebnis ansehen</div>`:''}
+          ${t.alfred_result?`<div style="margin-top:8px;padding:8px;background:#0a0a0c;border-radius:8px;font-size:12px;color:#94a3b8;cursor:pointer" onclick="showResult(${t.id})">📄 Ergebnis ansehen</div>`:''}
         </div>
         <span>${({high:'🔴',medium:'🟡',low:'🟢'})[t.priority]||''}</span>
         <button onclick="taskMenu(${t.id},'${esc(t.title)}','${taskFilter}')" class="soft" style="border:none;border-radius:10px;padding:6px 9px;cursor:pointer">⋯</button>
       </div>
-      ${subs.length?`<div style="margin-top:10px;padding-left:8px;border-left:2px solid var(--line)">${subs.map(s=>`<div style="display:flex;align-items:center;gap:9px;padding:4px 0"><button onclick="completeTask(${s.id})" style="width:18px;height:18px;border-radius:5px;border:2px solid #3b5;background:${s.status==='done'?'#22c55e':'none'};cursor:pointer"></button><span style="font-size:13px;${s.status==='done'?'text-decoration:line-through;color:#5b6b8c':''}">${esc(s.title)}</span></div>`).join('')}</div>`:''}
+      ${subs.length?`<div style="margin-top:10px;padding-left:8px;border-left:2px solid var(--line)">${subs.map(s=>`<div style="display:flex;align-items:center;gap:9px;padding:4px 0"><button onclick="completeTask(${s.id})" style="width:18px;height:18px;border-radius:5px;border:2px solid #3b5;background:${s.status==='done'?'#22c55e':'none'};cursor:pointer"></button><span style="font-size:13px;${s.status==='done'?'text-decoration:line-through;color:#555':''}">${esc(s.title)}</span></div>`).join('')}</div>`:''}
       ${(t.kind==='project'&&taskFilter==='open')?`<button onclick="addSubtask(${t.id})" class="soft" style="border:none;border-radius:10px;padding:6px 11px;font-size:12px;margin-top:8px;cursor:pointer">＋ Unteraufgabe</button>`:''}
     </div>`);
     $('#tl').appendChild(node);
@@ -722,9 +730,12 @@ async function showResult(id){
   const ts=await api('/api/tasks?status=done');
   const t=ts.find(x=>x.id===id)||{};
   if(!t.alfred_result)return;
-  sheet(`<div style="width:40px;height:4px;background:#33415a;border-radius:99px;margin:0 auto 16px"></div>
-    <div style="font-weight:700;margin-bottom:12px">${esc(t.title)}</div>
-    <div style="font-size:13px;line-height:1.6;color:#94a3b8;white-space:pre-wrap">${esc(t.alfred_result)}</div>`);
+  const mdHtml = typeof marked !== 'undefined'
+    ? marked.parse(t.alfred_result)
+    : `<pre style="white-space:pre-wrap">${esc(t.alfred_result)}</pre>`;
+  sheet(`<div style="width:40px;height:4px;background:#222224;border-radius:99px;margin:0 auto 16px"></div>
+    <div style="font-weight:700;margin-bottom:16px;font-size:16px">${esc(t.title)}</div>
+    <div class="md-result" style="font-size:13px;line-height:1.7;color:#94a3b8">${mdHtml}</div>`);
 }
 
 function taskMenu(id,title,filter){
@@ -732,7 +743,7 @@ function taskMenu(id,title,filter){
   if(filter!=='archived')opts.push(`<button class="soft" style="border:none;padding:13px;border-radius:12px;width:100%;text-align:left;cursor:pointer;margin-bottom:8px" onclick="closeSheet();setProgress(${id},'${esc(title)}')">📊 Fortschritt setzen</button>`);
   if(filter==='open')opts.push(`<button class="soft" style="border:none;padding:13px;border-radius:12px;width:100%;text-align:left;cursor:pointer;margin-bottom:8px" onclick="closeSheet();archiveTask(${id})">📦 Archivieren</button>`);
   opts.push(`<button class="soft" style="border:none;padding:13px;border-radius:12px;width:100%;text-align:left;cursor:pointer;color:#ef6b6b" onclick="closeSheet();deleteTask(${id},'${esc(title)}')">🗑 Löschen</button>`);
-  sheet(`<div style="width:40px;height:4px;background:#33415a;border-radius:99px;margin:0 auto 16px"></div><div style="font-weight:700;margin-bottom:14px">${esc(title)}</div>${opts.join('')}`);
+  sheet(`<div style="width:40px;height:4px;background:#222224;border-radius:99px;margin:0 auto 16px"></div><div style="font-weight:700;margin-bottom:14px">${esc(title)}</div>${opts.join('')}`);
 }
 
 // ════════ CALENDAR ════════
@@ -740,7 +751,7 @@ VIEWS.calendar=async(root)=>{
   root.innerHTML='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px"><b style="font-size:18px">📅 Kalender</b><button class="btn" onclick="addEvent()" style="padding:8px 14px;font-size:13px">＋ Termin</button></div><div id="cl"></div>';
   const es=await api('/api/calendar?days=30');
   const cl=document.getElementById('cl');
-  if(!es.length){cl.innerHTML='<div class="card" style="padding:24px;text-align:center;color:#5b6b8c">Keine Termine in den nächsten 30 Tagen.</div>';return;}
+  if(!es.length){cl.innerHTML='<div class="card" style="padding:24px;text-align:center;color:#555">Keine Termine in den nächsten 30 Tagen.</div>';return;}
   // Gruppieren nach Datum
   const groups={};
   es.forEach(e=>{
@@ -749,7 +760,7 @@ VIEWS.calendar=async(root)=>{
   });
   Object.entries(groups).forEach(([d,evs])=>{
     const hdr=document.createElement('div');
-    hdr.style.cssText='font-size:12px;font-weight:700;color:#60a5fa;text-transform:uppercase;letter-spacing:1px;margin:14px 0 6px';
+    hdr.style.cssText='font-size:12px;font-weight:700;color:#fde047;text-transform:uppercase;letter-spacing:1px;margin:14px 0 6px';
     hdr.textContent=d;
     cl.appendChild(hdr);
     evs.forEach(e=>{
@@ -757,7 +768,7 @@ VIEWS.calendar=async(root)=>{
       card.className='card';
       card.style.cssText='padding:12px 14px;margin-bottom:8px;display:flex;gap:12px;align-items:center';
       const timeDiv=document.createElement('div');
-      timeDiv.style.cssText='min-width:48px;text-align:center;font-size:12px;color:#a5b4fc;font-weight:600';
+      timeDiv.style.cssText='min-width:48px;text-align:center;font-size:12px;color:#fcd34d;font-weight:600';
       timeDiv.textContent=e.start&&e.start.includes(' ')?e.start.split(' ')[1]:'📅';
       const body=document.createElement('div');
       body.style.cssText='flex:1;min-width:0';
@@ -799,7 +810,7 @@ function editEvent(e){
   const f2=document.createElement('input');f2.type='datetime-local';f2.value=toLocal(e.start_iso||e.start)||'';
   const f3=document.createElement('input');f3.type='datetime-local';f3.value=toLocal(e.end_iso||e.end)||'';
   const f4=document.createElement('input');f4.placeholder='Ort (optional)';f4.value=e.location||'';
-  [f1,f2,f3,f4].forEach(f=>{f.style.cssText='display:block;width:100%;margin-bottom:10px;padding:8px;background:#1e293b;border:1px solid #334155;border-radius:6px;color:#fff;font-size:14px';wrap.appendChild(f);});
+  [f1,f2,f3,f4].forEach(f=>{f.style.cssText='display:block;width:100%;margin-bottom:10px;padding:8px;background:#0a0a0c;border:1px solid #1e1e22;border-radius:6px;color:#fff;font-size:14px';wrap.appendChild(f);});
   formSheet('Termin bearbeiten',wrap.innerHTML,async()=>{
     const inputs=document.querySelectorAll('#sheetBody input');
     await fetch('/api/calendar/'+e.uid,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({title:inputs[0].value,start:inputs[1].value,end:inputs[2].value||null,location:inputs[3].value||null})});
@@ -812,14 +823,14 @@ VIEWS.nutrition=async(root)=>{
   root.innerHTML=`<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px"><b style="font-size:18px">Ernährung</b><button class="btn" onclick="addMeal()" style="padding:8px 14px;font-size:13px">＋ Mahlzeit</button></div>
     <div id="nt"></div>
     <div class="card" style="padding:16px;margin-top:14px"><b>Verlauf (14T)</b><div style="position:relative;height:130px;margin-top:8px"><canvas id="cNut"></canvas></div></div>
-    <div class="soft" style="padding:13px;margin-top:12px;font-size:13px;color:#a5b4fc">💡 Sag im Chat einfach „ich hatte zwei Marmeladentoasts" – Alfred schätzt die Makros und trägt sie ein.</div>
+    <div class="soft" style="padding:13px;margin-top:12px;font-size:13px;color:#fcd34d">💡 Sag im Chat einfach „ich hatte zwei Marmeladentoasts" – Alfred schätzt die Makros und trägt sie ein.</div>
     <div id="nl" style="margin-top:14px"></div>`;
   const d=await api('/api/nutrition');const t=d.totals||{};
   const macro=(l,v,c)=>`<div style="text-align:center"><div style="font-size:20px;font-weight:700;color:${c}">${Math.round(v||0)}</div><div style="font-size:11px;color:var(--muted)">${l}</div></div>`;
-  $('#nt').appendChild(el(`<div class="card" style="padding:18px"><div style="text-align:center;margin-bottom:14px"><div style="font-size:34px;font-weight:800">${Math.round(t.kcal||0)}</div><div style="font-size:12px;color:var(--muted)">kcal heute</div></div><div style="display:flex;justify-content:space-around">${macro('Protein',t.protein,'#3b82f6')}${macro('Carbs',t.carbs,'#f59e0b')}${macro('Fett',t.fat,'#ec4899')}</div></div>`));
+  $('#nt').appendChild(el(`<div class="card" style="padding:18px"><div style="text-align:center;margin-bottom:14px"><div style="font-size:34px;font-weight:800">${Math.round(t.kcal||0)}</div><div style="font-size:12px;color:var(--muted)">kcal heute</div></div><div style="display:flex;justify-content:space-around">${macro('Protein',t.protein,'#eab308')}${macro('Carbs',t.carbs,'#f59e0b')}${macro('Fett',t.fat,'#ec4899')}</div></div>`));
   const hist=await api('/api/nutrition/history?days=14');
-  lineChart('cNut',hist.map(x=>x.date.slice(5)),[{label:'kcal',data:hist.map(x=>x.kcal),color:'#3b82f6'}]);
-  $('#nl').appendChild(el(`<div class="card" style="padding:14px"><b>Heute</b>${(d.meals||[]).length?d.meals.map(m=>`<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--line)"><div><div style="font-size:14px">${esc(m.description)}</div><div style="font-size:11px;color:var(--muted)">${m.meal_type}${m.protein_g?' · '+Math.round(m.protein_g)+'g P':''}${m.carbs_g?' · '+Math.round(m.carbs_g)+'g C':''}${m.fat_g?' · '+Math.round(m.fat_g)+'g F':''}</div></div>${m.calories?`<span class="chip">${m.calories} kcal</span>`:''}</div>`).join(''):'<div style="color:#5b6b8c;font-size:13px;margin-top:8px">Heute noch nichts.</div>'}</div>`));
+  lineChart('cNut',hist.map(x=>x.date.slice(5)),[{label:'kcal',data:hist.map(x=>x.kcal),color:'#eab308'}]);
+  $('#nl').appendChild(el(`<div class="card" style="padding:14px"><b>Heute</b>${(d.meals||[]).length?d.meals.map(m=>`<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--line)"><div><div style="font-size:14px">${esc(m.description)}</div><div style="font-size:11px;color:var(--muted)">${m.meal_type}${m.protein_g?' · '+Math.round(m.protein_g)+'g P':''}${m.carbs_g?' · '+Math.round(m.carbs_g)+'g C':''}${m.fat_g?' · '+Math.round(m.fat_g)+'g F':''}</div></div>${m.calories?`<span class="chip">${m.calories} kcal</span>`:''}</div>`).join(''):'<div style="color:#555;font-size:13px;margin-top:8px">Heute noch nichts.</div>'}</div>`));
 };
 
 // ════════ JOURNAL ════════
@@ -842,7 +853,7 @@ VIEWS.journal=async(root)=>{
     </div>
 
     ${hasToday ? `
-    <div class="card" style="padding:16px;margin-bottom:14px;border:1px solid #1e3a5f">
+    <div class="card" style="padding:16px;margin-bottom:14px;border:1px solid #1e1e22">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
         <span style="font-size:13px;color:var(--muted)">Heute eingetragen ✓</span>
         <span style="font-size:22px">${emo[todayEntry.mood||3]}</span>
@@ -854,10 +865,10 @@ VIEWS.journal=async(root)=>{
       ${todayEntry.content ? `<div style="margin-top:10px;font-size:13px;color:#94a3b8;line-height:1.5">${esc(todayEntry.content).slice(0,120)}${todayEntry.content.length>120?'…':''}</div>` : ''}
     </div>
     ` : `
-    <div class="card" style="padding:20px;margin-bottom:14px;text-align:center;background:linear-gradient(135deg,#0f1c2e,#1a2a3a);border:1px dashed #2a4a6a">
+    <div class="card" style="padding:20px;margin-bottom:14px;text-align:center;background:linear-gradient(135deg,#080809,#111113);border:1px dashed #2a2a2e">
       <div style="font-size:32px;margin-bottom:8px">📖</div>
       <div style="font-size:15px;font-weight:600;margin-bottom:6px">Abend-Check-in</div>
-      <div style="font-size:13px;color:#5b6b8c;margin-bottom:14px">Wie war dein Tag? Alfred hat 3 Fragen für dich.</div>
+      <div style="font-size:13px;color:#555;margin-bottom:14px">Wie war dein Tag? Alfred hat 3 Fragen für dich.</div>
       <button class="btn" onclick="journalCheckin()" style="padding:10px 24px;font-size:14px">Jetzt eintragen</button>
     </div>
     `}
@@ -867,7 +878,7 @@ VIEWS.journal=async(root)=>{
       <div style="position:relative;height:110px"><canvas id="cMood"></canvas></div>
     </div>
 
-    <div style="font-size:13px;font-weight:600;color:#5b6b8c;margin-bottom:8px;padding-left:2px">Vergangene Einträge</div>
+    <div style="font-size:13px;font-weight:600;color:#555;margin-bottom:8px;padding-left:2px">Vergangene Einträge</div>
     <div id="jl"></div>`;
 
   lineChart('cMood', moodData.map(x=>x.date?.slice(5)), [
@@ -880,7 +891,7 @@ VIEWS.journal=async(root)=>{
     let details = '';
     if (j.prompts_answers) {
       const qa = typeof j.prompts_answers === 'string' ? JSON.parse(j.prompts_answers) : j.prompts_answers;
-      details = qa.filter(x=>x.answer).map(x=>`<div style="margin-top:8px"><div style="font-size:11px;color:#5b6b8c">${esc(x.question)}</div><div style="font-size:13px;margin-top:2px">${esc(x.answer)}</div></div>`).join('');
+      details = qa.filter(x=>x.answer).map(x=>`<div style="margin-top:8px"><div style="font-size:11px;color:#555">${esc(x.question)}</div><div style="font-size:13px;margin-top:2px">${esc(x.answer)}</div></div>`).join('');
     }
     if (j.content) details += `<div style="margin-top:8px;font-size:13px;color:#94a3b8;font-style:italic">${esc(j.content)}</div>`;
     return `<div class="card" style="padding:14px;margin-bottom:10px">
@@ -888,22 +899,22 @@ VIEWS.journal=async(root)=>{
         <span>${new Date(j.date+'T12:00:00').toLocaleDateString('de',{weekday:'short',day:'numeric',month:'short'})}</span>
         <span>${j.mood?emo[j.mood]+' '+j.mood:''} ${j.energy?'⚡'+j.energy:''}</span>
       </div>
-      ${details||'<div style="font-size:13px;color:#5b6b8c;margin-top:6px">–</div>'}
+      ${details||'<div style="font-size:13px;color:#555;margin-top:6px">–</div>'}
     </div>`;
-  }).join('') : '<div style="padding:20px;text-align:center;color:#5b6b8c;font-size:13px">Noch keine früheren Einträge.</div>';
+  }).join('') : '<div style="padding:20px;text-align:center;color:#555;font-size:13px">Noch keine früheren Einträge.</div>';
 };
 
 async function journalCheckin(){
   // Prompts laden (async, Spinner zeigen)
   const sheet = document.createElement('div');
   sheet.id = 'jsheet';
-  sheet.style.cssText = 'position:fixed;inset:0;background:#0a0f1a;z-index:200;overflow-y:auto;padding:20px 16px 40px';
+  sheet.style.cssText = 'position:fixed;inset:0;background:#060608;z-index:200;overflow-y:auto;padding:20px 16px 40px';
   sheet.innerHTML = `
     <div style="display:flex;align-items:center;gap:10px;margin-bottom:20px">
       <button onclick="document.getElementById('jsheet').remove()" style="background:none;border:none;color:#94a3b8;font-size:20px;cursor:pointer">←</button>
       <b style="font-size:17px">Abend-Check-in</b>
     </div>
-    <div style="text-align:center;padding:40px 0;color:#5b6b8c" id="jloading">
+    <div style="text-align:center;padding:40px 0;color:#555" id="jloading">
       <div style="font-size:24px;margin-bottom:8px">🤔</div>
       Alfred überlegt sich Fragen…
     </div>`;
@@ -921,13 +932,13 @@ async function journalCheckin(){
     `<button onclick="selMood=${v};document.querySelectorAll('.mbtn').forEach((b,i)=>{b.style.background=i+1==${v}?'${moodCol[v]}':'transparent';b.style.transform=i+1==${v}?'scale(1.25)':'scale(1)'});this.style.background='${moodCol[v]}'" class="mbtn" style="font-size:26px;background:transparent;border:none;cursor:pointer;transition:all .15s">${emo[v]}</button>`
   ).join('');
   const energyBtns = [1,2,3,4,5].map(v =>
-    `<button onclick="selEnergy=${v};document.querySelectorAll('.ebtn').forEach((b,i)=>{b.style.background=i+1==${v}?'#f59e0b22':'transparent';b.style.transform=i+1==${v}?'scale(1.25)':'scale(1)';b.style.color=i+1<=${v}?'#f59e0b':'#334155'});" class="ebtn" style="font-size:20px;background:transparent;border:none;cursor:pointer;transition:all .15s;color:#334155">⚡</button>`
+    `<button onclick="selEnergy=${v};document.querySelectorAll('.ebtn').forEach((b,i)=>{b.style.background=i+1==${v}?'#f59e0b22':'transparent';b.style.transform=i+1==${v}?'scale(1.25)':'scale(1)';b.style.color=i+1<=${v}?'#f59e0b':'#1e1e22'});" class="ebtn" style="font-size:20px;background:transparent;border:none;cursor:pointer;transition:all .15s;color:#1e1e22">⚡</button>`
   ).join('');
 
   const questionsHtml = prompts.map((q,i) => `
     <div style="margin-bottom:18px">
-      <div style="font-size:13px;color:#a5b4fc;margin-bottom:6px;font-weight:600">${esc(q)}</div>
-      <textarea id="ja${i}" rows="2" placeholder="Deine Antwort…" style="width:100%;box-sizing:border-box;background:#0d1b2a;border:1px solid #1e3a5f;border-radius:10px;color:#e2e8f0;padding:10px;font-size:13px;resize:vertical;font-family:inherit"></textarea>
+      <div style="font-size:13px;color:#fcd34d;margin-bottom:6px;font-weight:600">${esc(q)}</div>
+      <textarea id="ja${i}" rows="2" placeholder="Deine Antwort…" style="width:100%;box-sizing:border-box;background:#0a0a0c;border:1px solid #1e1e22;border-radius:10px;color:#e2e8f0;padding:10px;font-size:13px;resize:vertical;font-family:inherit"></textarea>
     </div>`).join('');
 
   document.getElementById('jloading').outerHTML = `
@@ -939,13 +950,13 @@ async function journalCheckin(){
       <div style="font-size:13px;color:#94a3b8;font-weight:600;margin-bottom:12px">Energielevel?</div>
       <div style="display:flex;justify-content:space-around;padding:8px 0">${energyBtns}</div>
     </div>
-    <div style="border-top:1px solid #1a2a3a;padding-top:20px;margin-bottom:4px">
+    <div style="border-top:1px solid #111113;padding-top:20px;margin-bottom:4px">
       <div style="font-size:13px;color:#94a3b8;font-weight:600;margin-bottom:16px">💬 Alfred fragt…</div>
       ${questionsHtml}
     </div>
     <div style="margin-bottom:24px">
       <div style="font-size:13px;color:#94a3b8;font-weight:600;margin-bottom:6px">Freier Gedanke</div>
-      <textarea id="jfree" rows="4" placeholder="Alles was dir noch durch den Kopf geht…" style="width:100%;box-sizing:border-box;background:#0d1b2a;border:1px solid #1e3a5f;border-radius:10px;color:#e2e8f0;padding:10px;font-size:13px;resize:vertical;font-family:inherit"></textarea>
+      <textarea id="jfree" rows="4" placeholder="Alles was dir noch durch den Kopf geht…" style="width:100%;box-sizing:border-box;background:#0a0a0c;border:1px solid #1e1e22;border-radius:10px;color:#e2e8f0;padding:10px;font-size:13px;resize:vertical;font-family:inherit"></textarea>
     </div>
     <button onclick="submitJournal(${prompts.length})" class="btn" style="width:100%;padding:14px;font-size:15px;font-weight:600">Speichern ✓</button>`;
 
@@ -978,9 +989,9 @@ async function submitJournal(nq){
 VIEWS.goals=async(root)=>{
   root.innerHTML=`<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px"><b style="font-size:18px">Ziele</b><button class="btn" onclick="addGoal()" style="padding:8px 14px;font-size:13px">＋ Ziel</button></div><div id="gl"></div>`;
   const gs=await api('/api/goals');
-  if(!gs.length){$('#gl').innerHTML='<div class="card" style="padding:24px;text-align:center;color:#5b6b8c">Noch keine Ziele.</div>';return;}
+  if(!gs.length){$('#gl').innerHTML='<div class="card" style="padding:24px;text-align:center;color:#555">Noch keine Ziele.</div>';return;}
   const ic={fitness:'💪',career:'💼',finance:'💰',personal:'🌱',general:'🎯'};
-  gs.forEach(g=>$('#gl').appendChild(el(`<div class="card" style="padding:16px;margin-bottom:12px;cursor:pointer" onclick="updateGoal(${g.id},'${esc(g.title)}')"><div style="display:flex;justify-content:space-between"><div style="display:flex;gap:8px"><span>${ic[g.category]||'🎯'}</span><b>${esc(g.title)}</b></div><span style="color:#a5b4fc">${g.progress_pct}%</span></div>${g.target_value?`<div style="font-size:12px;color:var(--muted);margin-top:4px">${g.current_value||0} / ${g.target_value} ${g.unit||''}</div>`:''}<div class="pill-h" style="margin-top:10px"><div class="pill-f" style="width:${g.progress_pct}%"></div></div></div>`)));
+  gs.forEach(g=>$('#gl').appendChild(el(`<div class="card" style="padding:16px;margin-bottom:12px;cursor:pointer" onclick="updateGoal(${g.id},'${esc(g.title)}')"><div style="display:flex;justify-content:space-between"><div style="display:flex;gap:8px"><span>${ic[g.category]||'🎯'}</span><b>${esc(g.title)}</b></div><span style="color:#fcd34d">${g.progress_pct}%</span></div>${g.target_value?`<div style="font-size:12px;color:var(--muted);margin-top:4px">${g.current_value||0} / ${g.target_value} ${g.unit||''}</div>`:''}<div class="pill-h" style="margin-top:10px"><div class="pill-f" style="width:${g.progress_pct}%"></div></div></div>`)));
 };
 
 // ════════ MEMORY (delete confirm) ════════
@@ -997,8 +1008,8 @@ VIEWS.memory=async(root)=>{
     <div id="mem-lzg"></div>
     <div id="mem-kg" style="display:none"></div>`;
 
-  const col={fact:'#60a5fa',goal:'#4ade80',pattern:'#c084fc',preference:'#f472b6',correction:'#fb923c',context:'#67e8f9',identity:'#fbbf24'};
-  const typeCol={person:'#c084fc',place:'#34d399',project:'#60a5fa',organization:'#f472b6',concept:'#fb923c',habit:'#4ade80',goal:'#fbbf24'};
+  const col={fact:'#fde047',goal:'#4ade80',pattern:'#c084fc',preference:'#f472b6',correction:'#fb923c',context:'#67e8f9',identity:'#fbbf24'};
+  const typeCol={person:'#c084fc',place:'#34d399',project:'#fde047',organization:'#f472b6',concept:'#fb923c',habit:'#4ade80',goal:'#fbbf24'};
 
   const [ms, kg] = await Promise.all([api('/api/memories'), api('/api/knowledge')]);
 
@@ -1010,14 +1021,14 @@ VIEWS.memory=async(root)=>{
   $('#mem-lzg').innerHTML=ms.length?ms.map(m=>`
     <div class="card" style="padding:13px;margin-bottom:9px">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px">
-        <span class="chip" style="color:${col[m.category]||'#9fb0d6'}">${m.category}</span>
+        <span class="chip" style="color:${col[m.category]||'#888'}">${m.category}</span>
         <div style="display:flex;gap:10px;align-items:center">
           <span style="font-size:11px;color:var(--muted)">${Math.round(m.confidence*100)}%</span>
           <button onclick="askDelMemory(${m.id})" style="background:none;border:none;color:#ef6b6b;font-size:15px;cursor:pointer">✕</button>
         </div>
       </div>
       <div style="font-size:14px">${esc(m.content)}</div>
-    </div>`).join(''):'<div class="card" style="padding:24px;text-align:center;color:#5b6b8c">Noch keine Erinnerungen.</div>';
+    </div>`).join(''):'<div class="card" style="padding:24px;text-align:center;color:#555">Noch keine Erinnerungen.</div>';
 
   // KG-Viewer – ohne verschachtelte Template-Literals
   const ents=kg.entities||[], rels=kg.relations||[];
@@ -1025,7 +1036,7 @@ VIEWS.memory=async(root)=>{
   rels.forEach(r=>{(relsBySubj[r.subject]=relsBySubj[r.subject]||[]).push(r);});
 
   if(!ents.length){
-    $('#mem-kg').innerHTML='<div class="card" style="padding:24px;text-align:center;color:#5b6b8c">Noch kein Wissens-Graph.</div>';
+    $('#mem-kg').innerHTML='<div class="card" style="padding:24px;text-align:center;color:#555">Noch kein Wissens-Graph.</div>';
   } else {
     const kgEl=$('#mem-kg');
     kgEl.innerHTML='';
@@ -1039,7 +1050,7 @@ VIEWS.memory=async(root)=>{
       hdr.style.cssText='display:flex;justify-content:space-between;align-items:center';
       const nameSpan=document.createElement('div');
       nameSpan.innerHTML=`<span style="font-weight:600;font-size:14px">${esc(e.name)}</span> `
-        +`<span class="chip" style="color:${typeCol[e.type]||'#9fb0d6'}">${e.type}</span>`;
+        +`<span class="chip" style="color:${typeCol[e.type]||'#888'}">${e.type}</span>`;
       const delBtn=document.createElement('button');
       delBtn.textContent='✕'; delBtn.style.cssText='background:none;border:none;color:#ef6b6b;font-size:14px;cursor:pointer';
       delBtn.onclick=()=>askDelKgEntity(e.id);
@@ -1057,11 +1068,11 @@ VIEWS.memory=async(root)=>{
       // Relationen
       (relsBySubj[e.name]||[]).forEach(r=>{
         const row=document.createElement('div');
-        row.style.cssText='font-size:12px;color:#a5b4fc;margin-top:6px;display:flex;justify-content:space-between;align-items:center';
+        row.style.cssText='font-size:12px;color:#fcd34d;margin-top:6px;display:flex;justify-content:space-between;align-items:center';
         const txt=document.createElement('span');
         txt.innerHTML='→ <b>'+r.predicate.replace(/_/g,' ')+'</b> → '+esc(r.object);
         const rDel=document.createElement('button');
-        rDel.textContent='✕'; rDel.style.cssText='background:none;border:none;color:#4a5980;font-size:12px;cursor:pointer';
+        rDel.textContent='✕'; rDel.style.cssText='background:none;border:none;color:#444;font-size:12px;cursor:pointer';
         rDel.onclick=()=>askDelKgRelation(r.id);
         row.appendChild(txt); row.appendChild(rDel);
         card.appendChild(row);
@@ -1089,7 +1100,7 @@ VIEWS.mind=async(root)=>{
     <div id="mindStatusBar" class="status-bar idle" style="margin-top:14px">
       <span class="sdot idle"></span>
       <span class="stxt" style="flex:1">💭 Bereit</span>
-      <span style="font-size:11px;color:#4a5980" id="mindModel">–</span>
+      <span style="font-size:11px;color:#444" id="mindModel">–</span>
     </div>
 
     <!-- Aktivitäts-Stream -->
@@ -1116,10 +1127,10 @@ VIEWS.mind=async(root)=>{
   // Buffered activity log reinspielen
   const actFeed=$('#actFeed');
   _actLog.slice(0,40).forEach(evt=>{
-    const row=el(`<div class="act-row"><span>${STATUS_ICONS[evt.type]||'·'}</span><span style="flex:1;color:#c7d2fe">${esc(evt.text||'')}${evt.detail?` <span style="color:var(--muted)">${esc(evt.detail)}</span>`:''}</span><span style="color:#4a5980">${new Date(evt.ts*1000).toLocaleTimeString('de-DE',{hour:'2-digit',minute:'2-digit',second:'2-digit'})}</span></div>`);
+    const row=el(`<div class="act-row"><span>${STATUS_ICONS[evt.type]||'·'}</span><span style="flex:1;color:#fef3c7">${esc(evt.text||'')}${evt.detail?` <span style="color:var(--muted)">${esc(evt.detail)}</span>`:''}</span><span style="color:#444">${new Date(evt.ts*1000).toLocaleTimeString('de-DE',{hour:'2-digit',minute:'2-digit',second:'2-digit'})}</span></div>`);
     actFeed.appendChild(row);
   });
-  if(!_actLog.length) actFeed.innerHTML='<span style="color:#5b6b8c;font-size:13px">Warte auf Aktivität…</span>';
+  if(!_actLog.length) actFeed.innerHTML='<span style="color:#555;font-size:13px">Warte auf Aktivität…</span>';
   const mc=$('#mindActCount');if(mc)mc.textContent=`${_actLog.length} Events`;
 
   // Mind-StatusBar mit globalem Stream verknüpfen (überschreibt applyStatus-Side-Effect)
@@ -1140,10 +1151,10 @@ VIEWS.mind=async(root)=>{
   root._cleanup=()=>{window.applyStatus=_origApply;};
 
   const m=await api('/api/mind');
-  $('#mNotes').innerHTML=(m.notes||[]).length?m.notes.map(n=>`<div style="font-size:13px;color:#c7d2fe;padding:4px 0">• ${esc(n)}</div>`).join(''):'<span style="color:#5b6b8c;font-size:13px">Lernt noch…</span>';
-  $('#mRef').innerHTML=(m.reflections||[]).length?m.reflections.map(r=>`<div style="font-size:13px;padding:6px 0;border-bottom:1px solid var(--line)">🪞 ${esc(r.content)}</div>`).join(''):'<span style="color:#5b6b8c;font-size:13px">Noch keine.</span>';
-  const feed=$('#mFeed');feed.innerHTML=(m.events||[]).map(e=>`<div style="display:flex;gap:8px;padding:4px 0;font-size:12px;color:#9fb0d6"><span>${feedIcon(e.type)}</span><span style="flex:1">${esc(e.summary)}</span></div>`).join('');
-  try{const es=new EventSource(`${API}/api/feed/stream`);es.onmessage=ev=>{if(CUR!=='mind'){es.close();return;}const e=JSON.parse(ev.data);feed.prepend(el(`<div style="display:flex;gap:8px;padding:4px 0;font-size:12px;color:#9fb0d6"><span>${feedIcon(e.type)}</span><span style="flex:1">${esc(e.summary)}</span></div>`));};}catch(e){}
+  $('#mNotes').innerHTML=(m.notes||[]).length?m.notes.map(n=>`<div style="font-size:13px;color:#fef3c7;padding:4px 0">• ${esc(n)}</div>`).join(''):'<span style="color:#555;font-size:13px">Lernt noch…</span>';
+  $('#mRef').innerHTML=(m.reflections||[]).length?m.reflections.map(r=>`<div style="font-size:13px;padding:6px 0;border-bottom:1px solid var(--line)">🪞 ${esc(r.content)}</div>`).join(''):'<span style="color:#555;font-size:13px">Noch keine.</span>';
+  const feed=$('#mFeed');feed.innerHTML=(m.events||[]).map(e=>`<div style="display:flex;gap:8px;padding:4px 0;font-size:12px;color:#888"><span>${feedIcon(e.type)}</span><span style="flex:1">${esc(e.summary)}</span></div>`).join('');
+  try{const es=new EventSource(`${API}/api/feed/stream`);es.onmessage=ev=>{if(CUR!=='mind'){es.close();return;}const e=JSON.parse(ev.data);feed.prepend(el(`<div style="display:flex;gap:8px;padding:4px 0;font-size:12px;color:#888"><span>${feedIcon(e.type)}</span><span style="flex:1">${esc(e.summary)}</span></div>`));};}catch(e){}
 };
 
 // ════════ ANALYTICS ════════
@@ -1155,9 +1166,9 @@ VIEWS.analytics=async(root)=>{
     </div>
     <div class="card" style="padding:16px;margin-top:12px"><b>Gewohnheiten-Konsistenz (30T)</b><div id="aHabits" style="margin-top:8px"></div></div>`;
   const a=await api('/api/analytics');const h=[...(a.health||[])].reverse();
-  lineChart('aHealth',h.map(x=>x.date?.slice(5)),[{label:'Schlaf',data:h.map(x=>x.sleep),color:'#8b5cf6'},{label:'HRV',data:h.map(x=>x.hrv),color:'#22c55e',y1:true}]);
+  lineChart('aHealth',h.map(x=>x.date?.slice(5)),[{label:'Schlaf',data:h.map(x=>x.sleep),color:'#d97706'},{label:'HRV',data:h.map(x=>x.hrv),color:'#22c55e',y1:true}]);
   barChart('aSteps',h.map(x=>x.date?.slice(5)),h.map(x=>x.steps));
-  $('#aHabits').innerHTML=(a.habits||[]).map(x=>`<div style="margin-top:8px"><div style="display:flex;justify-content:space-between;font-size:13px"><span>${x.emoji} ${esc(x.name)}</span><span style="color:#a5b4fc">${x.done_count}/30</span></div><div class="pill-h" style="margin-top:4px"><div class="pill-f" style="width:${Math.round(x.done_count/30*100)}%"></div></div></div>`).join('')||'<span style="color:#5b6b8c;font-size:13px">Keine Daten.</span>';
+  $('#aHabits').innerHTML=(a.habits||[]).map(x=>`<div style="margin-top:8px"><div style="display:flex;justify-content:space-between;font-size:13px"><span>${x.emoji} ${esc(x.name)}</span><span style="color:#fcd34d">${x.done_count}/30</span></div><div class="pill-h" style="margin-top:4px"><div class="pill-f" style="width:${Math.round(x.done_count/30*100)}%"></div></div></div>`).join('')||'<span style="color:#555;font-size:13px">Keine Daten.</span>';
 };
 
 // ════════ SETTINGS ════════
@@ -1165,22 +1176,22 @@ VIEWS.settings=async(root)=>{
   const s=await api('/api/settings');const tools=await api('/api/tools');const cats={};tools.forEach(t=>(cats[t.category]=cats[t.category]||[]).push(t));
   root.innerHTML=`<b style="font-size:18px">Einstellungen ⚙️</b>
     <div class="card" style="padding:16px;margin-top:12px"><label style="font-size:13px;color:var(--muted)">Wetter-Stadt</label><input id="setCity" value="${esc(s.weather_city||'')}" style="margin-top:6px"><button class="btn" onclick="saveSettings()" style="margin-top:10px;width:100%">Speichern</button></div>
-    <div class="card" style="padding:16px;margin-top:12px"><b>Fähigkeiten (${tools.length} Tools)</b>${Object.entries(cats).map(([c,ts])=>`<div style="margin-top:10px"><div class="chip" style="display:inline-block;margin-bottom:6px">${c}</div><div style="font-size:12px;color:#9fb0d6">${ts.map(t=>esc(t.name)).join(' · ')}</div></div>`).join('')}</div>`;
+    <div class="card" style="padding:16px;margin-top:12px"><b>Fähigkeiten (${tools.length} Tools)</b>${Object.entries(cats).map(([c,ts])=>`<div style="margin-top:10px"><div class="chip" style="display:inline-block;margin-bottom:6px">${c}</div><div style="font-size:12px;color:#888">${ts.map(t=>esc(t.name)).join(' · ')}</div></div>`).join('')}</div>`;
 };
 async function saveSettings(){await post('/api/settings',{weather_city:$('#setCity').value});toast('Gespeichert ✓');}
 async function importHealth(){const btn=event.target;btn.textContent='⏳ …';btn.disabled=true;try{const r=await post('/api/health/import',{});toast(r.days>0?`✓ ${r.days} Tage importiert`:'Keine neuen Daten');go(CUR);}catch(e){toast('Fehler beim Import');}finally{btn.textContent='☁️ iCloud sync';btn.disabled=false;}}
 function logHRV(){formSheet('HRV eintragen',`<label style="font-size:12px;color:var(--muted)">HRV (ms)</label><input id="f1" type="number" min="1" max="200" placeholder="z.B. 48" style="margin-top:6px"><label style="font-size:12px;color:var(--muted);margin-top:10px;display:block">Datum (leer = heute)</label><input id="f2" type="date" style="margin-top:6px">`,async()=>{const v=+$('#f1').value;if(!v){toast('Bitte Wert eingeben');return;}const payload={hrv:v};const d=$('#f2').value;if(d)payload.date=d;await post('/api/health/manual',payload);closeSheet();toast('HRV gespeichert ✓');go(CUR);});}
 
 // ════════ Charts ════════
-function lineChart(id,labels,series){const ctx=document.getElementById(id);if(!ctx)return;if(charts[id])charts[id].destroy();charts[id]=new Chart(ctx,{type:'line',data:{labels,datasets:series.map(s=>({label:s.label,data:s.data,borderColor:s.color,backgroundColor:s.color+'22',tension:.4,fill:true,pointRadius:0,borderWidth:2,yAxisID:s.y1?'y1':'y'}))},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{color:'#9fb0d6',boxWidth:10,font:{size:10}}}},scales:{x:{ticks:{color:'#5b6b8c',font:{size:9},maxTicksLimit:7},grid:{display:false}},y:{ticks:{color:'#5b6b8c',font:{size:9}},grid:{color:'#16203a'}},y1:series.some(s=>s.y1)?{position:'right',ticks:{color:'#5b6b8c',font:{size:9}},grid:{display:false}}:{display:false}}}});}
-function barChart(id,labels,data){const ctx=document.getElementById(id);if(!ctx)return;if(charts[id])charts[id].destroy();charts[id]=new Chart(ctx,{type:'bar',data:{labels,datasets:[{data,backgroundColor:'#3b82f6aa',borderRadius:4}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{color:'#5b6b8c',font:{size:9},maxTicksLimit:8},grid:{display:false}},y:{ticks:{color:'#5b6b8c',font:{size:9}},grid:{color:'#16203a'}}}}});}
+function lineChart(id,labels,series){const ctx=document.getElementById(id);if(!ctx)return;if(charts[id])charts[id].destroy();charts[id]=new Chart(ctx,{type:'line',data:{labels,datasets:series.map(s=>({label:s.label,data:s.data,borderColor:s.color,backgroundColor:s.color+'22',tension:.4,fill:true,pointRadius:0,borderWidth:2,yAxisID:s.y1?'y1':'y'}))},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{color:'#888',boxWidth:10,font:{size:10}}}},scales:{x:{ticks:{color:'#555',font:{size:9},maxTicksLimit:7},grid:{display:false}},y:{ticks:{color:'#555',font:{size:9}},grid:{color:'#1a1a1e'}},y1:series.some(s=>s.y1)?{position:'right',ticks:{color:'#555',font:{size:9}},grid:{display:false}}:{display:false}}}});}
+function barChart(id,labels,data){const ctx=document.getElementById(id);if(!ctx)return;if(charts[id])charts[id].destroy();charts[id]=new Chart(ctx,{type:'bar',data:{labels,datasets:[{data,backgroundColor:'#eab308aa',borderRadius:4}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{color:'#555',font:{size:9},maxTicksLimit:8},grid:{display:false}},y:{ticks:{color:'#555',font:{size:9}},grid:{color:'#1a1a1e'}}}}});}
 
 // ════════ Forms ════════
-function formSheet(title,fields,onsave){sheet(`<div style="width:40px;height:4px;background:#33415a;border-radius:99px;margin:0 auto 16px"></div><div style="font-weight:700;font-size:18px;margin-bottom:14px">${title}</div><div style="display:flex;flex-direction:column;gap:10px">${fields}</div><button class="btn" id="fsave" style="width:100%;margin-top:16px">Speichern</button>`);$('#fsave').onclick=onsave;}
+function formSheet(title,fields,onsave){sheet(`<div style="width:40px;height:4px;background:#222224;border-radius:99px;margin:0 auto 16px"></div><div style="font-weight:700;font-size:18px;margin-bottom:14px">${title}</div><div style="display:flex;flex-direction:column;gap:10px">${fields}</div><button class="btn" id="fsave" style="width:100%;margin-top:16px">Speichern</button>`);$('#fsave').onclick=onsave;}
 function addTask(){
   const sheet=document.createElement('div');
   sheet.id='tasksheet';
-  sheet.style.cssText='position:fixed;inset:0;background:#0a0f1a;z-index:200;overflow-y:auto;padding:20px 16px 40px';
+  sheet.style.cssText='position:fixed;inset:0;background:#060608;z-index:200;overflow-y:auto;padding:20px 16px 40px';
   sheet.innerHTML=`
     <div style="display:flex;align-items:center;gap:10px;margin-bottom:20px">
       <button onclick="document.getElementById('tasksheet').remove()" style="background:none;border:none;color:#94a3b8;font-size:20px;cursor:pointer">←</button>
@@ -1188,39 +1199,39 @@ function addTask(){
     </div>
 
     <div style="margin-bottom:16px">
-      <label style="font-size:12px;color:#5b6b8c;display:block;margin-bottom:6px">Titel *</label>
-      <input id="tt" placeholder="Was soll erledigt werden?" style="width:100%;box-sizing:border-box;background:#0d1b2a;border:1px solid #1e3a5f;border-radius:10px;color:#e2e8f0;padding:12px;font-size:15px;font-family:inherit">
+      <label style="font-size:12px;color:#555;display:block;margin-bottom:6px">Titel *</label>
+      <input id="tt" placeholder="Was soll erledigt werden?" style="width:100%;box-sizing:border-box;background:#0a0a0c;border:1px solid #1e1e22;border-radius:10px;color:#e2e8f0;padding:12px;font-size:15px;font-family:inherit">
     </div>
 
     <div style="margin-bottom:16px">
-      <label style="font-size:12px;color:#5b6b8c;display:block;margin-bottom:6px">Details / Kontext</label>
-      <textarea id="tn" rows="3" placeholder="Hintergründe, Links, was Alfred wissen sollte…" style="width:100%;box-sizing:border-box;background:#0d1b2a;border:1px solid #1e3a5f;border-radius:10px;color:#e2e8f0;padding:12px;font-size:13px;resize:vertical;font-family:inherit"></textarea>
+      <label style="font-size:12px;color:#555;display:block;margin-bottom:6px">Details / Kontext</label>
+      <textarea id="tn" rows="3" placeholder="Hintergründe, Links, was Alfred wissen sollte…" style="width:100%;box-sizing:border-box;background:#0a0a0c;border:1px solid #1e1e22;border-radius:10px;color:#e2e8f0;padding:12px;font-size:13px;resize:vertical;font-family:inherit"></textarea>
     </div>
 
     <div style="margin-bottom:16px">
-      <label style="font-size:12px;color:#5b6b8c;display:block;margin-bottom:8px">Wer erledigt das?</label>
+      <label style="font-size:12px;color:#555;display:block;margin-bottom:8px">Wer erledigt das?</label>
       <div style="display:flex;gap:8px">
-        <button id="assignMe" onclick="setAssignee('user')" style="flex:1;padding:12px;border-radius:10px;border:2px solid #22c55e;background:#0d2a1a;color:#22c55e;cursor:pointer;font-size:13px;font-weight:600">👤 Ich</button>
-        <button id="assignAlfred" onclick="setAssignee('alfred')" style="flex:1;padding:12px;border-radius:10px;border:1px solid #1e3a5f;background:transparent;color:#5b6b8c;cursor:pointer;font-size:13px;font-weight:600">🤖 Alfred</button>
-        <button id="assignAuto" onclick="setAssignee('auto')" style="flex:1;padding:12px;border-radius:10px;border:1px solid #1e3a5f;background:transparent;color:#5b6b8c;cursor:pointer;font-size:13px;font-weight:600">✨ Auto</button>
+        <button id="assignMe" onclick="setAssignee('user')" style="flex:1;padding:12px;border-radius:10px;border:2px solid #22c55e;background:#0a1a0a;color:#22c55e;cursor:pointer;font-size:13px;font-weight:600">👤 Ich</button>
+        <button id="assignAlfred" onclick="setAssignee('alfred')" style="flex:1;padding:12px;border-radius:10px;border:1px solid #1e1e22;background:transparent;color:#555;cursor:pointer;font-size:13px;font-weight:600">🤖 Alfred</button>
+        <button id="assignAuto" onclick="setAssignee('auto')" style="flex:1;padding:12px;border-radius:10px;border:1px solid #1e1e22;background:transparent;color:#555;cursor:pointer;font-size:13px;font-weight:600">✨ Auto</button>
       </div>
-      <div id="alfrednote" style="display:none;margin-top:8px;font-size:12px;color:#a5b4fc;background:#0d1525;padding:8px 12px;border-radius:8px">
+      <div id="alfrednote" style="display:none;margin-top:8px;font-size:12px;color:#fcd34d;background:#0a0a0c;padding:8px 12px;border-radius:8px">
         🤖 Alfred übernimmt diese Aufgabe selbstständig und erarbeitet ein Ergebnis.
       </div>
     </div>
 
     <div style="display:flex;gap:10px;margin-bottom:16px">
       <div style="flex:1">
-        <label style="font-size:12px;color:#5b6b8c;display:block;margin-bottom:6px">Typ</label>
-        <select id="tk" style="width:100%;background:#0d1b2a;border:1px solid #1e3a5f;border-radius:10px;color:#e2e8f0;padding:10px;font-size:13px">
+        <label style="font-size:12px;color:#555;display:block;margin-bottom:6px">Typ</label>
+        <select id="tk" style="width:100%;background:#0a0a0c;border:1px solid #1e1e22;border-radius:10px;color:#e2e8f0;padding:10px;font-size:13px">
           <option value="task">Aufgabe</option>
           <option value="project">Projekt</option>
           <option value="checklist">Checkliste</option>
         </select>
       </div>
       <div style="flex:1">
-        <label style="font-size:12px;color:#5b6b8c;display:block;margin-bottom:6px">Priorität</label>
-        <select id="tp" style="width:100%;background:#0d1b2a;border:1px solid #1e3a5f;border-radius:10px;color:#e2e8f0;padding:10px;font-size:13px">
+        <label style="font-size:12px;color:#555;display:block;margin-bottom:6px">Priorität</label>
+        <select id="tp" style="width:100%;background:#0a0a0c;border:1px solid #1e1e22;border-radius:10px;color:#e2e8f0;padding:10px;font-size:13px">
           <option value="medium">🟡 Mittel</option>
           <option value="high">🔴 Hoch</option>
           <option value="low">🟢 Niedrig</option>
@@ -1229,8 +1240,8 @@ function addTask(){
     </div>
 
     <div style="margin-bottom:24px">
-      <label style="font-size:12px;color:#5b6b8c;display:block;margin-bottom:6px">Fällig (optional)</label>
-      <input id="td" placeholder="z.B. morgen 9:00 oder 20.06.2026" style="width:100%;box-sizing:border-box;background:#0d1b2a;border:1px solid #1e3a5f;border-radius:10px;color:#e2e8f0;padding:12px;font-size:13px;font-family:inherit">
+      <label style="font-size:12px;color:#555;display:block;margin-bottom:6px">Fällig (optional)</label>
+      <input id="td" placeholder="z.B. morgen 9:00 oder 20.06.2026" style="width:100%;box-sizing:border-box;background:#0a0a0c;border:1px solid #1e1e22;border-radius:10px;color:#e2e8f0;padding:12px;font-size:13px;font-family:inherit">
     </div>
 
     <button onclick="submitTask()" class="btn" style="width:100%;padding:14px;font-size:15px;font-weight:600">Erstellen</button>`;
@@ -1245,13 +1256,13 @@ function setAssignee(who){
     const btn=document.getElementById('assign'+k.charAt(0).toUpperCase()+k.slice(1));
     if(!btn)return;
     if(k===who){
-      btn.style.border='2px solid '+(who==='alfred'?'#a5b4fc':who==='auto'?'#f59e0b':'#22c55e');
-      btn.style.background=who==='alfred'?'#0d1525':who==='auto'?'#1a1400':'#0d2a1a';
-      btn.style.color=who==='alfred'?'#a5b4fc':who==='auto'?'#f59e0b':'#22c55e';
+      btn.style.border='2px solid '+(who==='alfred'?'#fcd34d':who==='auto'?'#f59e0b':'#22c55e');
+      btn.style.background=who==='alfred'?'#0a0a0c':who==='auto'?'#1a1400':'#0d2a1a';
+      btn.style.color=who==='alfred'?'#fcd34d':who==='auto'?'#f59e0b':'#22c55e';
     } else {
-      btn.style.border='1px solid #1e3a5f';
+      btn.style.border='1px solid #1e1e22';
       btn.style.background='transparent';
-      btn.style.color='#5b6b8c';
+      btn.style.color='#555';
     }
   });
   document.getElementById('alfrednote').style.display=who==='alfred'?'block':'none';
@@ -1291,7 +1302,7 @@ function addSubtask(pid){formSheet('Unteraufgabe',`<input id="f1" placeholder="T
 function addEvent(){
   const now=new Date();const pad=n=>String(n).padStart(2,'0');
   const def=now.getFullYear()+'-'+pad(now.getMonth()+1)+'-'+pad(now.getDate())+'T'+pad(now.getHours()+1)+':00';
-  formSheet('Neuer Termin',`<input id="f1" placeholder="Titel" style="display:block;width:100%;margin-bottom:10px;padding:8px;background:#1e293b;border:1px solid #334155;border-radius:6px;color:#fff;font-size:14px"><label style="font-size:12px;color:#64748b">Start</label><input id="f2" type="datetime-local" value="${def}" style="display:block;width:100%;margin-bottom:10px;padding:8px;background:#1e293b;border:1px solid #334155;border-radius:6px;color:#fff;font-size:14px"><label style="font-size:12px;color:#64748b">Ende (optional)</label><input id="f3" type="datetime-local" style="display:block;width:100%;margin-bottom:10px;padding:8px;background:#1e293b;border:1px solid #334155;border-radius:6px;color:#fff;font-size:14px"><input id="f4" placeholder="Ort (optional)" style="display:block;width:100%;padding:8px;background:#1e293b;border:1px solid #334155;border-radius:6px;color:#fff;font-size:14px">`,
+  formSheet('Neuer Termin',`<input id="f1" placeholder="Titel" style="display:block;width:100%;margin-bottom:10px;padding:8px;background:#0a0a0c;border:1px solid #1e1e22;border-radius:6px;color:#fff;font-size:14px"><label style="font-size:12px;color:#555">Start</label><input id="f2" type="datetime-local" value="${def}" style="display:block;width:100%;margin-bottom:10px;padding:8px;background:#0a0a0c;border:1px solid #1e1e22;border-radius:6px;color:#fff;font-size:14px"><label style="font-size:12px;color:#555">Ende (optional)</label><input id="f3" type="datetime-local" style="display:block;width:100%;margin-bottom:10px;padding:8px;background:#0a0a0c;border:1px solid #1e1e22;border-radius:6px;color:#fff;font-size:14px"><input id="f4" placeholder="Ort (optional)" style="display:block;width:100%;padding:8px;background:#0a0a0c;border:1px solid #1e1e22;border-radius:6px;color:#fff;font-size:14px">`,
   async()=>{
     const t=$('#f1').value,s=$('#f2').value,e=$('#f3').value,l=$('#f4').value;
     if(!t||!s){toast('Titel und Start erforderlich');return;}
@@ -1305,7 +1316,7 @@ function importWorkout(){
   formSheet('Training importieren',
     `<div style="font-size:13px;color:var(--muted)">Lade eine Datei hoch (Text/CSV/JSON-Export deiner Gym-App) ODER füge den Text direkt ein – Alfred parst Übungen & Sätze automatisch.</div>
      <label class="soft" style="display:flex;align-items:center;justify-content:center;gap:8px;padding:16px;border-radius:14px;cursor:pointer;border:1px dashed var(--line)">📎 Datei wählen<input id="ffile" type="file" accept=".txt,.csv,.json,.md,.log,text/*" style="display:none"></label>
-     <div id="ffname" style="font-size:12px;color:#a5b4fc;text-align:center"></div>
+     <div id="ffname" style="font-size:12px;color:#fcd34d;text-align:center"></div>
      <div style="text-align:center;font-size:11px;color:var(--muted)">– oder –</div>
      <textarea id="f1" rows="6" placeholder="Push Day\nBankdrücken 5x5 @80kg\nSchrägbank KH 3x10 @28kg\nDips 3x12"></textarea>`,
     async()=>{
@@ -1323,7 +1334,7 @@ const HABIT_EMOJIS=['📚','🏃','🧘','💪','💧','🥗','😴','🚭','�
 function addHabit(){
   formSheet('Neue Routine',
     `<input id="f1" placeholder="Name (z.B. Meditieren)">
-     <select id="f3" style="background:#1e293b;color:#e2e8f0;border:1px solid #334155;border-radius:10px;padding:10px 12px;font-size:14px;width:100%">
+     <select id="f3" style="background:#0a0a0c;color:#e2e8f0;border:1px solid #1e1e22;border-radius:10px;padding:10px 12px;font-size:14px;width:100%">
        <option value="morning">🌅 Morning Routine</option>
        <option value="day">☀️ Rest of Day</option>
        <option value="evening">🌙 Evening Routine</option>

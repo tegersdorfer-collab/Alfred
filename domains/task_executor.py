@@ -387,7 +387,6 @@ async def suggest_one(trigger: str, llm: LLMProvider, lzg=None) -> bool:
             memories = [m.content for m in mems[:12]]
         open_tasks = [t["title"] for t in _db.query(
             "SELECT title FROM tasks WHERE status NOT IN ('done','archived') "
-            "OR (suggestion_status='proposed' AND created_at > NOW() - INTERVAL '7 days') "
             "ORDER BY created_at DESC LIMIT 20"
         )]
         rejected_rows = _db.query(
