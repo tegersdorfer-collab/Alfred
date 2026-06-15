@@ -102,13 +102,15 @@ _MUSCLE_KEYWORDS = {
     "cardio": ["running", "lauf", "joggen", "cycling", "stationary bike", "treadmill",
                "rad", "bike", "schwimm", "cardio", "rowing erg", "elliptical"],
     "legs": ["squat", "kniebeuge", "leg press", "leg extension", "leg curl", "lying leg",
-             "split squat", "hack squat", "lunge", "calf", "wadenheben", "bein", "beinpresse",
+             "split squat", "hack squat", "lunge", "calf", "wadenheben", "beinpresse",
              "hip adduction", "hip abduction", "romanian", "rdl"],
     "back": ["row", "rudern", "pulldown", "lat ", "pull-up", "pull up", "pullup", "klimmzug",
              "latzug", "deadlift", "kreuzheben", "shrug", "face pull", "single arm lat",
-             "t-bar", "bent-over", "high row", "rücken"],
-    "chest": ["bench", "bankdrücken", "chest press", "chest", "brust", "butterfly", "fly",
-              "flys", "dips", "pec", "incline press", "push-up", "pushup"],
+             "t-bar", "bent-over", "high row", " rücken", "rückenstrecker"],
+    "chest": ["bench", "bankdrück", "bank drück", "schrägbank", "schräg bank",
+              "flachbank", "flach bank", "chest press", "chest",
+              "brust", "butterfly", "fly", "flys", "dips", "pec", "incline press",
+              "push-up", "pushup"],
     "shoulders": ["shoulder press", "overhead press", "military", "ohp", "lateral raise",
                   "seitheben", "lateral raises", "reverse butterfly", "reverse fly",
                   "reverse flys", "shoulder", "schulter", "delt"],
@@ -120,7 +122,8 @@ _MUSCLE_KEYWORDS = {
 
 
 def guess_muscle(exercise_name: str, workout_type: str = "") -> str:
-    t = (exercise_name + " " + workout_type).lower()
+    # Bindestriche normalisieren damit "Schräg-Bank-Drücken" → "schräg bank drücken"
+    t = " " + (exercise_name + " " + workout_type).lower().replace("-", " ") + " "
     for grp, kws in _MUSCLE_KEYWORDS.items():
         if any(k in t for k in kws):
             return grp
