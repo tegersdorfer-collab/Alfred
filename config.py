@@ -20,8 +20,8 @@ OLLAMA_KEEP_ALIVE_STRONG = os.getenv("OLLAMA_KEEP_ALIVE_STRONG", "2m")
 ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY", "")
 CLAUDE_CHAT_MODEL = os.getenv("CLAUDE_CHAT_MODEL", "claude-haiku-4-5-20251001")  # Echtzeit-Chat-Antworten
 
-# MLX (großes lokales Modell für Background-Tasks)
-MLX_BG_MODEL = os.getenv("MLX_BG_MODEL", "")  # z.B. gemma4:31b-mlx — Ollama MLX Background-Modell
+# MLX (großes lokales Modell für Background-Tasks, direkt via mlx_lm — kein Ollama)
+MLX_BG_MODEL = os.getenv("MLX_BG_MODEL", "")  # HuggingFace-Repo, z.B. mlx-community/gemma-4-31b-it-4bit
 
 # Telegram
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "")

@@ -66,11 +66,12 @@ async def main():
     agent_backend = OllamaBackend()
     log.info(f"🔧 Agent-Backend: Ollama ({cfg.AGENT_MODEL_STRONG})")
 
-    # ── Background-LLM: gemma4:31b-mlx wenn gesetzt, sonst Ollama ────────────
+    # ── Background-LLM: MLXProvider (direkt via mlx_lm, kein Ollama) ─────────
     bg_model = cfg.MLX_BG_MODEL if cfg.MLX_BG_MODEL else None
     if bg_model:
-        bg_llm = OllamaProvider(model=bg_model)
-        log.info(f"🧠 Background-LLM: {bg_model} (Ollama MLX)")
+        from llm.mlx_provider import MLXProvider
+        bg_llm = MLXProvider(model_id=bg_model)
+        log.info(f"🧠 Background-LLM: {bg_model} (MLX direkt)")
     else:
         bg_llm = OllamaProvider()
         log.info(f"🧠 Background-LLM: Ollama {cfg.OLLAMA_MODEL}")
