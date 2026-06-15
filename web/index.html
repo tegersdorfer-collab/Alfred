@@ -5,155 +5,238 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="theme-color" content="#060608">
+<meta name="theme-color" content="#080808">
 <link rel="manifest" href="/manifest.json">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
 <title>Alfred</title>
-<script src="https://cdn.tailwindcss.com"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/marked@9.1.6/marked.min.js"></script>
 <style>
-  :root { --bg:#060608; --card:#0e0e10; --card2:#141416; --line:#1e1e22; --accent:#eab308; --accent2:#f59e0b; --muted:#6b7280; }
-  * { -webkit-tap-highlight-color:transparent; box-sizing:border-box; }
-  body { background:var(--bg); color:#e8e8e8;
-         font-family:'SF Pro Display',-apple-system,BlinkMacSystemFont,system-ui,sans-serif; margin:0; overscroll-behavior:none; }
-  .card { background:var(--card); border:1px solid var(--line); border-radius:16px; }
-  .soft { background:rgba(255,255,255,.04); border:none; border-radius:14px; }
-  .glass { backdrop-filter:blur(20px); background:rgba(6,6,8,.88); }
-  .grad-text { background:linear-gradient(120deg,#eab308,#f59e0b);-webkit-background-clip:text;background-clip:text;color:transparent; }
-  .btn { background:linear-gradient(120deg,#eab308,#d97706);color:#000;border:none;border-radius:12px;padding:11px 16px;font-weight:700;font-size:14px;transition:.15s;cursor:pointer;letter-spacing:.3px; }
-  .btn:active{transform:scale(.96);}
-  .btn-ghost{background:var(--card2);color:#c8c8c8;border:none;cursor:pointer;}
-  .chip{background:rgba(234,179,8,.1);border:1px solid rgba(234,179,8,.2);border-radius:999px;padding:3px 10px;font-size:11px;color:#eab308;}
-  .jring{transform:rotate(-90deg);box-shadow:none!important;}
-  input,textarea,select{background:#0a0a0c;border:1px solid var(--line);border-radius:10px;color:#e8e8e8;padding:11px 13px;font-size:15px;width:100%;outline:none;}
-  input:focus,textarea:focus,select:focus{border-color:var(--accent);box-shadow:0 0 0 2px rgba(234,179,8,.15);}
-  ::-webkit-scrollbar{width:0;height:0;}
-  .fade{animation:fade .3s ease;}@keyframes fade{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
-  .pill-h{height:6px;border-radius:999px;background:var(--card2);overflow:hidden;}
-  .pill-f{height:100%;background:linear-gradient(90deg,#eab308,#d97706);border-radius:999px;transition:width .5s;}
-  .heat{width:11px;height:11px;border-radius:3px;background:#1a1a1e;}
-  .md-result h1,.md-result h2,.md-result h3{color:#f0f0f0;font-weight:700;margin:12px 0 6px;}
-  .md-result h1{font-size:15px;}.md-result h2{font-size:14px;}.md-result h3{font-size:13px;}
-  .md-result p{margin:6px 0;}
-  .md-result ul,.md-result ol{padding-left:18px;margin:6px 0;}
-  .md-result li{margin:3px 0;}
-  .md-result code{background:#0a0a0c;border-radius:4px;padding:1px 5px;font-size:12px;color:#eab308;}
-  .md-result pre{background:#0a0a0c;border-radius:8px;padding:10px;overflow-x:auto;margin:8px 0;}
-  .md-result pre code{background:none;padding:0;}
-  .md-result hr{border:none;border-top:1px solid var(--line);margin:12px 0;}
-  .md-result strong{color:#f0f0f0;}
-  .msg{max-width:80%;padding:10px 14px;border-radius:16px;font-size:14px;line-height:1.45;white-space:pre-wrap;word-wrap:break-word;}
-  .msg-u{background:linear-gradient(120deg,#eab308,#d97706);color:#000;font-weight:600;border-bottom-right-radius:4px;margin-left:auto;}
-  .msg-a{background:var(--card2);color:#e8e8e8;border-bottom-left-radius:4px;border:1px solid var(--line);}
+/* ── Tokens ─────────────────────────────────────────── */
+:root{
+  --bg:#080808; --s1:#0d0d0f; --s2:#111113; --s3:#181820;
+  --bd:#1e1e24; --y:#f5c400; --ya:rgba(245,196,0,.1); --yb:rgba(245,196,0,.18);
+  --tx:#e2e2e2; --t2:#8a8a8a; --t3:#444; --green:#22c55e; --red:#ef4444;
+  --mono:'JetBrains Mono',monospace;
+}
+*{-webkit-tap-highlight-color:transparent;box-sizing:border-box;margin:0;padding:0;}
+body{background:var(--bg);color:var(--tx);font-family:-apple-system,BlinkMacSystemFont,system-ui,sans-serif;overscroll-behavior:none;}
+::-webkit-scrollbar{width:0;height:0;}
 
-  /* Layout */
-  .shell{display:flex;min-height:100vh;}
-  .sidebar{display:none;}
-  .main{flex:1;min-width:0;}
-  .app{max-width:560px;margin:0 auto;padding-bottom:88px;}
-  .header{position:sticky;top:0;z-index:40;padding:12px 18px;padding-top:max(12px,env(safe-area-inset-top));border-bottom:1px solid var(--line);}
-  .nav{position:fixed;bottom:0;left:0;right:0;z-index:50;}
-  .nav-inner{max-width:560px;margin:0 auto;display:flex;justify-content:space-around;align-items:center;padding:6px 8px calc(6px + env(safe-area-inset-bottom));border-top:1px solid var(--line);}
-  .nav-btn{display:flex;flex-direction:column;align-items:center;gap:2px;font-size:10px;color:#555;background:none;border:none;padding:4px 10px;cursor:pointer;transition:.15s;}
-  .nav-btn.active{color:#eab308;}
-  .nav-btn.active .ni{background:rgba(234,179,8,.15);box-shadow:0 0 12px rgba(234,179,8,.3);}
-  .ni{width:40px;height:28px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:17px;transition:.2s;}
-  .sheet{position:fixed;inset:0;z-index:60;display:none;}
-  .sheet.open{display:block;}
-  .sheet-bg{position:absolute;inset:0;background:rgba(0,0,0,.7);}
-  .sheet-card{position:absolute;bottom:0;left:0;right:0;max-width:560px;margin:0 auto;border-radius:20px 20px 0 0;background:#0e0e10;border-top:1px solid var(--line);padding:18px 18px calc(20px + env(safe-area-inset-bottom));animation:up .22s;max-height:88vh;overflow-y:auto;}
-  @keyframes up{from{transform:translateY(100%)}to{transform:none}}
-  .tabbar{display:flex;gap:6px;margin-bottom:14px;}
-  .tab{flex:1;text-align:center;padding:8px;border-radius:10px;background:var(--card2);color:var(--muted);font-size:13px;cursor:pointer;transition:.15s;}
-  .tab.active{background:rgba(234,179,8,.15);color:#eab308;border:1px solid rgba(234,179,8,.3);}
+/* ── Base Components ─────────────────────────────────── */
+.c{background:var(--s1);border:1px solid var(--bd);border-radius:8px;}
+.c2{background:var(--s2);border:1px solid var(--bd);border-radius:6px;}
+/* keep .card alias for legacy */
+.card{background:var(--s1);border:1px solid var(--bd);border-radius:8px;}
+.soft{background:var(--s2);border:none;border-radius:8px;}
 
-  /* Live-Status */
-  .status-bar{display:flex;align-items:center;gap:8px;padding:9px 14px;border-radius:12px;background:rgba(20,20,22,.8);border:1px solid var(--line);font-size:12px;color:#888;transition:.3s;}
-  .status-bar.thinking{border-color:rgba(234,179,8,.3);background:rgba(234,179,8,.05);}
-  .status-bar.tool{border-color:rgba(234,179,8,.4);background:rgba(234,179,8,.07);}
-  .status-bar.memory{border-color:rgba(34,197,94,.3);background:rgba(34,197,94,.05);}
-  .status-bar.learning{border-color:rgba(234,179,8,.3);background:rgba(234,179,8,.06);}
-  .status-bar.error{border-color:rgba(239,68,68,.4);background:rgba(239,68,68,.07);}
-  .status-bar.task_working{border-color:rgba(234,179,8,.4);background:rgba(234,179,8,.08);}
-  .sdot{width:7px;height:7px;border-radius:50%;flex-shrink:0;background:#333;transition:.3s;}
-  .sdot.task_working{background:#eab308;animation:pulse-yellow 1s infinite;}
-  .sdot.thinking{background:#eab308;animation:pulse-yellow 1.2s infinite;}
-  .sdot.tool{background:#f59e0b;animation:pulse-yellow 1s infinite;}
-  .sdot.memory{background:#22c55e;}
-  .sdot.learning{background:#eab308;animation:pulse-yellow 1.4s infinite;}
-  .sdot.idle{background:#22c55e;}
-  .sdot.error{background:#ef4444;}
-  @keyframes pulse-yellow{0%,100%{box-shadow:0 0 0 0 rgba(234,179,8,.6)}50%{box-shadow:0 0 0 5px rgba(234,179,8,0)}}
-  .act-row{display:flex;gap:8px;padding:5px 0;font-size:12px;color:#888;border-bottom:1px solid rgba(30,30,34,.8);animation:fade .2s ease;}
-  .act-row:last-child{border-bottom:none;}
+/* Buttons */
+.btn{height:32px;padding:0 14px;background:var(--y);color:#000;border:none;border-radius:5px;font-weight:700;font-size:12px;letter-spacing:.4px;text-transform:uppercase;cursor:pointer;transition:.12s;white-space:nowrap;flex-shrink:0;}
+.btn:active{opacity:.85;transform:scale(.97);}
+.btn-g{background:transparent;border:1px solid var(--bd);color:var(--t2);height:32px;padding:0 14px;border-radius:5px;font-size:12px;cursor:pointer;transition:.12s;}
+.btn-g:hover{border-color:var(--y);color:var(--y);}
+.btn-g:active{opacity:.8;}
+.btn-ghost{background:var(--s2);color:var(--t2);border:none;cursor:pointer;border-radius:5px;}
+.btn-danger{background:var(--red);color:#fff;height:32px;padding:0 14px;border:none;border-radius:5px;font-size:12px;font-weight:700;cursor:pointer;}
+.icon-btn{width:32px;height:32px;border-radius:5px;background:var(--s2);border:1px solid var(--bd);color:var(--t2);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0;}
+.icon-btn:hover{border-color:var(--y);color:var(--y);}
 
-  /* Desktop */
-  @media(min-width:900px){
-    .app{max-width:1100px;padding:0 28px 40px;}
-    .nav{display:none;}
-    .sidebar{display:flex;flex-direction:column;width:220px;flex-shrink:0;border-right:1px solid var(--line);
-             padding:20px 12px;position:sticky;top:0;height:100vh;gap:2px;}
-    .side-btn{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:10px;color:#888;background:none;border:none;font-size:13px;cursor:pointer;text-align:left;width:100%;transition:.15s;}
-    .side-btn:hover{background:var(--card2);color:#ccc;}
-    .side-btn.active{background:rgba(234,179,8,.12);color:#eab308;border-left:2px solid #eab308;}
-    .header{border-bottom:none;padding-top:22px;}
-    .grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px;align-items:start;}
-    .grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;align-items:start;}
-    .chat-wrap{max-width:760px;}
-    .sheet-card{max-width:540px;border-radius:20px;bottom:auto;top:50%;left:50%;right:auto;transform:translate(-50%,-50%);}
-    @keyframes up{from{opacity:0}to{opacity:1}}
-  }
+/* Chip / Badge */
+.chip{display:inline-flex;align-items:center;background:var(--ya);border:1px solid rgba(245,196,0,.22);border-radius:4px;padding:2px 8px;font-size:11px;color:var(--y);font-family:var(--mono);letter-spacing:.3px;}
+.chip-g{background:rgba(34,197,94,.1);border:1px solid rgba(34,197,94,.2);color:var(--green);}
+.chip-r{background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.2);color:var(--red);}
+.chip-n{background:var(--s2);border:1px solid var(--bd);color:var(--t2);}
+
+/* Inputs */
+input,textarea,select{background:var(--s2);border:1px solid var(--bd);border-radius:6px;color:var(--tx);padding:9px 12px;font-size:14px;width:100%;outline:none;font-family:inherit;}
+input:focus,textarea:focus,select:focus{border-color:var(--y);box-shadow:0 0 0 2px rgba(245,196,0,.12);}
+label.field-label{display:block;font-size:11px;letter-spacing:.5px;text-transform:uppercase;color:var(--t3);margin-bottom:6px;font-weight:600;}
+
+/* Divider */
+.sep{border:none;border-top:1px solid var(--bd);margin:0;}
+.sep-y{border-color:rgba(245,196,0,.2);}
+
+/* Pills / Progress */
+.pill-h{height:4px;border-radius:2px;background:var(--s3);overflow:hidden;}
+.pill-f{height:100%;background:var(--y);border-radius:2px;transition:width .5s;}
+
+/* Mono stat value */
+.mono{font-family:var(--mono);}
+.stat-val{font-family:var(--mono);font-weight:600;font-size:22px;line-height:1;}
+.stat-lbl{font-size:10px;letter-spacing:.5px;text-transform:uppercase;color:var(--t3);margin-top:3px;}
+
+/* Section header */
+.sec-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;}
+.sec-title{font-size:11px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:var(--t3);}
+
+/* Ring */
+.jring{transform:rotate(-90deg);box-shadow:none!important;}
+
+/* Markdown */
+.md-result h1,.md-result h2,.md-result h3{color:#f0f0f0;font-weight:700;margin:12px 0 5px;}
+.md-result h1{font-size:15px;}.md-result h2{font-size:14px;}.md-result h3{font-size:13px;}
+.md-result p{margin:5px 0;line-height:1.6;}
+.md-result ul,.md-result ol{padding-left:16px;margin:5px 0;}
+.md-result li{margin:2px 0;}
+.md-result code{background:var(--s2);border-radius:3px;padding:1px 5px;font-size:12px;color:var(--y);font-family:var(--mono);}
+.md-result pre{background:var(--s2);border-radius:6px;padding:10px;overflow-x:auto;margin:8px 0;}
+.md-result hr{border:none;border-top:1px solid var(--bd);margin:10px 0;}
+.md-result strong{color:#f0f0f0;}
+
+/* Chat messages */
+.msg{max-width:82%;padding:9px 13px;border-radius:12px;font-size:14px;line-height:1.5;white-space:pre-wrap;word-wrap:break-word;}
+.msg-u{background:var(--y);color:#000;font-weight:600;border-bottom-right-radius:3px;margin-left:auto;}
+.msg-a{background:var(--s1);color:var(--tx);border:1px solid var(--bd);border-bottom-left-radius:3px;}
+
+/* Animations */
+.fade{animation:fadein .25s ease;}
+@keyframes fadein{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:none}}
+
+/* Status bar */
+.status-bar{display:flex;align-items:center;gap:8px;padding:8px 12px;border-radius:6px;background:var(--s1);border:1px solid var(--bd);font-size:12px;color:var(--t2);transition:.3s;}
+.status-bar.thinking,.status-bar.tool,.status-bar.task_working,.status-bar.learning{border-color:rgba(245,196,0,.3);background:rgba(245,196,0,.04);}
+.status-bar.memory{border-color:rgba(34,197,94,.25);}
+.status-bar.error{border-color:rgba(239,68,68,.3);}
+.sdot{width:6px;height:6px;border-radius:50%;flex-shrink:0;background:var(--t3);transition:.3s;}
+.sdot.thinking,.sdot.tool,.sdot.learning,.sdot.task_working{background:var(--y);animation:py 1.1s infinite;}
+.sdot.memory,.sdot.idle{background:var(--green);}
+.sdot.error{background:var(--red);}
+@keyframes py{0%,100%{box-shadow:0 0 0 0 rgba(245,196,0,.5)}60%{box-shadow:0 0 0 4px rgba(245,196,0,0)}}
+.act-row{display:flex;gap:8px;padding:4px 0;font-size:12px;color:var(--t2);border-bottom:1px solid var(--bd);animation:fadein .2s;}
+.act-row:last-child{border-bottom:none;}
+
+/* Heat cell */
+.heat{width:10px;height:10px;border-radius:2px;background:var(--s3);}
+
+/* Tabs */
+.tabbar{display:flex;gap:4px;margin-bottom:14px;background:var(--s2);border-radius:7px;padding:3px;}
+.tab{flex:1;text-align:center;padding:6px 4px;border-radius:5px;color:var(--t3);font-size:12px;cursor:pointer;font-weight:600;transition:.15s;letter-spacing:.3px;}
+.tab.active{background:var(--y);color:#000;}
+
+/* ── Layout ──────────────────────────────────────────── */
+.shell{display:flex;min-height:100vh;}
+
+/* Sidebar (desktop only) */
+.sbar{display:none;}
+
+/* Main */
+.main{flex:1;min-width:0;display:flex;flex-direction:column;}
+
+/* Header */
+.hdr{position:sticky;top:0;z-index:40;background:rgba(8,8,8,.92);backdrop-filter:blur(16px);border-bottom:1px solid var(--bd);padding:0 16px;padding-top:env(safe-area-inset-top);height:calc(52px + env(safe-area-inset-top));}
+.hdr-inner{height:52px;display:flex;align-items:center;justify-content:space-between;}
+
+/* Content area */
+.cnt{padding:14px 14px calc(76px + env(safe-area-inset-bottom));}
+
+/* Bottom nav */
+.bnav{position:fixed;bottom:0;left:0;right:0;z-index:50;background:rgba(8,8,8,.92);backdrop-filter:blur(16px);border-top:1px solid var(--bd);padding-bottom:env(safe-area-inset-bottom);}
+.bnav-inner{display:flex;justify-content:space-around;align-items:center;height:56px;max-width:640px;margin:0 auto;}
+.nb{display:flex;flex-direction:column;align-items:center;gap:3px;background:none;border:none;cursor:pointer;padding:6px 10px;color:var(--t3);font-size:10px;letter-spacing:.3px;transition:.15s;min-width:52px;}
+.nb .ico{font-size:20px;line-height:1;}
+.nb.active{color:var(--y);}
+.nb.active .ico{filter:drop-shadow(0 0 6px rgba(245,196,0,.5));}
+
+/* Modal sheet */
+.sheet{position:fixed;inset:0;z-index:60;display:none;}
+.sheet.open{display:block;}
+.sheet-bg{position:absolute;inset:0;background:rgba(0,0,0,.72);}
+.sheet-card{position:absolute;bottom:0;left:0;right:0;max-width:580px;margin:0 auto;border-radius:14px 14px 0 0;background:var(--s1);border-top:1px solid var(--bd);padding:16px 16px calc(18px + env(safe-area-inset-bottom));animation:sup .22s ease;max-height:90vh;overflow-y:auto;}
+@keyframes sup{from{transform:translateY(100%)}to{transform:none}}
+.sheet-handle{width:36px;height:3px;background:var(--t3);border-radius:2px;margin:0 auto 14px;}
+
+/* Task row */
+.task-row{display:flex;align-items:flex-start;gap:10px;padding:11px 0;border-bottom:1px solid var(--bd);}
+.task-row:last-child{border-bottom:none;}
+.task-cb{width:18px;height:18px;border-radius:4px;border:1.5px solid var(--bd);background:none;cursor:pointer;flex-shrink:0;margin-top:2px;transition:.15s;}
+.task-cb:hover{border-color:var(--green);}
+
+/* Metric tile */
+.mtile{background:var(--s1);border:1px solid var(--bd);border-radius:8px;padding:14px 12px;display:flex;flex-direction:column;gap:2px;}
+.mtile:hover{border-color:var(--y);}
+
+/* Desktop overrides */
+@media(min-width:900px){
+  .sbar{display:flex;flex-direction:column;width:200px;flex-shrink:0;border-right:1px solid var(--bd);padding:12px 8px;position:sticky;top:0;height:100vh;gap:1px;overflow-y:auto;}
+  .sb-logo{display:flex;align-items:center;gap:10px;padding:8px 10px 16px;}
+  .sb-btn{display:flex;align-items:center;gap:9px;padding:8px 10px;border-radius:6px;color:var(--t2);background:none;border:none;font-size:13px;cursor:pointer;text-align:left;width:100%;transition:.12s;}
+  .sb-btn:hover{background:var(--s2);color:var(--tx);}
+  .sb-btn.active{background:var(--ya);color:var(--y);border-left:2px solid var(--y);padding-left:8px;}
+  .bnav{display:none;}
+  .cnt{padding:20px 28px 40px;max-width:none;}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px;align-items:start;}
+  .grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;align-items:start;}
+  .chat-wrap{max-width:740px;}
+  .sheet-card{max-width:520px;border-radius:12px;bottom:auto;top:50%;left:50%;right:auto;transform:translate(-50%,-50%);}
+  @keyframes sup{from{opacity:0;transform:translate(-50%,-48%)}to{opacity:1;transform:translate(-50%,-50%)}}
+}
 </style>
 </head>
 <body>
 <div class="shell">
-  <!-- Desktop Sidebar -->
-  <aside class="sidebar">
-    <div style="display:flex;align-items:center;gap:11px;padding:6px 10px 18px">
-      <div style="width:38px;height:38px;border-radius:10px;background:linear-gradient(135deg,#eab308,#d97706);display:flex;align-items:center;justify-content:center;font-size:19px;box-shadow:0 0 16px rgba(234,179,8,.3)">🤖</div>
-      <div><div style="font-weight:700">Alfred</div><div id="sideStatus" style="font-size:11px;color:var(--muted)">…</div></div>
-    </div>
-    <div id="sideNav" style="flex:1;overflow-y:auto"></div>
-  </aside>
 
-  <div class="main">
-    <div class="app">
-      <div class="header glass" id="topHeader">
-        <div style="display:flex;align-items:center;justify-content:space-between">
-          <div style="display:flex;align-items:center;gap:11px">
-            <div class="hmob" style="width:40px;height:40px;border-radius:11px;background:linear-gradient(135deg,#eab308,#d97706);display:flex;align-items:center;justify-content:center;font-size:20px;box-shadow:0 0 18px rgba(234,179,8,.3)">🤖</div>
-            <div><div style="font-weight:800;font-size:18px;letter-spacing:.5px;color:#eab308" id="hello">ALFRED</div><div style="font-size:11px;color:var(--muted)" id="sub">verbinde…</div></div>
-          </div>
-          <div style="display:flex;align-items:center;gap:8px">
-            <span id="dot" style="width:9px;height:9px;border-radius:50%;background:#333"></span>
-            <span id="clock" style="font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums"></span>
-          </div>
+<!-- ── Desktop Sidebar ──────────────────────────────── -->
+<aside class="sbar">
+  <div class="sb-logo">
+    <div style="width:30px;height:30px;background:var(--y);border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0">⚡</div>
+    <div>
+      <div style="font-weight:800;font-size:13px;letter-spacing:.8px;color:var(--y)">ALFRED</div>
+      <div id="sideStatus" style="font-size:10px;color:var(--t3)">–</div>
+    </div>
+  </div>
+  <div id="sideNav"></div>
+</aside>
+
+<!-- ── Main ─────────────────────────────────────────── -->
+<div class="main">
+
+  <!-- Header -->
+  <header class="hdr" id="topHeader">
+    <div class="hdr-inner">
+      <div style="display:flex;align-items:center;gap:10px">
+        <div style="width:28px;height:28px;background:var(--y);border-radius:5px;display:flex;align-items:center;justify-content:center;font-size:14px" class="hmob">⚡</div>
+        <div>
+          <div style="font-weight:800;font-size:14px;letter-spacing:1px;color:var(--y)" id="hello">ALFRED</div>
+          <div style="font-size:10px;color:var(--t3)" id="sub">verbinde…</div>
         </div>
       </div>
-      <div id="view" style="padding:16px 0"></div>
+      <div style="display:flex;align-items:center;gap:8px">
+        <span id="dot" style="width:6px;height:6px;border-radius:50%;background:var(--t3);display:inline-block"></span>
+        <span id="clock" style="font-size:11px;color:var(--t3);font-family:var(--mono)"></span>
+      </div>
     </div>
-  </div>
-</div>
+  </header>
 
-<!-- Bottom Nav (mobile) -->
-<div class="nav glass">
-  <div class="nav-inner">
-    <button class="nav-btn" data-v="home"><div class="ni">🏠</div>Home</button>
-    <button class="nav-btn" data-v="chat"><div class="ni">💬</div>Chat</button>
-    <button class="nav-btn" data-v="body"><div class="ni">💪</div>Körper</button>
-    <button class="nav-btn" data-v="habits"><div class="ni">🔥</div>Habits</button>
-    <button class="nav-btn" data-v="more"><div class="ni">⋯</div>Mehr</button>
-  </div>
-</div>
+  <!-- View content -->
+  <div class="cnt" id="view"></div>
 
-<div class="sheet" id="sheet"><div class="sheet-bg" onclick="closeSheet()"></div><div class="sheet-card" id="sheetCard"></div></div>
+</div><!-- end .main -->
+</div><!-- end .shell -->
+
+<!-- ── Bottom Nav (mobile) ──────────────────────────── -->
+<nav class="bnav">
+  <div class="bnav-inner">
+    <button class="nb" data-v="home"><div class="ico">⌂</div>Home</button>
+    <button class="nb" data-v="chat"><div class="ico">◉</div>Chat</button>
+    <button class="nb" data-v="body"><div class="ico">♡</div>Health</button>
+    <button class="nb" data-v="habits"><div class="ico">◈</div>Habits</button>
+    <button class="nb" data-v="more"><div class="ico">⋯</div>Mehr</button>
+  </div>
+</nav>
+
+<!-- ── Sheet ─────────────────────────────────────────── -->
+<div class="sheet" id="sheet">
+  <div class="sheet-bg" onclick="closeSheet()"></div>
+  <div class="sheet-card" id="sheetCard"></div>
+</div>
 
 <script>
 const API=location.origin; let CUR='home'; let charts={};
-const NAV=[['home','🏠','Home'],['chat','💬','Chat'],['body','💪','Körper'],['habits','🔥','Habits'],
-  ['tasks','✅','Aufgaben'],['calendar','📅','Kalender'],['nutrition','🍽️','Ernährung'],
-  ['journal','📖','Journal'],['goals','🎯','Ziele'],['memory','🧠','Gedächtnis'],
-  ['mind','🌌','Alfred Mind'],['analytics','📊','Analytics'],['settings','⚙️','Einstellungen']];
+const NAV=[['home','⌂','Home'],['chat','◉','Chat'],['body','♡','Health'],['habits','◈','Habits'],
+  ['tasks','☐','Tasks'],['calendar','⊡','Kalender'],['nutrition','⊕','Ernährung'],
+  ['journal','▤','Journal'],['goals','◎','Ziele'],['memory','⊞','Gedächtnis'],
+  ['mind','◬','Alfred Mind'],['analytics','∿','Analytics'],['settings','⚙','Einstellungen']];
 
 const $=(s,r=document)=>r.querySelector(s);
 const el=(h)=>{const d=document.createElement('div');d.innerHTML=h.trim();return d.firstChild;};
@@ -163,14 +246,14 @@ async function post(p,b){return api(p,{method:'POST',headers:{'Content-Type':'ap
 async function del(p){return api(p,{method:'DELETE'});}
 function esc(s){return(s||'').replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));}
 function md(s){return esc(s).replace(/\*\*(.+?)\*\*/g,'<b>$1</b>').replace(/\*(.+?)\*/g,'<i>$1</i>').replace(/`(.+?)`/g,'<code style="background:#0a0a0c;padding:1px 5px;border-radius:5px">$1</code>');}
-function toast(t){const x=el(`<div style="position:fixed;bottom:110px;left:50%;transform:translateX(-50%);background:var(--card2);border:1px solid var(--line);color:#e8eefc;padding:10px 18px;border-radius:14px;z-index:90;font-size:13px;box-shadow:0 8px 24px rgba(0,0,0,.4)">${esc(t)}</div>`);document.body.appendChild(x);setTimeout(()=>x.remove(),1900);}
-function confirmAction(text,onyes){sheet(`<div style="width:40px;height:4px;background:#222224;border-radius:99px;margin:0 auto 16px"></div><div style="font-size:16px;margin-bottom:18px;text-align:center">${esc(text)}</div><div style="display:flex;gap:10px"><button class="btn-ghost" style="flex:1;padding:12px;border-radius:13px" onclick="closeSheet()">Abbrechen</button><button class="btn" style="flex:1;background:linear-gradient(120deg,#ef4444,#dc2626)" id="cfYes">Löschen</button></div>`);$('#cfYes').onclick=()=>{closeSheet();onyes();};}
-function ring(pct,size=64,stroke=7,color='#eab308'){const r=(size-stroke)/2,c=2*Math.PI*r,off=c*(1-Math.min(1,pct||0));return `<svg width="${size}" height="${size}" class="jring"><circle cx="${size/2}" cy="${size/2}" r="${r}" stroke="#1a1a1e" stroke-width="${stroke}" fill="none"/><circle cx="${size/2}" cy="${size/2}" r="${r}" stroke="${color}" stroke-width="${stroke}" fill="none" stroke-linecap="round" stroke-dasharray="${c}" stroke-dashoffset="${off}"/></svg>`;}
+function toast(t){const x=el(`<div style="position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:var(--s1);border:1px solid var(--bd);color:var(--tx);padding:9px 16px;border-radius:6px;z-index:90;font-size:13px;box-shadow:0 4px 20px rgba(0,0,0,.5);white-space:nowrap">${esc(t)}</div>`);document.body.appendChild(x);setTimeout(()=>x.remove(),1900);}
+function confirmAction(text,onyes){sheet(`<div class="sheet-handle"></div><div style="font-size:14px;margin-bottom:18px;color:var(--t2);line-height:1.5">${esc(text)}</div><div style="display:flex;gap:8px"><button class="btn-g" style="flex:1;height:38px" onclick="closeSheet()">Abbrechen</button><button class="btn-danger" style="flex:1;height:38px" id="cfYes">Löschen</button></div>`);$('#cfYes').onclick=()=>{closeSheet();onyes();};}
+function ring(pct,size=60,stroke=6,color='var(--y)'){const r=(size-stroke)/2,c=2*Math.PI*r,off=c*(1-Math.min(1,pct||0));return `<svg width="${size}" height="${size}" class="jring"><circle cx="${size/2}" cy="${size/2}" r="${r}" stroke="var(--s3)" stroke-width="${stroke}" fill="none"/><circle cx="${size/2}" cy="${size/2}" r="${r}" stroke="${color}" stroke-width="${stroke}" fill="none" stroke-linecap="round" stroke-dasharray="${c}" stroke-dashoffset="${off}"/></svg>`;}
 function sheet(h){$('#sheetCard').innerHTML=h;$('#sheet').classList.add('open');}
 function closeSheet(){$('#sheet').classList.remove('open');}
 
-setInterval(()=>{$('#clock').textContent=new Date().toLocaleTimeString('de-DE',{hour:'2-digit',minute:'2-digit'});},1000);
-async function status(){try{const s=await api('/api/status');$('#dot').style.background=s.running?'#22c55e':'#ef4444';const t=`${s.running?'Online':'Offline'} · ${s.model} · ${s.tools} Tools`;$('#sub').textContent=t;const ss=$('#sideStatus');if(ss)ss.textContent=t;const h=new Date().getHours();$('#hello').textContent=h<11?'Guten Morgen':h<18?'Hallo Timo':'Guten Abend';}catch(e){}}
+setInterval(()=>{const t=new Date();$('#clock').textContent=t.toLocaleTimeString('de-DE',{hour:'2-digit',minute:'2-digit'});},1000);
+async function status(){try{const s=await api('/api/status');$('#dot').style.background=s.running?'var(--green)':'var(--red)';const t=`${s.running?'online':'offline'} · ${s.model}`;$('#sub').textContent=t;const ss=$('#sideStatus');if(ss)ss.textContent=s.running?'online':'offline';const h=new Date().getHours();$('#hello').textContent=h<11?'GUTEN MORGEN':h<18?'ALFRED':'GUTEN ABEND';}catch(e){}}
 status();setInterval(status,60000);
 
 // ── Live-Status-Stream ────────────────────────────────────────────────────────
@@ -237,7 +320,7 @@ function applyStatus(evt){
       // Live-Feed in Mind-View einblenden falls offen
       const feed=$('#actFeed');
       if(feed){
-        const row=el(`<div class="act-row"><span>${STATUS_ICONS[type]||'·'}</span><span style="flex:1;color:#fef3c7">${esc(text)}${detail?` <span style="color:var(--muted)">${esc(detail)}</span>`:''}</span><span style="color:#444">${new Date(ts*1000).toLocaleTimeString('de-DE',{hour:'2-digit',minute:'2-digit',second:'2-digit'})}</span></div>`);
+        const row=el(`<div class="act-row"><span>${STATUS_ICONS[type]||'·'}</span><span style="flex:1;color:#fef3c7">${esc(text)}${detail?` <span style="color:var(--t2)">${esc(detail)}</span>`:''}</span><span style="color:#444">${new Date(ts*1000).toLocaleTimeString('de-DE',{hour:'2-digit',minute:'2-digit',second:'2-digit'})}</span></div>`);
         feed.prepend(row);
         while(feed.children.length>60) feed.lastChild.remove();
       }
@@ -253,97 +336,186 @@ function startStatusStream(){
 startStatusStream();
 
 // Build sidebar
-function buildSidebar(){const c=$('#sideNav');c.innerHTML=NAV.map(i=>`<button class="side-btn" data-v="${i[0]}"><span style="font-size:17px">${i[1]}</span> ${i[2]}</button>`).join('');c.querySelectorAll('.side-btn').forEach(b=>b.onclick=()=>go(b.dataset.v));}
+function buildSidebar(){
+  const c=$('#sideNav');
+  c.innerHTML=NAV.map(i=>`<button class="sb-btn" data-v="${i[0]}"><span style="font-size:14px;width:18px;text-align:center">${i[1]}</span><span>${i[2]}</span></button>`).join('');
+  c.querySelectorAll('.sb-btn').forEach(b=>b.onclick=()=>go(b.dataset.v));
+}
 buildSidebar();
 
 const VIEWS={};
 function go(v){
   if(v==='more'){openMore();return;}
-  // Cleanup vorheriger View (z.B. Mind-Patch)
   const prev=view().firstChild;if(prev&&prev._cleanup)prev._cleanup();
   CUR=v;
-  document.querySelectorAll('.nav-btn').forEach(b=>b.classList.toggle('active',b.dataset.v===v));
-  document.querySelectorAll('.side-btn').forEach(b=>b.classList.toggle('active',b.dataset.v===v));
-  view().innerHTML='';const root=el('<div class="fade"></div>');view().appendChild(root);
+  document.querySelectorAll('.nb').forEach(b=>b.classList.toggle('active',b.dataset.v===v));
+  document.querySelectorAll('.sb-btn').forEach(b=>b.classList.toggle('active',b.dataset.v===v));
+  view().innerHTML='';
+  const root=el('<div class="fade"></div>');
+  view().appendChild(root);
   (VIEWS[v]||(()=>{}))(root);
 }
-document.querySelectorAll('.nav-btn').forEach(b=>b.onclick=()=>go(b.dataset.v));
-function openMore(){const items=NAV.slice(4);sheet(`<div style="width:40px;height:4px;background:#222224;border-radius:99px;margin:0 auto 16px"></div><div style="font-weight:700;font-size:18px;margin-bottom:14px">Mehr</div><div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px">${items.map(i=>`<button class="soft" style="padding:18px 8px;display:flex;flex-direction:column;gap:8px;align-items:center;cursor:pointer" onclick="closeSheet();go('${i[0]}')"><span style="font-size:26px">${i[1]}</span><span style="font-size:12px;color:#fef3c7">${i[2]}</span></button>`).join('')}</div>`);}
-function feedIcon(t){return {thought:'💭',action:'⚡',tool:'🔧',reflection:'🪞',briefing:'☀️',review:'🌙',reminder:'⏰',health:'🩺',system:'⚙️'}[t]||'•';}
+document.querySelectorAll('.nb').forEach(b=>b.onclick=()=>go(b.dataset.v));
+function openMore(){
+  const items=NAV.slice(4);
+  sheet(`<div class="sheet-handle"></div>
+    <div class="sec-title" style="margin-bottom:12px">Navigation</div>
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px">
+      ${items.map(i=>`<button class="c2" style="padding:14px 6px;display:flex;flex-direction:column;gap:6px;align-items:center;cursor:pointer;border:none;border-radius:8px" onclick="closeSheet();go('${i[0]}')")>
+        <span style="font-size:22px">${i[1]}</span>
+        <span style="font-size:11px;color:var(--t2)">${i[2]}</span>
+      </button>`).join('')}
+    </div>`);
+}
+function feedIcon(t){return {thought:'◎',action:'⚡',tool:'⊞',reflection:'◈',briefing:'◉',review:'◬',reminder:'⊡',health:'♡',system:'⚙'}[t]||'·';}
 
-// ════════ HOME (clean, kein Box-Rahmen-Overkill) ════════
+// ════════ HOME ════════
 VIEWS.home=async(root)=>{
-  root.innerHTML=`<div id="h-top"></div>
-    <div id="h-rings" style="margin-top:18px"></div>
-    <div id="h-quick" style="margin-top:18px"></div>
-    <div id="h-status" style="margin-top:12px"></div>
-    <div class="grid2"><div id="h-left"></div><div id="h-right"></div></div>`;
+  root.innerHTML=`
+    <div id="h-weather"></div>
+    <div id="h-metrics" style="margin-top:12px"></div>
+    <div id="h-status" style="margin-top:10px"></div>
+    <div id="h-quick" style="margin-top:10px"></div>
+    <div class="grid2" style="margin-top:14px"><div id="h-left"></div><div id="h-right"></div></div>`;
+
   const ov=await api('/api/overview');
-  // Wetter – nahtlos, ohne Box
+
+  // Weather strip
   try{const w=await api('/api/weather');if(!w.error){const n=w.now,f=w.forecast||[];
-    $('#h-top').appendChild(el(`<div style="display:flex;align-items:center;justify-content:space-between;padding:4px 6px">
-      <div><div style="font-size:13px;color:var(--muted)">${w.city}</div><div style="font-size:38px;font-weight:800;line-height:1">${Math.round(n.temp)}°</div><div style="font-size:13px;color:#fcd34d">${n.desc}, gefühlt ${Math.round(n.feels)}°</div></div>
-      <div style="text-align:right;font-size:12px;color:var(--muted);line-height:1.7">${f.slice(0,3).map(d=>`<div>${new Date(d.date).toLocaleDateString('de',{weekday:'short'})} &nbsp;${Math.round(d.min)}–${Math.round(d.max)}° &nbsp;💧${d.rain_prob??0}%</div>`).join('')}</div>
-    </div>`));}}catch(e){}
-  // Rings – nahtlos
-  // health[0] = heute (Schlaf letzte Nacht ✓, Schritte erst abends ✗)
-  // health[1] = gestern (Schritte vollständig ✓, Ruhepuls ✓)
+    $('#h-weather').innerHTML=`<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;background:var(--s1);border:1px solid var(--bd);border-radius:8px">
+      <div style="display:flex;align-items:baseline;gap:8px">
+        <span style="font-family:var(--mono);font-size:28px;font-weight:600;line-height:1">${Math.round(n.temp)}<sup style="font-size:16px">°</sup></span>
+        <div>
+          <div style="font-size:12px;color:var(--t2)">${n.desc}</div>
+          <div style="font-size:10px;color:var(--t3)">${w.city} · fühlt ${Math.round(n.feels)}°</div>
+        </div>
+      </div>
+      <div style="display:flex;gap:14px">${f.slice(0,3).map(d=>`<div style="text-align:center;font-size:10px;color:var(--t3)"><div style="color:var(--t2);margin-bottom:3px">${new Date(d.date).toLocaleDateString('de',{weekday:'short'})}</div><div style="font-family:var(--mono)">${Math.round(d.min)}–${Math.round(d.max)}°</div></div>`).join('')}</div>
+    </div>`;
+  }}catch(e){}
+
+  // Metric tiles
   const hd=(ov.health&&ov.health[0])||{};
-  const hdY=(ov.health&&ov.health[1])||{}; // gestern
+  const hdY=(ov.health&&ov.health[1])||{};
   const stepsVal=hdY.steps||0;
-  const stepsLabel=stepsVal?(stepsVal.toLocaleString('de')+' gest.'):'–';
-  // Ruhepuls: gestern bevorzugen, Fallback heute. Ring-Füllstand: 40bpm=voll, 80bpm=leer
   const hrVal=hdY.resting_hr||hd.resting_hr;
-  const hrFill=hrVal?Math.min(1,Math.max(0,(80-hrVal)/40)):0;
-  $('#h-rings').appendChild(el(`<div style="display:flex;justify-content:space-around;text-align:center">
-    ${ringStat(Math.min(1,stepsVal/10000),'👟',stepsLabel,'#eab308')}
-    ${ringStat(Math.min(1,(hd.sleep||0)/8),'😴',hd.sleep?hd.sleep.toFixed(1)+'h':'–','#d97706')}
-    ${ringStat(hrFill,'❤️',hrVal?hrVal+' bpm':'–','#22c55e')}
-  </div>`));
-  // Quick add – flache Buttons
-  $('#h-quick').appendChild(el(`<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px">
-    ${['Aufgabe','addTask','＋'].length?'':''}
-    <button class="soft" style="padding:13px 4px;font-size:11px;cursor:pointer" onclick="addTask()">＋ Aufgabe</button>
-    <button class="soft" style="padding:13px 4px;font-size:11px;cursor:pointer" onclick="addMeal()">＋ Mahlzeit</button>
-    <button class="soft" style="padding:13px 4px;font-size:11px;cursor:pointer" onclick="go('body')">＋ Training</button>
-    <button class="soft" style="padding:13px 4px;font-size:11px;cursor:pointer" onclick="journalCheckin()">＋ Journal</button>
-  </div>`));
-  // Status-Bar
+  $('#h-metrics').innerHTML=`<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px">
+    <div class="mtile" onclick="go('body')" style="cursor:pointer">
+      <div class="stat-val">${stepsVal?(stepsVal/1000).toFixed(1)+'k':'–'}</div>
+      <div class="stat-lbl">Schritte</div>
+    </div>
+    <div class="mtile" onclick="go('body')" style="cursor:pointer">
+      <div class="stat-val">${hd.sleep?hd.sleep.toFixed(1):'–'}</div>
+      <div class="stat-lbl">Schlaf h</div>
+    </div>
+    <div class="mtile" onclick="go('body')" style="cursor:pointer">
+      <div class="stat-val">${hrVal||'–'}</div>
+      <div class="stat-lbl">Ruhepuls</div>
+    </div>
+    <div class="mtile" onclick="go('body')" style="cursor:pointer">
+      <div class="stat-val">${hd.hrv?Math.round(hd.hrv):'–'}</div>
+      <div class="stat-lbl">HRV ms</div>
+    </div>
+  </div>`;
+
+  // Status bar
   const hsCur=await api('/api/status/current').catch(()=>({type:'idle',text:'Bereit'}));
   const hsType=hsCur.type||'idle';
-  $('#h-status').appendChild(el(`<div id="homeStatus" class="status-bar ${hsType}" onclick="go('mind')" style="cursor:pointer">
+  $('#h-status').innerHTML=`<div id="homeStatus" class="status-bar ${hsType}" onclick="go('mind')" style="cursor:pointer">
     <span class="sdot ${hsType}"></span>
-    <span class="stxt" style="flex:1">${STATUS_ICONS[hsType]||'·'} ${esc(hsCur.text||'Bereit')}${hsCur.detail?' · '+esc(hsCur.detail):''}</span>
-    <span style="font-size:11px;color:#444">Alfred Aktivität ›</span>
-  </div>`));
+    <span class="stxt" style="flex:1;font-size:12px">${STATUS_ICONS[hsType]||'·'} ${esc(hsCur.text||'Bereit')}</span>
+    <span style="font-size:10px;color:var(--t3);letter-spacing:.3px">MIND →</span>
+  </div>`;
+
+  // Quick actions
+  $('#h-quick').innerHTML=`<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px">
+    <button class="btn-g" style="height:30px;font-size:11px;border-radius:5px" onclick="addTask()">+ Task</button>
+    <button class="btn-g" style="height:30px;font-size:11px;border-radius:5px" onclick="addMeal()">+ Meal</button>
+    <button class="btn-g" style="height:30px;font-size:11px;border-radius:5px" onclick="importWorkout()">+ Gym</button>
+    <button class="btn-g" style="height:30px;font-size:11px;border-radius:5px" onclick="journalCheckin()">+ Log</button>
+  </div>`;
+
   const L=$('#h-left'),R=$('#h-right');
+
   // Habits
-  if(ov.habits&&ov.habits.length){const done=ov.habits.filter(h=>h.today_done).length;
-    L.appendChild(el(`<div style="margin-top:22px;padding:0 2px"><div style="display:flex;justify-content:space-between;margin-bottom:10px"><b>Gewohnheiten</b><span class="chip">${done}/${ov.habits.length}</span></div><div style="display:flex;gap:8px;flex-wrap:wrap">${ov.habits.map(h=>`<button onclick="toggleHabit(${h.id},${h.today_done})" class="${h.today_done?'':'soft'}" style="border:none;border-radius:12px;padding:8px 11px;font-size:13px;cursor:pointer;${h.today_done?'background:linear-gradient(120deg,#22c55e,#16a34a);color:#fff':''}">${h.emoji} ${esc(h.name)} <span style="opacity:.7;font-size:11px">🔥${h.streak}</span></button>`).join('')}</div></div>`));}
+  if(ov.habits&&ov.habits.length){
+    const done=ov.habits.filter(h=>h.today_done).length;
+    L.innerHTML+=`<div style="margin-top:16px">
+      <div class="sec-hdr"><span class="sec-title">Habits</span><span class="chip">${done}/${ov.habits.length}</span></div>
+      <div style="display:flex;flex-direction:column;gap:4px">
+        ${ov.habits.slice(0,6).map(h=>`<div style="display:flex;align-items:center;gap:10px;padding:7px 10px;background:${h.today_done?'var(--ya)':'var(--s1)'};border:1px solid ${h.today_done?'rgba(245,196,0,.2)':'var(--bd)'};border-radius:6px;cursor:pointer" onclick="toggleHabit(${h.id},${h.today_done})">
+          <span style="font-size:15px">${h.emoji}</span>
+          <span style="flex:1;font-size:13px;${h.today_done?'color:var(--y)':''}">${esc(h.name)}</span>
+          <span style="font-size:10px;color:var(--t3);font-family:var(--mono)">${h.streak}🔥</span>
+          <div style="width:16px;height:16px;border-radius:4px;border:1.5px solid ${h.today_done?'var(--y)':'var(--bd)'};background:${h.today_done?'var(--y)':'transparent'};display:flex;align-items:center;justify-content:center;font-size:10px;color:#000">${h.today_done?'✓':''}</div>
+        </div>`).join('')}
+      </div>
+    </div>`;
+  }
+
   // Tasks
   if(ov.tasks&&ov.tasks.length){
-    L.appendChild(el(`<div style="margin-top:22px;padding:0 2px"><div style="display:flex;justify-content:space-between;margin-bottom:8px"><b>Aufgaben</b><span class="chip">${ov.tasks.length}</span></div>${ov.tasks.slice(0,5).map(t=>taskRow(t,true)).join('')}</div>`));}
+    L.innerHTML+=`<div style="margin-top:16px">
+      <div class="sec-hdr"><span class="sec-title">Tasks</span><button class="btn-g" style="height:24px;font-size:10px;padding:0 8px" onclick="go('tasks')">alle →</button></div>
+      <div class="c" style="padding:4px 12px">
+        ${ov.tasks.slice(0,5).map(t=>taskRow(t,true)).join('')}
+      </div>
+    </div>`;
+  }
+
   // Events
   if(ov.events&&ov.events.length){
-    R.appendChild(el(`<div style="margin-top:22px;padding:0 2px"><b>Termine</b>${ov.events.slice(0,5).map(e=>`<div style="display:flex;gap:10px;padding:7px 0;align-items:center"><span class="chip" style="color:#fde047">${e.start}</span><span style="font-size:14px">${esc(e.title)}</span></div>`).join('')}</div>`));}
+    R.innerHTML+=`<div style="margin-top:16px">
+      <div class="sec-hdr"><span class="sec-title">Termine</span></div>
+      <div style="display:flex;flex-direction:column;gap:4px">
+        ${ov.events.slice(0,5).map(e=>`<div style="display:flex;gap:10px;padding:8px 10px;background:var(--s1);border:1px solid var(--bd);border-radius:6px;align-items:center">
+          <span class="chip mono" style="flex-shrink:0;font-size:10px">${e.start?.split(' ')[1]||e.start||'?'}</span>
+          <span style="font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(e.title)}</span>
+        </div>`).join('')}
+      </div>
+    </div>`;
+  }
+
   // Goals
   if(ov.goals&&ov.goals.length){
-    R.appendChild(el(`<div style="margin-top:22px;padding:0 2px"><b>Ziele</b>${ov.goals.slice(0,4).map(g=>`<div style="margin-top:10px"><div style="display:flex;justify-content:space-between;font-size:13px"><span>${esc(g.title)}</span><span style="color:#fcd34d">${g.progress_pct}%</span></div><div class="pill-h" style="margin-top:5px"><div class="pill-f" style="width:${g.progress_pct}%"></div></div></div>`).join('')}</div>`));}
-  // Feed
-  try{const m=await api('/api/mind');R.appendChild(el(`<div style="margin-top:22px;padding:0 2px"><b>Alfred Aktivität</b>${(m.events||[]).slice(0,6).map(e=>`<div style="display:flex;gap:8px;padding:5px 0;font-size:12px;color:#888"><span>${feedIcon(e.type)}</span><span style="flex:1">${esc(e.summary)}</span></div>`).join('')||'<div style="color:#555;font-size:13px;margin-top:8px">Noch ruhig…</div>'}</div>`));}catch(e){}
+    R.innerHTML+=`<div style="margin-top:16px">
+      <div class="sec-hdr"><span class="sec-title">Ziele</span></div>
+      <div style="display:flex;flex-direction:column;gap:8px">
+        ${ov.goals.slice(0,4).map(g=>`<div>
+          <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px">
+            <span style="color:var(--t2)">${esc(g.title)}</span>
+            <span style="font-family:var(--mono);color:var(--y)">${g.progress_pct}%</span>
+          </div>
+          <div class="pill-h" style="background:var(--s3)"><div class="pill-f" style="background:var(--y)" style="width:${g.progress_pct}%"></div></div>
+        </div>`).join('')}
+      </div>
+    </div>`;
+  }
+
+  // Alfred feed
+  try{const m=await api('/api/mind');
+    R.innerHTML+=`<div style="margin-top:16px">
+      <div class="sec-hdr"><span class="sec-title">Alfred Log</span></div>
+      <div class="c" style="padding:8px 12px">
+        ${(m.events||[]).slice(0,5).map(e=>`<div style="display:flex;gap:8px;padding:4px 0;font-size:12px;color:var(--t2);border-bottom:1px solid var(--bd)"><span style="color:var(--t3)">${feedIcon(e.type)}</span><span>${esc(e.summary)}</span></div>`).join('')||`<div style="font-size:12px;color:var(--t3);padding:4px 0">Noch ruhig…</div>`}
+      </div>
+    </div>`;
+  }catch(e){}
 };
-function ringStat(p,icon,val,col){return `<div style="position:relative;border:none!important;background:none!important;outline:none!important;box-shadow:none!important">${ring(p,76,8,col)}<div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center"><div style="font-size:16px">${icon}</div><div style="font-size:13px;font-weight:700">${val}</div></div></div>`;}
-function taskRow(t,compact){const pr={high:'🔴',medium:'🟡',low:'🟢'};const hasSub=t.subtasks&&t.subtasks.length;return `<div style="display:flex;align-items:center;gap:10px;padding:7px 0"><button onclick="event.stopPropagation();completeTask(${t.id})" style="width:20px;height:20px;border-radius:6px;border:2px solid #3b5;background:none;cursor:pointer;flex-shrink:0"></button><div style="flex:1;min-width:0"><div style="font-size:14px">${esc(t.title)} ${hasSub?`<span class="chip" style="font-size:10px">${t.progress_pct}%</span>`:''}</div>${hasSub&&!compact?`<div class="pill-h" style="margin-top:5px"><div class="pill-f" style="width:${t.progress_pct}%"></div></div>`:''}</div>${t.due?`<span class="chip">${fmtDue(t.due)}</span>`:''}<span>${pr[t.priority]||''}</span></div>`;}
+function ringStat(p,icon,val,col){return `<div style="position:relative">${ring(p,66,7,col)}<div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px"><span style="font-size:14px">${icon}</span><span style="font-size:12px;font-weight:600;font-family:var(--mono)">${val}</span></div></div>`;}
+function taskRow(t,compact){const hasSub=t.subtasks&&t.subtasks.length;return `<div class="task-row"><button onclick="event.stopPropagation();completeTask(${t.id})" class="task-cb"></button><div style="flex:1;min-width:0"><div style="font-size:13px">${esc(t.title)}${hasSub?` <span class="chip-n" style="font-size:10px;padding:1px 6px">${t.progress_pct}%</span>`:''}</div>${hasSub&&!compact?`<div class="pill-h" style="background:var(--s3)" style="margin-top:4px"><div class="pill-f" style="background:var(--y)" style="width:${t.progress_pct}%"></div></div>`:''}</div>${t.due?`<span class="chip-n" style="font-size:10px;font-family:var(--mono)">${fmtDue(t.due)}</span>`:''}</div>`;}
 function fmtDue(d){try{return new Date(d).toLocaleDateString('de',{day:'2-digit',month:'2-digit'});}catch(e){return '';}}
 
-// ════════ CHAT (mobil-fix: eigenes Flex-Layout) ════════
+// ════════ CHAT ════════
 VIEWS.chat=async(root)=>{
-  root.innerHTML=`<div class="chat-wrap" style="display:flex;flex-direction:column;height:calc(100vh - 150px);max-height:calc(100vh - 150px)">
-    <div id="cmsgs" style="flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:10px;padding:4px 2px 12px"></div>
-    <div style="display:flex;gap:8px;padding:8px 0 4px;background:var(--bg)">
-      <textarea id="cin" rows="1" placeholder="Schreib Alfred…" style="flex:1;resize:none;max-height:120px" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendChat();}"></textarea>
-      <button class="btn" onclick="sendChat()" style="padding:0 18px">➤</button>
-    </div></div>`;
+  root.innerHTML=`<div class="chat-wrap" style="display:flex;flex-direction:column;height:calc(100vh - 120px)">
+    <div id="cmsgs" style="flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:8px;padding:0 0 12px"></div>
+    <div style="display:flex;gap:8px;padding-top:8px;border-top:1px solid var(--bd)">
+      <textarea id="cin" rows="1" placeholder="Nachricht…" style="flex:1;resize:none;max-height:120px;background:var(--s2);border:1px solid var(--bd);border-radius:6px;padding:8px 12px;font-size:14px;color:var(--tx);font-family:inherit;outline:none" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendChat();}"></textarea>
+      <button class="btn" onclick="sendChat()" style="height:38px;padding:0 16px;align-self:flex-end">↑</button>
+    </div>
+    <div style="font-size:10px;color:var(--t3);margin-top:5px;text-align:center">Enter zum Senden · Shift+Enter für Zeilenumbruch</div>
+  </div>`;
   const box=$('#cmsgs');
   const hist=await api('/api/chat/history?limit=40');
   hist.forEach(m=>box.appendChild(chatBubble(m.role,m.content)));
@@ -365,21 +537,30 @@ async function sendChat(){
   }catch(e){a.innerHTML='Fehler.';}
 }
 
-// ════════ BODY (Health + Gym ausgebaut) ════════
+// ════════ BODY ════════
 VIEWS.body=async(root)=>{
-  root.innerHTML=`<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px"><b style="font-size:17px">Gesundheit</b><button class="btn-ghost" onclick="importHealth()" style="padding:7px 12px;font-size:13px">☁️ iCloud sync</button></div>
+  root.innerHTML=`
+    <div class="sec-hdr">
+      <span class="sec-title">Gesundheit</span>
+      <button class="btn-g" onclick="importHealth()" style="height:28px;font-size:11px;padding:0 10px">↻ iCloud</button>
+    </div>
     <div id="b-cards"></div>
-    <div class="grid2">
-      <div class="card" style="padding:16px;margin-top:14px"><b>Schlaf (14T)</b><div style="position:relative;height:120px;margin-top:8px"><canvas id="cSleep"></canvas></div></div>
-      <div class="card" style="padding:16px;margin-top:14px"><b>Gewicht</b><div style="position:relative;height:120px;margin-top:8px"><canvas id="cWeight"></canvas></div></div>
+    <div class="grid2" style="margin-top:12px">
+      <div class="c" style="padding:14px"><div style="font-size:11px;font-weight:700;letter-spacing:.5px;color:var(--t3);text-transform:uppercase;margin-bottom:8px">Schlaf 14T</div><div style="position:relative;height:110px"><canvas id="cSleep"></canvas></div></div>
+      <div class="c" style="padding:14px"><div style="font-size:11px;font-weight:700;letter-spacing:.5px;color:var(--t3);text-transform:uppercase;margin-bottom:8px">Gewicht</div><div style="position:relative;height:110px"><canvas id="cWeight"></canvas></div></div>
     </div>
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-top:18px"><b style="font-size:17px">Training</b>
-      <div style="display:flex;gap:8px"><button class="btn-ghost" onclick="importWorkout()" style="padding:8px 12px;font-size:13px">📋 Import</button><button class="btn" onclick="addWorkout()" style="padding:8px 12px;font-size:13px">＋ Manuell</button></div></div>
-    <div class="grid2">
-      <div id="b-muscle" style="margin-top:10px"></div>
-      <div id="b-volchart" style="margin-top:10px"></div>
+    <div class="sec-hdr" style="margin-top:18px">
+      <span class="sec-title">Training</span>
+      <div style="display:flex;gap:6px">
+        <button class="btn-g" onclick="importWorkout()" style="height:28px;font-size:11px;padding:0 10px">Import</button>
+        <button class="btn" onclick="addWorkout()" style="height:28px;font-size:11px;padding:0 10px">+ Manuell</button>
+      </div>
     </div>
-    <div id="b-wo" style="margin-top:14px"></div>`;
+    <div class="grid2">
+      <div id="b-muscle"></div>
+      <div id="b-volchart"></div>
+    </div>
+    <div id="b-wo" style="margin-top:12px"></div>`;
   const h=await api('/api/health?days=14');
   // last = neuester Eintrag; yesterday = zweitneuester (für Schritte & aktive kcal)
   const last=h[0]||{};
@@ -387,30 +568,30 @@ VIEWS.body=async(root)=>{
   // Gewicht & BPM: neuesten vorhandenen Wert suchen
   const lastWeight=(h.find(x=>x.weight)||{}).weight;
   const lastBpm=(h.find(x=>x.resting_hr)||{}).resting_hr;
-  const card=(i,l,v,u,sub)=>`<div class="soft" style="padding:13px;text-align:center"><div style="font-size:18px">${i}</div><div style="font-size:18px;font-weight:700;margin-top:3px">${v??'–'}<span style="font-size:11px;color:var(--muted)">${u||''}</span></div><div style="font-size:11px;color:var(--muted)">${sub||l}</div></div>`;
+  const card=(i,l,v,u,sub)=>`<div class="mtile" style="cursor:default;text-align:center"><div style="font-size:18px;margin-bottom:4px">${i}</div><div class="stat-val">${v??'–'}<span style="font-size:11px;color:var(--t3);font-weight:400"> ${u||''}</span></div><div class="stat-lbl">${sub||l}</div></div>`;
   const stepsYest=(yesterday.steps||0).toLocaleString('de');
   const kcalYest=yesterday.active_calories??'–';
   const hrvVal=last.hrv?Math.round(last.hrv):'–';
-  $('#b-cards').appendChild(el(`<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px">${card('😴','Schlaf',last.sleep?last.sleep.toFixed(1):'–','h')}${card('👟','Schritte',stepsYest,'','gestern')}${card('❤️','Ruhepuls',lastBpm,'bpm')}<div class="card" style="padding:10px;text-align:center;cursor:pointer" onclick="logHRV()"><div style="font-size:20px">📊</div><div style="font-size:11px;color:var(--muted);margin-top:2px">HRV</div><div style="font-size:18px;font-weight:700;margin-top:2px">${hrvVal}</div><div style="font-size:10px;color:#6366f1;margin-top:3px">+ eintragen</div></div>${card('🔥','Aktiv',kcalYest,'kcal','gestern')}${card('⚖️','Gewicht',lastWeight,'kg')}</div>`));
+  $('#b-cards').appendChild(el(`<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px">${card('😴','Schlaf',last.sleep?last.sleep.toFixed(1):'–','h')}${card('👟','Schritte',stepsYest,'','gestern')}${card('❤️','Puls',lastBpm,'bpm')}<div class="mtile" style="cursor:pointer;text-align:center" onclick="logHRV()"><div style="font-size:18px;margin-bottom:4px">📊</div><div class="stat-val">${hrvVal}</div><div class="stat-lbl">HRV · log+</div></div>${card('🔥','Aktiv',kcalYest,'kcal','gestern')}${card('⚖️','Gewicht',lastWeight,'kg')}</div>`));
   const rev=[...h].reverse();
   lineChart('cSleep',rev.map(x=>x.date?.slice(5)),[{label:'Schlaf',data:rev.map(x=>x.sleep),color:'#d97706'}]);
   lineChart('cWeight',rev.filter(x=>x.weight).map(x=>x.date?.slice(5)),[{label:'kg',data:rev.filter(x=>x.weight).map(x=>x.weight),color:'#eab308'}]);
   // Muscle body
   const mus=await api('/api/fitness/muscles?days=3');
-  $('#b-muscle').appendChild(el(`<div class="card" style="padding:16px"><b>Muskelgruppen (3T)</b>${muscleBody(mus)}</div>`));
+  $('#b-muscle').appendChild(el(`<div class="c" style="padding:14px"><div style="font-size:11px;font-weight:700;letter-spacing:.5px;color:var(--t3);text-transform:uppercase;margin-bottom:8px">Muskelgruppen 3T</div>${muscleBody(mus)}</div>`));
   // Volume chart
-  $('#b-volchart').appendChild(el(`<div class="card" style="padding:16px"><b>Trainingsvolumen (14T)</b><div style="position:relative;height:160px;margin-top:8px"><canvas id="cVol"></canvas></div></div>`));
+  $('#b-volchart').appendChild(el(`<div class="c" style="padding:14px"><div style="font-size:11px;font-weight:700;letter-spacing:.5px;color:var(--t3);text-transform:uppercase;margin-bottom:8px">Volumen 14T</div><div style="position:relative;height:150px"><canvas id="cVol"></canvas></div></div>`));
   const vol=await api('/api/fitness/volume_by_day?days=14');
   barChart('cVol',vol.map(x=>x.date.slice(5)),vol.map(x=>x.mins||x.km*6||x.n*20));
   // Recent workouts with sets
   const wo=await api('/api/workouts?limit=10');
-  $('#b-wo').appendChild(el(`<div class="card" style="padding:16px"><b>Letzte Trainings</b>${wo.length?wo.map(w=>`<div style="padding:9px 0;border-bottom:1px solid var(--line)"><div style="display:flex;justify-content:space-between"><div style="font-weight:600">${esc(w.title)}</div><span class="chip">${fmtDue(w.date)}</span></div><div style="font-size:11px;color:var(--muted)">${w.type}${w.distance_km?' · '+w.distance_km+'km':''}${w.duration_min?' · '+w.duration_min+'min':''}</div>${(w.sets&&w.sets.length)?`<div style="font-size:12px;color:#888;margin-top:4px">${w.sets.map(s=>`${esc(s.exercise||'?')} ${s.reps||''}×${s.weight_kg||''}kg`).join(' · ')}</div>`:''}</div>`).join(''):'<div style="color:#555;font-size:13px;margin-top:8px">Noch keine Trainings.</div>'}</div>`));
+  $('#b-wo').appendChild(el(`<div class="c" style="padding:14px"><div style="font-size:11px;font-weight:700;letter-spacing:.5px;color:var(--t3);text-transform:uppercase;margin-bottom:8px">Letzte Trainings</div>${wo.length?wo.map(w=>`<div style="padding:9px 0;border-bottom:1px solid var(--bd)"><div style="display:flex;justify-content:space-between;align-items:center"><div style="font-size:14px;font-weight:600">${esc(w.title)}</div><span class="chip-n" style="font-size:10px;font-family:var(--mono)">${fmtDue(w.date)}</span></div><div style="font-size:11px;color:var(--t3);margin-top:2px">${w.type}${w.distance_km?' · '+w.distance_km+'km':''}${w.duration_min?' · '+w.duration_min+'min':''}</div>${(w.sets&&w.sets.length)?`<div style="font-size:11px;color:var(--t2);margin-top:4px">${w.sets.map(s=>`${esc(s.exercise||'?')} ${s.reps||''}×${s.weight_kg||''}kg`).join(' · ')}</div>`:''}</div>`).join(''):'<div style="color:var(--t3);font-size:13px;padding:8px 0">Noch keine Trainings.</div>'}</div>`));
 };
 function muscleBody(m){
   const max=Math.max(1,...Object.values(m));
   const col=(g)=>{const v=(m[g]||0)/max;if(!m[g])return '#1b2640';const a=0.4+v*0.6;return `rgba(96,165,250,${a})`;};
   const dot=(g)=>m[g]?`rgba(96,165,250,${0.5+(m[g]/max)*0.5})`:'#2a3a5e';
-  const grp=(g,label)=>`<div style="display:flex;align-items:center;gap:9px;padding:4px 0"><span style="width:9px;height:9px;border-radius:50%;background:${dot(g)};flex-shrink:0"></span><div style="flex:1"><div style="display:flex;justify-content:space-between;font-size:12px"><span>${label}</span><span style="color:#7c8db5">${m[g]||0}</span></div><div class="pill-h" style="margin-top:3px;height:4px"><div class="pill-f" style="width:${Math.round((m[g]||0)/max*100)}%"></div></div></div></div>`;
+  const grp=(g,label)=>`<div style="display:flex;align-items:center;gap:9px;padding:4px 0"><span style="width:9px;height:9px;border-radius:50%;background:${dot(g)};flex-shrink:0"></span><div style="flex:1"><div style="display:flex;justify-content:space-between;font-size:12px"><span>${label}</span><span style="color:#7c8db5">${m[g]||0}</span></div><div class="pill-h" style="background:var(--s3)" style="margin-top:3px;height:4px"><div class="pill-f" style="background:var(--y)" style="width:${Math.round((m[g]||0)/max*100)}%"></div></div></div></div>`;
   const S='#162038', O='#2c3c63';   // unbespielt / Outline
   // Anatomische Front-Muskelkarte
   const svg=`<svg viewBox="0 0 200 380" width="135" style="display:block;margin:2px auto;filter:drop-shadow(0 6px 16px rgba(0,0,0,.45))">
@@ -455,7 +636,7 @@ VIEWS.habits=async(root)=>{
     {key:'day',    label:'☀️ Rest of Day',    color:'#eab308',bg:'rgba(234,179,8,0.06)'},
     {key:'evening',label:'🌙 Evening Routine',color:'#d97706',bg:'rgba(245,158,11,0.06)'},
   ];
-  root.innerHTML=`<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px"><b style="font-size:18px">Routinen</b><button class="btn" onclick="addHabit()" style="padding:8px 14px;font-size:13px">＋ Neu</button></div><div id="hbody"></div>`;
+  root.innerHTML=`<div class="sec-hdr"><span class="sec-title">Routinen</span><button class="btn" onclick="addHabit()" style="height:28px;font-size:11px;padding:0 10px">+ Neu</button></div><div id="hbody"></div>`;
   const [hs,cm]=await Promise.all([api('/api/habits'),api('/api/habits/commit?days='+DAYS)]);
   const body=$('#hbody');
 
@@ -463,10 +644,10 @@ VIEWS.habits=async(root)=>{
   if(cm.length){
     const avg=Math.round(cm.reduce((a,b)=>a+b.pct,0)/cm.length);
     const barsHtml=cm.map(d=>`<div title="${d.date}: ${d.pct}%" style="flex:1;height:${Math.max(3,d.pct*0.36)}px;border-radius:2px 2px 0 0;align-self:flex-end;background:${d.pct>=100?'#22c55e':d.pct>=50?'#eab308':d.pct>0?'#1e1e22':'#1a1a1e'}"></div>`).join('');
-    body.insertAdjacentHTML('beforeend',`<div class="card" style="padding:12px 16px;margin-bottom:16px;display:flex;align-items:center;gap:14px"><svg width="44" height="44" viewBox="0 0 44 44" style="flex-shrink:0"><circle cx="22" cy="22" r="18" fill="none" stroke="#0a0a0c" stroke-width="4"/><circle cx="22" cy="22" r="18" fill="none" stroke="${avg>=80?'#22c55e':avg>=50?'#eab308':'#f59e0b'}" stroke-width="4" stroke-dasharray="${Math.round(avg*1.13)} 113" stroke-linecap="round" transform="rotate(-90 22 22)"/><text x="22" y="27" text-anchor="middle" font-size="10" fill="#e2e8f0" font-weight="bold">${avg}%</text></svg><div style="flex:1;display:flex;gap:2px;align-items:flex-end;height:36px">${barsHtml}</div></div>`);
+    body.insertAdjacentHTML('beforeend',`<div class="c" style="padding:12px 16px;margin-bottom:16px;display:flex;align-items:center;gap:14px"><svg width="44" height="44" viewBox="0 0 44 44" style="flex-shrink:0"><circle cx="22" cy="22" r="18" fill="none" stroke="#0a0a0c" stroke-width="4"/><circle cx="22" cy="22" r="18" fill="none" stroke="${avg>=80?'#22c55e':avg>=50?'#eab308':'#f59e0b'}" stroke-width="4" stroke-dasharray="${Math.round(avg*1.13)} 113" stroke-linecap="round" transform="rotate(-90 22 22)"/><text x="22" y="27" text-anchor="middle" font-size="10" fill="#e2e8f0" font-weight="bold">${avg}%</text></svg><div style="flex:1;display:flex;gap:2px;align-items:flex-end;height:36px">${barsHtml}</div></div>`);
   }
 
-  if(!hs.length){body.insertAdjacentHTML('beforeend','<div class="card" style="padding:24px;text-align:center;color:#555">Noch keine Routinen – leg welche an!</div>');return;}
+  if(!hs.length){body.insertAdjacentHTML('beforeend','<div class="c" style="padding:24px;text-align:center;color:var(--t3)">Noch keine Routinen – leg welche an!</div>');return;}
 
   // Datumsspalten
   const today=new Date();
@@ -477,11 +658,11 @@ VIEWS.habits=async(root)=>{
 
   // Eine gemeinsame Card für alle Kategorien
   const masterCard=document.createElement('div');
-  masterCard.className='card';masterCard.style.cssText='padding:0;overflow:hidden';
+  masterCard.className='c';masterCard.style.cssText='padding:0;overflow:hidden';
 
   // Datums-Header (einmalig ganz oben)
   const hdrRow=document.createElement('div');
-  hdrRow.style.cssText=`display:flex;align-items:center;border-bottom:1px solid #0a0a0c`;
+  hdrRow.style.cssText=`display:flex;align-items:center;border-bottom:1px solid var(--bd)`;
   // Platz für vertikales Label
   hdrRow.insertAdjacentHTML('beforeend','<div style="width:28px;flex-shrink:0"></div>');
   // Grid-Header
@@ -496,7 +677,7 @@ VIEWS.habits=async(root)=>{
     const isMon=lbl==='Mo';
     hdrGrid.insertAdjacentHTML('beforeend',`<div style="text-align:center;font-size:9px;color:${isMon?'#555':'#2d3f5a'};padding:5px 0;${isMon?'border-left:1px solid #0a0a0c':''}">${isMon||lbl==='So'?lbl:''}</div>`);
   }
-  hdrGrid.insertAdjacentHTML('beforeend',`<div style="text-align:center;font-size:10px;font-weight:700;color:#94a3b8;padding:5px 0">Heu</div>`);
+  hdrGrid.insertAdjacentHTML('beforeend',`<div style="text-align:center;font-size:10px;font-weight:700;color:var(--t2);padding:5px 0">Heu</div>`);
   hdrGrid.insertAdjacentHTML('beforeend','<div></div>');
   hdrRow.appendChild(hdrGrid);
   masterCard.appendChild(hdrRow);
@@ -542,14 +723,14 @@ VIEWS.habits=async(root)=>{
       const row=document.createElement('div');
       row.dataset.hid=h.id;
       row.draggable=false; // nur per Handle aktivierbar
-      row.style.cssText=`display:grid;grid-template-columns:${COLS};align-items:center;padding:0 6px 0 4px;border-top:1px solid #0f172a;background:${hi%2?'rgba(255,255,255,0.012)':'transparent'};transition:opacity .15s`;
+      row.style.cssText=`display:grid;grid-template-columns:${COLS};align-items:center;padding:0 6px 0 4px;border-top:1px solid var(--bd);background:${hi%2?'rgba(255,255,255,0.012)':'transparent'};transition:opacity .15s`;
       row.addEventListener('dragstart',e=>{if(!row.draggable)return e.preventDefault();dragSrc=row;e.dataTransfer.effectAllowed='move';setTimeout(()=>row.style.opacity='0.35',0);});
       row.addEventListener('dragend',()=>{row.draggable=false;row.style.opacity='1';saveCatOrder();});
       row.addEventListener('dragover',e=>{if(!dragSrc)return;e.preventDefault();if(dragSrc!==row){const mid=row.getBoundingClientRect().top+row.getBoundingClientRect().height/2;rows.insertBefore(dragSrc,e.clientY<mid?row:row.nextSibling);}});
 
       // Drag Handle — setzt draggable nur bei Mousedown auf Handle
       const handle=document.createElement('div');
-      handle.style.cssText='display:flex;align-items:center;justify-content:center;cursor:grab;color:#2d3f5a;font-size:14px;padding:0 2px;user-select:none;line-height:1';
+      handle.style.cssText='display:flex;align-items:center;justify-content:center;cursor:grab;color:var(--t3);font-size:14px;padding:0 2px;user-select:none;line-height:1';
       handle.innerHTML='<span style="letter-spacing:-1px">⠿</span>';
       handle.onmouseenter=()=>handle.style.color='#555';
       handle.onmouseleave=()=>handle.style.color='#2d3f5a';
@@ -586,7 +767,7 @@ VIEWS.habits=async(root)=>{
       const cb=document.createElement('div');
       cb.style.cssText='display:flex;align-items:center;justify-content:center';
       const cbBtn=document.createElement('button');
-      cbBtn.style.cssText=`width:26px;height:26px;border-radius:7px;border:2px solid ${todayDone?cat.color:'#1e1e22'};background:${todayDone?cat.color:'transparent'};cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:13px;color:#fff;padding:0;transition:all .15s`;
+      cbBtn.style.cssText=`width:26px;height:26px;border-radius:7px;border:2px solid ${todayDone?cat.color:'var(--bd)'};background:${todayDone?cat.color:'transparent'};cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:13px;color:#fff;padding:0;transition:all .15s`;
       cbBtn.textContent=todayDone?'✓':'';
       let _done=todayDone;
       cbBtn.onclick=async(e)=>{
@@ -596,7 +777,7 @@ VIEWS.habits=async(root)=>{
           _done=false;
           cbBtn.textContent='';
           cbBtn.style.background='transparent';
-          cbBtn.style.borderColor='#1e1e22';
+          cbBtn.style.borderColor='var(--bd)';
           toast('Zurückgesetzt');
         } else {
           await fetch('/api/habits/'+h.id+'/log',{method:'POST',headers:{'Content-Type':'application/json'},body:'{}'});
@@ -613,10 +794,10 @@ VIEWS.habits=async(root)=>{
       const delDiv=document.createElement('div');
       delDiv.style.cssText='display:flex;align-items:center;justify-content:center';
       const delBtn=document.createElement('button');
-      delBtn.style.cssText='background:none;border:none;color:#2d3f5a;font-size:13px;cursor:pointer;padding:2px;border-radius:4px;line-height:1;transition:color .1s';
+      delBtn.style.cssText='background:none;border:none;color:var(--t3);font-size:13px;cursor:pointer;padding:2px;border-radius:4px;line-height:1;transition:color .1s';
       delBtn.textContent='✕';
       delBtn.onmouseenter=()=>delBtn.style.color='#ef4444';
-      delBtn.onmouseleave=()=>delBtn.style.color='#2d3f5a';
+      delBtn.onmouseleave=()=>delBtn.style.color='var(--t3)';
       delBtn.onclick=(e)=>{e.stopPropagation();deleteHabit(h.id,h.name);};
       delDiv.appendChild(delBtn);row.appendChild(delDiv);
 
@@ -637,23 +818,20 @@ VIEWS.tasks=async(root)=>{
   ]);
 
   root.innerHTML=`
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
-      <b style="font-size:18px">Aufgaben</b>
-      <div style="display:flex;gap:8px">
-        <button id="genBtn" onclick="generateTask()" class="soft" style="padding:8px 12px;font-size:13px;border:none;cursor:pointer" title="Alfred überlegt sich einen Vorschlag">💡 Generieren</button>
-        <button class="btn" onclick="addTask()" style="padding:8px 14px;font-size:13px">＋ Neu</button>
+    <div class="sec-hdr">
+      <span class="sec-title">Aufgaben</span>
+      <div style="display:flex;gap:6px">
+        <button id="genBtn" onclick="generateTask()" class="btn-g" style="height:28px;font-size:11px;padding:0 10px">⚡ Generieren</button>
+        <button class="btn" onclick="addTask()" style="height:28px;font-size:11px;padding:0 10px">+ Neu</button>
       </div>
     </div>
     ${suggestions.length ? `
-    <div style="margin-bottom:16px">
-      <div style="font-size:12px;font-weight:700;color:#fcd34d;letter-spacing:.5px;margin-bottom:8px">💡 ALFRED SCHLÄGT VOR</div>
+    <div style="margin-bottom:12px">
+      <div style="font-size:10px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:var(--y);margin-bottom:6px">⚡ Alfred schlägt vor</div>
       <div id="sugg-list"></div>
     </div>` : ''}
-    <div class="tabbar">
-      <div class="tab ${taskFilter==='open'?'active':''}" onclick="setTaskFilter('open')">Offen</div>
-      <div class="tab" onclick="setTaskFilter('alfred')" style="${taskFilter==='alfred'?'border-bottom:2px solid #fcd34d;color:#fcd34d':''}">🤖 Alfred</div>
-      <div class="tab ${taskFilter==='done'?'active':''}" onclick="setTaskFilter('done')">Erledigt</div>
-      <div class="tab ${taskFilter==='archived'?'active':''}" onclick="setTaskFilter('archived')">Archiv</div>
+    <div class="tabbar" style="display:flex;gap:2px;margin-bottom:10px">
+      ${['open','alfred','done','archived'].map(f=>`<button onclick="setTaskFilter('${f}')" style="flex:1;height:30px;border:none;border-radius:5px;font-size:11px;font-weight:700;letter-spacing:.3px;cursor:pointer;background:${taskFilter===f?'var(--y)':'transparent'};color:${taskFilter===f?'#000':'var(--t2)'}">${{open:'Offen',alfred:'⚡ Alfred',done:'Erledigt',archived:'Archiv'}[f]}</button>`).join('')}
     </div>
     <div id="tl"></div>`;
 
@@ -661,13 +839,13 @@ VIEWS.tasks=async(root)=>{
   if(suggestions.length){
     const sl=$('#sugg-list');
     suggestions.forEach(s=>{
-      const who=s.assigned_to==='alfred'?'<span style="font-size:10px;background:#1e1e22;color:#fcd34d;padding:2px 7px;border-radius:99px;margin-left:6px">Alfred erledigt</span>':'';
-      const node=el(`<div class="card" style="padding:14px;margin-bottom:8px;border:1px solid #1e1e22">
-        <div style="font-size:14px;font-weight:600;margin-bottom:4px">${esc(s.title)}${who}</div>
-        ${s.notes?`<div style="font-size:12px;color:#555;margin-bottom:10px">${esc(s.notes)}</div>`:''}
-        <div style="display:flex;gap:8px">
-          <button onclick="acceptSuggestion(${s.id})" class="btn" style="flex:1;padding:8px;font-size:13px">✓ Annehmen</button>
-          <button onclick="rejectSuggestion(${s.id},'${esc(s.title)}')" class="soft" style="flex:1;padding:8px;font-size:13px;border:none;cursor:pointer">✕ Ablehnen</button>
+      const who=s.assigned_to==='alfred'?'<span style="font-size:10px;background:var(--ya);color:var(--y);padding:2px 7px;border-radius:99px;margin-left:6px">Alfred erledigt</span>':'';
+      const node=el(`<div class="c" style="padding:12px;margin-bottom:8px;border-color:rgba(245,196,0,.2)">
+        <div style="font-size:13px;font-weight:600;margin-bottom:4px">${esc(s.title)}${who}</div>
+        ${s.notes?`<div style="font-size:11px;color:var(--t2);margin-bottom:8px">${esc(s.notes)}</div>`:''}
+        <div style="display:flex;gap:6px">
+          <button onclick="acceptSuggestion(${s.id})" class="btn" style="flex:1;height:28px;font-size:11px">✓ Annehmen</button>
+          <button onclick="rejectSuggestion(${s.id},'${esc(s.title)}')" class="btn-g" style="flex:1;height:28px;font-size:11px">✕ Ablehnen</button>
         </div>
       </div>`);
       sl.appendChild(node);
@@ -681,26 +859,26 @@ VIEWS.tasks=async(root)=>{
   // "Offen" zeigt alle offenen Tasks — Alfred-Tasks mit blauem Rand erkennbar
 
   if(!filtered.length){
-    $('#tl').innerHTML='<div class="card" style="padding:24px;text-align:center;color:#555">'+(taskFilter==='alfred'?'Keine Alfred-Aufgaben 🤖':'Nichts hier 🎉')+'</div>';
+    $('#tl').innerHTML='<div style="padding:20px 0;text-align:center;font-size:13px;color:var(--t3)">'+(taskFilter==='alfred'?'Keine Alfred-Aufgaben':'Nichts hier')+'</div>';
     return;
   }
   filtered.forEach(t=>{
     const subs=t.subtasks||[];
     const isAlfred=t.assigned_to==='alfred';
-    const alfredChip=isAlfred?`<span style="font-size:10px;background:#1e1e22;color:#fcd34d;padding:2px 7px;border-radius:99px">🤖</span>`:'';
-    const node=el(`<div class="card" style="padding:15px;margin-bottom:10px${isAlfred?';border-left:3px solid #3b5fc0':''}">
+    const alfredChip=isAlfred?`<span style="font-size:10px;background:var(--ya);color:var(--y);padding:2px 7px;border-radius:99px">🤖</span>`:'';
+    const node=el(`<div class="c" style="padding:12px 14px;margin-bottom:8px${isAlfred?';border-left:2px solid var(--y)':''}">
       <div style="display:flex;align-items:center;gap:11px">
-        ${taskFilter==='open'?`<button onclick="completeTask(${t.id})" style="width:24px;height:24px;border-radius:7px;border:2px solid #3b5;background:none;cursor:pointer;flex-shrink:0"></button>`:''}
+        ${taskFilter==='open'?`<button onclick="completeTask(${t.id})" class="task-cb"></button>`:''}
         <div style="flex:1;min-width:0">
-          <div style="display:flex;align-items:center;gap:6px;font-size:15px;font-weight:600">${kindIcon[t.kind]||''}${esc(t.title)}${alfredChip}</div>
-          ${subs.length?`<div style="font-size:11px;color:var(--muted);margin-top:3px">${subs.filter(s=>s.status==='done').length}/${subs.length} erledigt · ${t.progress_pct}%</div><div class="pill-h" style="margin-top:5px"><div class="pill-f" style="width:${t.progress_pct}%"></div></div>`:''}
-          ${t.alfred_result?`<div style="margin-top:8px;padding:8px;background:#0a0a0c;border-radius:8px;font-size:12px;color:#94a3b8;cursor:pointer" onclick="showResult(${t.id})">📄 Ergebnis ansehen</div>`:''}
+          <div style="display:flex;align-items:center;gap:6px;font-size:13px;font-weight:600">${kindIcon[t.kind]||''}${esc(t.title)}${alfredChip}</div>
+          ${subs.length?`<div style="font-size:11px;color:var(--t2);margin-top:3px">${subs.filter(s=>s.status==='done').length}/${subs.length} erledigt · ${t.progress_pct}%</div><div class="pill-h" style="background:var(--s3)" style="margin-top:5px"><div class="pill-f" style="background:var(--y)" style="width:${t.progress_pct}%"></div></div>`:''}
+          ${t.alfred_result?`<div style="margin-top:8px;padding:8px;background:#0a0a0c;border-radius:8px;font-size:12px;color:var(--t2);cursor:pointer" onclick="showResult(${t.id})">📄 Ergebnis ansehen</div>`:''}
         </div>
-        <span>${({high:'🔴',medium:'🟡',low:'🟢'})[t.priority]||''}</span>
-        <button onclick="taskMenu(${t.id},'${esc(t.title)}','${taskFilter}')" class="soft" style="border:none;border-radius:10px;padding:6px 9px;cursor:pointer">⋯</button>
+        <span>${({high:'<span style="color:var(--red)">●</span>',medium:'<span style="color:var(--y)">●</span>',low:'<span style="color:var(--green)">●</span>'})[t.priority]||''}</span>
+        <button onclick="taskMenu(${t.id},'${esc(t.title)}','${taskFilter}')" class="btn-g" style="border:none;border-radius:10px;padding:6px 9px;cursor:pointer">⋯</button>
       </div>
-      ${subs.length?`<div style="margin-top:10px;padding-left:8px;border-left:2px solid var(--line)">${subs.map(s=>`<div style="display:flex;align-items:center;gap:9px;padding:4px 0"><button onclick="completeTask(${s.id})" style="width:18px;height:18px;border-radius:5px;border:2px solid #3b5;background:${s.status==='done'?'#22c55e':'none'};cursor:pointer"></button><span style="font-size:13px;${s.status==='done'?'text-decoration:line-through;color:#555':''}">${esc(s.title)}</span></div>`).join('')}</div>`:''}
-      ${(t.kind==='project'&&taskFilter==='open')?`<button onclick="addSubtask(${t.id})" class="soft" style="border:none;border-radius:10px;padding:6px 11px;font-size:12px;margin-top:8px;cursor:pointer">＋ Unteraufgabe</button>`:''}
+      ${subs.length?`<div style="margin-top:10px;padding-left:8px;border-left:2px solid var(--line)">${subs.map(s=>`<div style="display:flex;align-items:center;gap:9px;padding:4px 0"><button onclick="completeTask(${s.id})" style="width:18px;height:18px;border-radius:5px;border:2px solid #3b5;background:${s.status==='done'?'#22c55e':'none'};cursor:pointer"></button><span style="font-size:13px;${s.status==='done'?'text-decoration:line-through;color:var(--t3)':''}">${esc(s.title)}</span></div>`).join('')}</div>`:''}
+      ${(t.kind==='project'&&taskFilter==='open')?`<button onclick="addSubtask(${t.id})" class="btn-g" style="height:26px;font-size:10px;padding:0 10px;margin-top:6px">+ Unteraufgabe</button>`:''}
     </div>`);
     $('#tl').appendChild(node);
   });
@@ -717,7 +895,7 @@ async function acceptSuggestion(id){
 function rejectSuggestion(id,title){
   formSheet('Vorschlag ablehnen',
     `<div style="font-size:14px;font-weight:600;margin-bottom:12px">"${title}"</div>
-     <label style="font-size:12px;color:var(--muted)">Warum lehnst du ab? (hilft Alfred zu lernen)</label>
+     <label style="font-size:12px;color:var(--t2)">Warum lehnst du ab? (hilft Alfred zu lernen)</label>
      <textarea id="rr" rows="3" placeholder="z.B. zu trivial, falsches Thema, bereits bekannt…" style="width:100%;box-sizing:border-box;margin-top:6px"></textarea>`,
     async()=>{
       await post('/api/tasks/'+id+'/reject',{reason:$('#rr').value});
@@ -735,14 +913,14 @@ async function showResult(id){
     : `<pre style="white-space:pre-wrap">${esc(t.alfred_result)}</pre>`;
   sheet(`<div style="width:40px;height:4px;background:#222224;border-radius:99px;margin:0 auto 16px"></div>
     <div style="font-weight:700;margin-bottom:16px;font-size:16px">${esc(t.title)}</div>
-    <div class="md-result" style="font-size:13px;line-height:1.7;color:#94a3b8">${mdHtml}</div>`);
+    <div class="md-result" style="font-size:13px;line-height:1.7;color:var(--t2)">${mdHtml}</div>`);
 }
 
 function taskMenu(id,title,filter){
   const opts=[];
-  if(filter!=='archived')opts.push(`<button class="soft" style="border:none;padding:13px;border-radius:12px;width:100%;text-align:left;cursor:pointer;margin-bottom:8px" onclick="closeSheet();setProgress(${id},'${esc(title)}')">📊 Fortschritt setzen</button>`);
-  if(filter==='open')opts.push(`<button class="soft" style="border:none;padding:13px;border-radius:12px;width:100%;text-align:left;cursor:pointer;margin-bottom:8px" onclick="closeSheet();archiveTask(${id})">📦 Archivieren</button>`);
-  opts.push(`<button class="soft" style="border:none;padding:13px;border-radius:12px;width:100%;text-align:left;cursor:pointer;color:#ef6b6b" onclick="closeSheet();deleteTask(${id},'${esc(title)}')">🗑 Löschen</button>`);
+  if(filter!=='archived')opts.push(`<button class="btn-g" style="border:none;padding:13px;border-radius:12px;width:100%;text-align:left;cursor:pointer;margin-bottom:8px" onclick="closeSheet();setProgress(${id},'${esc(title)}')">📊 Fortschritt setzen</button>`);
+  if(filter==='open')opts.push(`<button class="btn-g" style="border:none;padding:13px;border-radius:12px;width:100%;text-align:left;cursor:pointer;margin-bottom:8px" onclick="closeSheet();archiveTask(${id})">📦 Archivieren</button>`);
+  opts.push(`<button class="btn-g" style="border:none;padding:13px;border-radius:12px;width:100%;text-align:left;cursor:pointer;color:#ef6b6b" onclick="closeSheet();deleteTask(${id},'${esc(title)}')">🗑 Löschen</button>`);
   sheet(`<div style="width:40px;height:4px;background:#222224;border-radius:99px;margin:0 auto 16px"></div><div style="font-weight:700;margin-bottom:14px">${esc(title)}</div>${opts.join('')}`);
 }
 
@@ -751,7 +929,7 @@ VIEWS.calendar=async(root)=>{
   root.innerHTML='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px"><b style="font-size:18px">📅 Kalender</b><button class="btn" onclick="addEvent()" style="padding:8px 14px;font-size:13px">＋ Termin</button></div><div id="cl"></div>';
   const es=await api('/api/calendar?days=30');
   const cl=document.getElementById('cl');
-  if(!es.length){cl.innerHTML='<div class="card" style="padding:24px;text-align:center;color:#555">Keine Termine in den nächsten 30 Tagen.</div>';return;}
+  if(!es.length){cl.innerHTML='<div class="c" style="padding:24px;text-align:center;color:var(--t3)">Keine Termine in den nächsten 30 Tagen.</div>';return;}
   // Gruppieren nach Datum
   const groups={};
   es.forEach(e=>{
@@ -768,7 +946,7 @@ VIEWS.calendar=async(root)=>{
       card.className='card';
       card.style.cssText='padding:12px 14px;margin-bottom:8px;display:flex;gap:12px;align-items:center';
       const timeDiv=document.createElement('div');
-      timeDiv.style.cssText='min-width:48px;text-align:center;font-size:12px;color:#fcd34d;font-weight:600';
+      timeDiv.style.cssText='min-width:48px;text-align:center;font-size:12px;color:var(--y);font-weight:600';
       timeDiv.textContent=e.start&&e.start.includes(' ')?e.start.split(' ')[1]:'📅';
       const body=document.createElement('div');
       body.style.cssText='flex:1;min-width:0';
@@ -776,7 +954,7 @@ VIEWS.calendar=async(root)=>{
       title.style.cssText='font-size:15px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap';
       title.textContent=e.title;
       body.appendChild(title);
-      if(e.location){const loc=document.createElement('div');loc.style.cssText='font-size:12px;color:var(--muted)';loc.textContent='📍 '+e.location;body.appendChild(loc);}
+      if(e.location){const loc=document.createElement('div');loc.style.cssText='font-size:12px;color:var(--t2)';loc.textContent='📍 '+e.location;body.appendChild(loc);}
       const right=document.createElement('div');
       right.style.cssText='display:flex;gap:6px;align-items:center;flex-shrink:0';
       if(e.calendar){const chip=document.createElement('span');chip.className='chip';chip.textContent=e.calendar;right.appendChild(chip);}
@@ -818,19 +996,19 @@ function editEvent(e){
   });
 }
 
-// ════════ NUTRITION (chart, makros, AI-Hinweis, cleaner) ════════
+// ════════ NUTRITION ════════
 VIEWS.nutrition=async(root)=>{
-  root.innerHTML=`<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px"><b style="font-size:18px">Ernährung</b><button class="btn" onclick="addMeal()" style="padding:8px 14px;font-size:13px">＋ Mahlzeit</button></div>
+  root.innerHTML=`<div class="sec-hdr"><span class="sec-title">Ernährung</span><button class="btn" onclick="addMeal()" style="height:28px;font-size:11px;padding:0 10px">+ Mahlzeit</button></div>
     <div id="nt"></div>
-    <div class="card" style="padding:16px;margin-top:14px"><b>Verlauf (14T)</b><div style="position:relative;height:130px;margin-top:8px"><canvas id="cNut"></canvas></div></div>
-    <div class="soft" style="padding:13px;margin-top:12px;font-size:13px;color:#fcd34d">💡 Sag im Chat einfach „ich hatte zwei Marmeladentoasts" – Alfred schätzt die Makros und trägt sie ein.</div>
+    <div class="c" style="padding:14px;margin-top:12px"><div style="font-size:11px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:var(--t3);margin-bottom:8px">Verlauf 14T</div><div style="position:relative;height:120px"><canvas id="cNut"></canvas></div></div>
+    <div class="btn-g" style="padding:13px;margin-top:12px;font-size:13px;color:var(--y)">💡 Sag im Chat einfach „ich hatte zwei Marmeladentoasts" – Alfred schätzt die Makros und trägt sie ein.</div>
     <div id="nl" style="margin-top:14px"></div>`;
   const d=await api('/api/nutrition');const t=d.totals||{};
-  const macro=(l,v,c)=>`<div style="text-align:center"><div style="font-size:20px;font-weight:700;color:${c}">${Math.round(v||0)}</div><div style="font-size:11px;color:var(--muted)">${l}</div></div>`;
-  $('#nt').appendChild(el(`<div class="card" style="padding:18px"><div style="text-align:center;margin-bottom:14px"><div style="font-size:34px;font-weight:800">${Math.round(t.kcal||0)}</div><div style="font-size:12px;color:var(--muted)">kcal heute</div></div><div style="display:flex;justify-content:space-around">${macro('Protein',t.protein,'#eab308')}${macro('Carbs',t.carbs,'#f59e0b')}${macro('Fett',t.fat,'#ec4899')}</div></div>`));
+  const macro=(l,v,c)=>`<div style="text-align:center"><div class="stat-val" style="color:${c}">${Math.round(v||0)}</div><div class="stat-lbl">${l}</div></div>`;
+  $('#nt').appendChild(el(`<div class="c" style="padding:16px"><div style="text-align:center;margin-bottom:14px"><div class="stat-val" style="font-size:36px;color:var(--y)">${Math.round(t.kcal||0)}</div><div class="stat-lbl">kcal heute</div></div><div style="display:flex;justify-content:space-around">${macro('Protein',t.protein,'var(--tx)')}${macro('Carbs',t.carbs,'var(--t2)')}${macro('Fett',t.fat,'var(--t3)')}</div></div>`));
   const hist=await api('/api/nutrition/history?days=14');
   lineChart('cNut',hist.map(x=>x.date.slice(5)),[{label:'kcal',data:hist.map(x=>x.kcal),color:'#eab308'}]);
-  $('#nl').appendChild(el(`<div class="card" style="padding:14px"><b>Heute</b>${(d.meals||[]).length?d.meals.map(m=>`<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--line)"><div><div style="font-size:14px">${esc(m.description)}</div><div style="font-size:11px;color:var(--muted)">${m.meal_type}${m.protein_g?' · '+Math.round(m.protein_g)+'g P':''}${m.carbs_g?' · '+Math.round(m.carbs_g)+'g C':''}${m.fat_g?' · '+Math.round(m.fat_g)+'g F':''}</div></div>${m.calories?`<span class="chip">${m.calories} kcal</span>`:''}</div>`).join(''):'<div style="color:#555;font-size:13px;margin-top:8px">Heute noch nichts.</div>'}</div>`));
+  $('#nl').appendChild(el(`<div class="c" style="padding:14px"><b>Heute</b>${(d.meals||[]).length?d.meals.map(m=>`<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--bd)"><div><div style="font-size:14px">${esc(m.description)}</div><div style="font-size:11px;color:var(--t2)">${m.meal_type}${m.protein_g?' · '+Math.round(m.protein_g)+'g P':''}${m.carbs_g?' · '+Math.round(m.carbs_g)+'g C':''}${m.fat_g?' · '+Math.round(m.fat_g)+'g F':''}</div></div>${m.calories?`<span class="chip">${m.calories} kcal</span>`:''}</div>`).join(''):'<div style="color:var(--t3);font-size:13px;margin-top:8px">Heute noch nichts.</div>'}</div>`));
 };
 
 // ════════ JOURNAL ════════
@@ -847,38 +1025,38 @@ VIEWS.journal=async(root)=>{
   const hasToday = todayEntry && todayEntry.id;
 
   root.innerHTML=`
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
-      <b style="font-size:18px">Journal</b>
-      ${hasToday?`<button class="soft" onclick="journalCheckin()" style="padding:7px 13px;font-size:12px">✏️ Bearbeiten</button>`:''}
+    <div class="sec-hdr">
+      <span class="sec-title">Journal</span>
+      ${hasToday?`<button class="btn-g" onclick="journalCheckin()" style="height:28px;font-size:11px;padding:0 10px">✏ Bearbeiten</button>`:''}
     </div>
 
     ${hasToday ? `
-    <div class="card" style="padding:16px;margin-bottom:14px;border:1px solid #1e1e22">
+    <div class="c" style="padding:14px;margin-bottom:12px;border-color:rgba(245,196,0,.15)">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
-        <span style="font-size:13px;color:var(--muted)">Heute eingetragen ✓</span>
+        <span style="font-size:13px;color:var(--t2)">Heute eingetragen ✓</span>
         <span style="font-size:22px">${emo[todayEntry.mood||3]}</span>
       </div>
       <div style="display:flex;gap:16px;font-size:13px">
         <span>Stimmung&nbsp;<b style="color:${moodCol[todayEntry.mood||3]}">${todayEntry.mood||'–'}/5</b></span>
         <span>Energie&nbsp;<b style="color:#f59e0b">${todayEntry.energy||'–'}/5</b></span>
       </div>
-      ${todayEntry.content ? `<div style="margin-top:10px;font-size:13px;color:#94a3b8;line-height:1.5">${esc(todayEntry.content).slice(0,120)}${todayEntry.content.length>120?'…':''}</div>` : ''}
+      ${todayEntry.content ? `<div style="margin-top:10px;font-size:13px;color:var(--t2);line-height:1.5">${esc(todayEntry.content).slice(0,120)}${todayEntry.content.length>120?'…':''}</div>` : ''}
     </div>
     ` : `
-    <div class="card" style="padding:20px;margin-bottom:14px;text-align:center;background:linear-gradient(135deg,#080809,#111113);border:1px dashed #2a2a2e">
+    <div class="c" style="padding:20px;margin-bottom:12px;text-align:center;border:1px dashed var(--bd)">
       <div style="font-size:32px;margin-bottom:8px">📖</div>
       <div style="font-size:15px;font-weight:600;margin-bottom:6px">Abend-Check-in</div>
-      <div style="font-size:13px;color:#555;margin-bottom:14px">Wie war dein Tag? Alfred hat 3 Fragen für dich.</div>
-      <button class="btn" onclick="journalCheckin()" style="padding:10px 24px;font-size:14px">Jetzt eintragen</button>
+      <div style="font-size:13px;color:var(--t3);margin-bottom:14px">Wie war dein Tag? Alfred hat 3 Fragen für dich.</div>
+      <button class="btn" onclick="journalCheckin()" style="padding:9px 20px">Jetzt eintragen</button>
     </div>
     `}
 
-    <div class="card" style="padding:16px;margin-bottom:14px">
-      <div style="font-size:13px;font-weight:600;margin-bottom:10px;color:#94a3b8">Stimmung & Energie — 3 Wochen</div>
+    <div class="c" style="padding:16px;margin-bottom:14px">
+      <div style="font-size:13px;font-weight:600;margin-bottom:10px;color:var(--t2)">Stimmung & Energie — 3 Wochen</div>
       <div style="position:relative;height:110px"><canvas id="cMood"></canvas></div>
     </div>
 
-    <div style="font-size:13px;font-weight:600;color:#555;margin-bottom:8px;padding-left:2px">Vergangene Einträge</div>
+    <div style="font-size:13px;font-weight:600;color:var(--t3);margin-bottom:8px;padding-left:2px">Vergangene Einträge</div>
     <div id="jl"></div>`;
 
   lineChart('cMood', moodData.map(x=>x.date?.slice(5)), [
@@ -891,17 +1069,17 @@ VIEWS.journal=async(root)=>{
     let details = '';
     if (j.prompts_answers) {
       const qa = typeof j.prompts_answers === 'string' ? JSON.parse(j.prompts_answers) : j.prompts_answers;
-      details = qa.filter(x=>x.answer).map(x=>`<div style="margin-top:8px"><div style="font-size:11px;color:#555">${esc(x.question)}</div><div style="font-size:13px;margin-top:2px">${esc(x.answer)}</div></div>`).join('');
+      details = qa.filter(x=>x.answer).map(x=>`<div style="margin-top:8px"><div style="font-size:11px;color:var(--t3)">${esc(x.question)}</div><div style="font-size:13px;margin-top:2px">${esc(x.answer)}</div></div>`).join('');
     }
-    if (j.content) details += `<div style="margin-top:8px;font-size:13px;color:#94a3b8;font-style:italic">${esc(j.content)}</div>`;
-    return `<div class="card" style="padding:14px;margin-bottom:10px">
-      <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--muted)">
+    if (j.content) details += `<div style="margin-top:8px;font-size:13px;color:var(--t2);font-style:italic">${esc(j.content)}</div>`;
+    return `<div class="c" style="padding:14px;margin-bottom:10px">
+      <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--t2)">
         <span>${new Date(j.date+'T12:00:00').toLocaleDateString('de',{weekday:'short',day:'numeric',month:'short'})}</span>
         <span>${j.mood?emo[j.mood]+' '+j.mood:''} ${j.energy?'⚡'+j.energy:''}</span>
       </div>
-      ${details||'<div style="font-size:13px;color:#555;margin-top:6px">–</div>'}
+      ${details||'<div style="font-size:13px;color:var(--t3);margin-top:6px">–</div>'}
     </div>`;
-  }).join('') : '<div style="padding:20px;text-align:center;color:#555;font-size:13px">Noch keine früheren Einträge.</div>';
+  }).join('') : '<div style="padding:20px;text-align:center;color:var(--t3);font-size:13px">Noch keine früheren Einträge.</div>';
 };
 
 async function journalCheckin(){
@@ -911,10 +1089,10 @@ async function journalCheckin(){
   sheet.style.cssText = 'position:fixed;inset:0;background:#060608;z-index:200;overflow-y:auto;padding:20px 16px 40px';
   sheet.innerHTML = `
     <div style="display:flex;align-items:center;gap:10px;margin-bottom:20px">
-      <button onclick="document.getElementById('jsheet').remove()" style="background:none;border:none;color:#94a3b8;font-size:20px;cursor:pointer">←</button>
+      <button onclick="document.getElementById('jsheet').remove()" style="background:none;border:none;color:var(--t2);font-size:20px;cursor:pointer">←</button>
       <b style="font-size:17px">Abend-Check-in</b>
     </div>
-    <div style="text-align:center;padding:40px 0;color:#555" id="jloading">
+    <div style="text-align:center;padding:40px 0;color:var(--t3)" id="jloading">
       <div style="font-size:24px;margin-bottom:8px">🤔</div>
       Alfred überlegt sich Fragen…
     </div>`;
@@ -937,26 +1115,26 @@ async function journalCheckin(){
 
   const questionsHtml = prompts.map((q,i) => `
     <div style="margin-bottom:18px">
-      <div style="font-size:13px;color:#fcd34d;margin-bottom:6px;font-weight:600">${esc(q)}</div>
-      <textarea id="ja${i}" rows="2" placeholder="Deine Antwort…" style="width:100%;box-sizing:border-box;background:#0a0a0c;border:1px solid #1e1e22;border-radius:10px;color:#e2e8f0;padding:10px;font-size:13px;resize:vertical;font-family:inherit"></textarea>
+      <div style="font-size:13px;color:var(--y);margin-bottom:6px;font-weight:600">${esc(q)}</div>
+      <textarea id="ja${i}" rows="2" placeholder="Deine Antwort…" style="width:100%;box-sizing:border-box;background:var(--s2);border:1px solid var(--bd);border-radius:6px;color:var(--tx);padding:10px;font-size:13px;resize:vertical;font-family:inherit"></textarea>
     </div>`).join('');
 
   document.getElementById('jloading').outerHTML = `
     <div style="margin-bottom:20px">
-      <div style="font-size:13px;color:#94a3b8;font-weight:600;margin-bottom:12px">Wie war deine Stimmung?</div>
+      <div style="font-size:13px;color:var(--t2);font-weight:600;margin-bottom:12px">Wie war deine Stimmung?</div>
       <div style="display:flex;justify-content:space-around;padding:8px 0">${moodBtns}</div>
     </div>
     <div style="margin-bottom:24px">
-      <div style="font-size:13px;color:#94a3b8;font-weight:600;margin-bottom:12px">Energielevel?</div>
+      <div style="font-size:13px;color:var(--t2);font-weight:600;margin-bottom:12px">Energielevel?</div>
       <div style="display:flex;justify-content:space-around;padding:8px 0">${energyBtns}</div>
     </div>
     <div style="border-top:1px solid #111113;padding-top:20px;margin-bottom:4px">
-      <div style="font-size:13px;color:#94a3b8;font-weight:600;margin-bottom:16px">💬 Alfred fragt…</div>
+      <div style="font-size:13px;color:var(--t2);font-weight:600;margin-bottom:16px">💬 Alfred fragt…</div>
       ${questionsHtml}
     </div>
     <div style="margin-bottom:24px">
-      <div style="font-size:13px;color:#94a3b8;font-weight:600;margin-bottom:6px">Freier Gedanke</div>
-      <textarea id="jfree" rows="4" placeholder="Alles was dir noch durch den Kopf geht…" style="width:100%;box-sizing:border-box;background:#0a0a0c;border:1px solid #1e1e22;border-radius:10px;color:#e2e8f0;padding:10px;font-size:13px;resize:vertical;font-family:inherit"></textarea>
+      <div style="font-size:13px;color:var(--t2);font-weight:600;margin-bottom:6px">Freier Gedanke</div>
+      <textarea id="jfree" rows="4" placeholder="Alles was dir noch durch den Kopf geht…" style="width:100%;box-sizing:border-box;background:var(--s2);border:1px solid var(--bd);border-radius:6px;color:var(--tx);padding:10px;font-size:13px;resize:vertical;font-family:inherit"></textarea>
     </div>
     <button onclick="submitJournal(${prompts.length})" class="btn" style="width:100%;padding:14px;font-size:15px;font-weight:600">Speichern ✓</button>`;
 
@@ -987,23 +1165,23 @@ async function submitJournal(nq){
 
 // ════════ GOALS ════════
 VIEWS.goals=async(root)=>{
-  root.innerHTML=`<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px"><b style="font-size:18px">Ziele</b><button class="btn" onclick="addGoal()" style="padding:8px 14px;font-size:13px">＋ Ziel</button></div><div id="gl"></div>`;
+  root.innerHTML=`<div class="sec-hdr"><span class="sec-title">Ziele</span><button class="btn" onclick="addGoal()" style="height:28px;font-size:11px;padding:0 10px">+ Ziel</button></div><div id="gl"></div>`;
   const gs=await api('/api/goals');
-  if(!gs.length){$('#gl').innerHTML='<div class="card" style="padding:24px;text-align:center;color:#555">Noch keine Ziele.</div>';return;}
+  if(!gs.length){$('#gl').innerHTML='<div class="c" style="padding:24px;text-align:center;color:var(--t3)">Noch keine Ziele.</div>';return;}
   const ic={fitness:'💪',career:'💼',finance:'💰',personal:'🌱',general:'🎯'};
-  gs.forEach(g=>$('#gl').appendChild(el(`<div class="card" style="padding:16px;margin-bottom:12px;cursor:pointer" onclick="updateGoal(${g.id},'${esc(g.title)}')"><div style="display:flex;justify-content:space-between"><div style="display:flex;gap:8px"><span>${ic[g.category]||'🎯'}</span><b>${esc(g.title)}</b></div><span style="color:#fcd34d">${g.progress_pct}%</span></div>${g.target_value?`<div style="font-size:12px;color:var(--muted);margin-top:4px">${g.current_value||0} / ${g.target_value} ${g.unit||''}</div>`:''}<div class="pill-h" style="margin-top:10px"><div class="pill-f" style="width:${g.progress_pct}%"></div></div></div>`)));
+  gs.forEach(g=>$('#gl').appendChild(el(`<div class="c" style="padding:14px;margin-bottom:10px;cursor:pointer" onclick="updateGoal(${g.id},'${esc(g.title)}')"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px"><div style="display:flex;gap:8px;align-items:center"><span>${ic[g.category]||'🎯'}</span><span style="font-size:13px;font-weight:600">${esc(g.title)}</span></div><span class="chip" style="font-family:var(--mono);font-size:11px">${g.progress_pct}%</span></div>${g.target_value?`<div style="font-size:11px;color:var(--t3);margin-bottom:6px">${g.current_value||0} / ${g.target_value} ${g.unit||''}</div>`:''}<div class="pill-h" style="background:var(--s3);height:4px;border-radius:2px"><div class="pill-f" style="background:var(--y);height:4px;border-radius:2px;width:${g.progress_pct}%"></div></div></div>`)));
 };
 
 // ════════ MEMORY (delete confirm) ════════
 VIEWS.memory=async(root)=>{
   root.innerHTML=`
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
-      <b style="font-size:18px">Gedächtnis</b>
-      <button class="btn" onclick="addMemory()" style="padding:8px 14px;font-size:13px">＋ Merken</button>
+    <div class="sec-hdr">
+      <span class="sec-title">Gedächtnis</span>
+      <button class="btn" onclick="addMemory()" style="height:28px;font-size:11px;padding:0 10px">+ Merken</button>
     </div>
-    <div style="display:flex;gap:8px;margin-bottom:14px">
-      <button class="soft mem-tab active" data-tab="lzg" onclick="memTab('lzg',this)" style="flex:1;padding:9px;font-size:13px">🧠 Fakten (${0})</button>
-      <button class="soft mem-tab" data-tab="kg" onclick="memTab('kg',this)" style="flex:1;padding:9px;font-size:13px">🕸️ Wissens-Graph</button>
+    <div class="tabbar" style="display:flex;gap:2px;margin-bottom:12px">
+      <button class="btn-g mem-tab active" data-tab="lzg" onclick="memTab('lzg',this)" style="flex:1;height:30px;font-size:11px">Fakten (${0})</button>
+      <button class="btn-g mem-tab" data-tab="kg" onclick="memTab('kg',this)" style="flex:1;height:30px;font-size:11px">Wissens-Graph</button>
     </div>
     <div id="mem-lzg"></div>
     <div id="mem-kg" style="display:none"></div>`;
@@ -1019,16 +1197,16 @@ VIEWS.memory=async(root)=>{
 
   // LZG-Fakten
   $('#mem-lzg').innerHTML=ms.length?ms.map(m=>`
-    <div class="card" style="padding:13px;margin-bottom:9px">
+    <div class="c" style="padding:13px;margin-bottom:9px">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px">
         <span class="chip" style="color:${col[m.category]||'#888'}">${m.category}</span>
         <div style="display:flex;gap:10px;align-items:center">
-          <span style="font-size:11px;color:var(--muted)">${Math.round(m.confidence*100)}%</span>
+          <span style="font-size:11px;color:var(--t2)">${Math.round(m.confidence*100)}%</span>
           <button onclick="askDelMemory(${m.id})" style="background:none;border:none;color:#ef6b6b;font-size:15px;cursor:pointer">✕</button>
         </div>
       </div>
       <div style="font-size:14px">${esc(m.content)}</div>
-    </div>`).join(''):'<div class="card" style="padding:24px;text-align:center;color:#555">Noch keine Erinnerungen.</div>';
+    </div>`).join(''):'<div class="c" style="padding:24px;text-align:center;color:var(--t3)">Noch keine Erinnerungen.</div>';
 
   // KG-Viewer – ohne verschachtelte Template-Literals
   const ents=kg.entities||[], rels=kg.relations||[];
@@ -1036,7 +1214,7 @@ VIEWS.memory=async(root)=>{
   rels.forEach(r=>{(relsBySubj[r.subject]=relsBySubj[r.subject]||[]).push(r);});
 
   if(!ents.length){
-    $('#mem-kg').innerHTML='<div class="card" style="padding:24px;text-align:center;color:#555">Noch kein Wissens-Graph.</div>';
+    $('#mem-kg').innerHTML='<div class="c" style="padding:24px;text-align:center;color:var(--t3)">Noch kein Wissens-Graph.</div>';
   } else {
     const kgEl=$('#mem-kg');
     kgEl.innerHTML='';
@@ -1060,7 +1238,7 @@ VIEWS.memory=async(root)=>{
       // Beschreibung
       if(e.description){
         const desc=document.createElement('div');
-        desc.style.cssText='font-size:12px;color:var(--muted);margin-top:4px';
+        desc.style.cssText='font-size:12px;color:var(--t2);margin-top:4px';
         desc.textContent=e.description;
         card.appendChild(desc);
       }
@@ -1068,7 +1246,7 @@ VIEWS.memory=async(root)=>{
       // Relationen
       (relsBySubj[e.name]||[]).forEach(r=>{
         const row=document.createElement('div');
-        row.style.cssText='font-size:12px;color:#fcd34d;margin-top:6px;display:flex;justify-content:space-between;align-items:center';
+        row.style.cssText='font-size:12px;color:var(--y);margin-top:6px;display:flex;justify-content:space-between;align-items:center';
         const txt=document.createElement('span');
         txt.innerHTML='→ <b>'+r.predicate.replace(/_/g,' ')+'</b> → '+esc(r.object);
         const rDel=document.createElement('button');
@@ -1094,7 +1272,7 @@ function askDelKgRelation(id){confirmAction('Relation löschen?',async()=>{await
 
 // ════════ MIND ════════
 VIEWS.mind=async(root)=>{
-  root.innerHTML=`<b style="font-size:18px">Alfred Mind 🌌</b>
+  root.innerHTML=`<div class="sec-hdr"><span class="sec-title">Alfred Mind</span></div>
 
     <!-- Live-Status ganz oben -->
     <div id="mindStatusBar" class="status-bar idle" style="margin-top:14px">
@@ -1104,19 +1282,19 @@ VIEWS.mind=async(root)=>{
     </div>
 
     <!-- Aktivitäts-Stream -->
-    <div class="card" style="padding:16px;margin-top:14px">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
-        <b>⚡ Aktivität</b>
+    <div class="c" style="padding:14px;margin-top:12px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+        <span style="font-size:11px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:var(--t3)">Aktivität</span>
         <span id="mindActCount" class="chip">0 Events</span>
       </div>
       <div id="actFeed" style="max-height:320px;overflow-y:auto"></div>
     </div>
 
     <div class="grid2">
-      <div class="card" style="padding:16px;margin-top:12px"><b>Gelernt über dich</b><div id="mNotes" style="margin-top:8px"></div></div>
-      <div class="card" style="padding:16px;margin-top:12px"><b>Reflexionen</b><div id="mRef" style="margin-top:8px"></div></div>
+      <div class="c" style="padding:14px;margin-top:10px"><div style="font-size:11px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:var(--t3);margin-bottom:8px">Gelernt</div><div id="mNotes"></div></div>
+      <div class="c" style="padding:14px;margin-top:10px"><div style="font-size:11px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:var(--t3);margin-bottom:8px">Reflexionen</div><div id="mRef"></div></div>
     </div>
-    <div class="card" style="padding:16px;margin-top:12px"><b>Event-Log</b><div id="mFeed" style="margin-top:8px;max-height:280px;overflow-y:auto"></div></div>`;
+    <div class="c" style="padding:14px;margin-top:10px"><div style="font-size:11px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:var(--t3);margin-bottom:8px">Event-Log</div><div id="mFeed" style="max-height:260px;overflow-y:auto"></div></div>`;
 
   // Aktueller Status initial
   const cur=await api('/api/status/current').catch(()=>({type:'idle',text:'Bereit'}));
@@ -1127,10 +1305,10 @@ VIEWS.mind=async(root)=>{
   // Buffered activity log reinspielen
   const actFeed=$('#actFeed');
   _actLog.slice(0,40).forEach(evt=>{
-    const row=el(`<div class="act-row"><span>${STATUS_ICONS[evt.type]||'·'}</span><span style="flex:1;color:#fef3c7">${esc(evt.text||'')}${evt.detail?` <span style="color:var(--muted)">${esc(evt.detail)}</span>`:''}</span><span style="color:#444">${new Date(evt.ts*1000).toLocaleTimeString('de-DE',{hour:'2-digit',minute:'2-digit',second:'2-digit'})}</span></div>`);
+    const row=el(`<div class="act-row"><span>${STATUS_ICONS[evt.type]||'·'}</span><span style="flex:1;color:#fef3c7">${esc(evt.text||'')}${evt.detail?` <span style="color:var(--t2)">${esc(evt.detail)}</span>`:''}</span><span style="color:#444">${new Date(evt.ts*1000).toLocaleTimeString('de-DE',{hour:'2-digit',minute:'2-digit',second:'2-digit'})}</span></div>`);
     actFeed.appendChild(row);
   });
-  if(!_actLog.length) actFeed.innerHTML='<span style="color:#555;font-size:13px">Warte auf Aktivität…</span>';
+  if(!_actLog.length) actFeed.innerHTML='<span style="color:var(--t3);font-size:13px">Warte auf Aktivität…</span>';
   const mc=$('#mindActCount');if(mc)mc.textContent=`${_actLog.length} Events`;
 
   // Mind-StatusBar mit globalem Stream verknüpfen (überschreibt applyStatus-Side-Effect)
@@ -1151,87 +1329,87 @@ VIEWS.mind=async(root)=>{
   root._cleanup=()=>{window.applyStatus=_origApply;};
 
   const m=await api('/api/mind');
-  $('#mNotes').innerHTML=(m.notes||[]).length?m.notes.map(n=>`<div style="font-size:13px;color:#fef3c7;padding:4px 0">• ${esc(n)}</div>`).join(''):'<span style="color:#555;font-size:13px">Lernt noch…</span>';
-  $('#mRef').innerHTML=(m.reflections||[]).length?m.reflections.map(r=>`<div style="font-size:13px;padding:6px 0;border-bottom:1px solid var(--line)">🪞 ${esc(r.content)}</div>`).join(''):'<span style="color:#555;font-size:13px">Noch keine.</span>';
+  $('#mNotes').innerHTML=(m.notes||[]).length?m.notes.map(n=>`<div style="font-size:13px;color:#fef3c7;padding:4px 0">• ${esc(n)}</div>`).join(''):'<span style="color:var(--t3);font-size:13px">Lernt noch…</span>';
+  $('#mRef').innerHTML=(m.reflections||[]).length?m.reflections.map(r=>`<div style="font-size:13px;padding:6px 0;border-bottom:1px solid var(--bd)">🪞 ${esc(r.content)}</div>`).join(''):'<span style="color:var(--t3);font-size:13px">Noch keine.</span>';
   const feed=$('#mFeed');feed.innerHTML=(m.events||[]).map(e=>`<div style="display:flex;gap:8px;padding:4px 0;font-size:12px;color:#888"><span>${feedIcon(e.type)}</span><span style="flex:1">${esc(e.summary)}</span></div>`).join('');
   try{const es=new EventSource(`${API}/api/feed/stream`);es.onmessage=ev=>{if(CUR!=='mind'){es.close();return;}const e=JSON.parse(ev.data);feed.prepend(el(`<div style="display:flex;gap:8px;padding:4px 0;font-size:12px;color:#888"><span>${feedIcon(e.type)}</span><span style="flex:1">${esc(e.summary)}</span></div>`));};}catch(e){}
 };
 
 // ════════ ANALYTICS ════════
 VIEWS.analytics=async(root)=>{
-  root.innerHTML=`<b style="font-size:18px">Analytics 📊</b>
+  root.innerHTML=`<div class="sec-hdr"><span class="sec-title">Analytics</span></div>
     <div class="grid2">
-      <div class="card" style="padding:16px;margin-top:12px"><b>Schlaf & HRV (30T)</b><div style="position:relative;height:150px;margin-top:8px"><canvas id="aHealth"></canvas></div></div>
-      <div class="card" style="padding:16px;margin-top:12px"><b>Schritte (30T)</b><div style="position:relative;height:150px;margin-top:8px"><canvas id="aSteps"></canvas></div></div>
+      <div class="c" style="padding:14px;margin-top:10px"><div style="font-size:11px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:var(--t3);margin-bottom:8px">Schlaf & HRV 30T</div><div style="position:relative;height:140px"><canvas id="aHealth"></canvas></div></div>
+      <div class="c" style="padding:14px;margin-top:10px"><div style="font-size:11px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:var(--t3);margin-bottom:8px">Schritte 30T</div><div style="position:relative;height:140px"><canvas id="aSteps"></canvas></div></div>
     </div>
-    <div class="card" style="padding:16px;margin-top:12px"><b>Gewohnheiten-Konsistenz (30T)</b><div id="aHabits" style="margin-top:8px"></div></div>`;
+    <div class="c" style="padding:14px;margin-top:10px"><div style="font-size:11px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:var(--t3);margin-bottom:8px">Habits Konsistenz 30T</div><div id="aHabits"></div></div>`;
   const a=await api('/api/analytics');const h=[...(a.health||[])].reverse();
   lineChart('aHealth',h.map(x=>x.date?.slice(5)),[{label:'Schlaf',data:h.map(x=>x.sleep),color:'#d97706'},{label:'HRV',data:h.map(x=>x.hrv),color:'#22c55e',y1:true}]);
   barChart('aSteps',h.map(x=>x.date?.slice(5)),h.map(x=>x.steps));
-  $('#aHabits').innerHTML=(a.habits||[]).map(x=>`<div style="margin-top:8px"><div style="display:flex;justify-content:space-between;font-size:13px"><span>${x.emoji} ${esc(x.name)}</span><span style="color:#fcd34d">${x.done_count}/30</span></div><div class="pill-h" style="margin-top:4px"><div class="pill-f" style="width:${Math.round(x.done_count/30*100)}%"></div></div></div>`).join('')||'<span style="color:#555;font-size:13px">Keine Daten.</span>';
+  $('#aHabits').innerHTML=(a.habits||[]).map(x=>`<div style="margin-top:8px"><div style="display:flex;justify-content:space-between;font-size:13px"><span>${x.emoji} ${esc(x.name)}</span><span style="color:var(--y)">${x.done_count}/30</span></div><div class="pill-h" style="background:var(--s3)" style="margin-top:4px"><div class="pill-f" style="background:var(--y)" style="width:${Math.round(x.done_count/30*100)}%"></div></div></div>`).join('')||'<span style="color:var(--t3);font-size:13px">Keine Daten.</span>';
 };
 
 // ════════ SETTINGS ════════
 VIEWS.settings=async(root)=>{
   const s=await api('/api/settings');const tools=await api('/api/tools');const cats={};tools.forEach(t=>(cats[t.category]=cats[t.category]||[]).push(t));
-  root.innerHTML=`<b style="font-size:18px">Einstellungen ⚙️</b>
-    <div class="card" style="padding:16px;margin-top:12px"><label style="font-size:13px;color:var(--muted)">Wetter-Stadt</label><input id="setCity" value="${esc(s.weather_city||'')}" style="margin-top:6px"><button class="btn" onclick="saveSettings()" style="margin-top:10px;width:100%">Speichern</button></div>
-    <div class="card" style="padding:16px;margin-top:12px"><b>Fähigkeiten (${tools.length} Tools)</b>${Object.entries(cats).map(([c,ts])=>`<div style="margin-top:10px"><div class="chip" style="display:inline-block;margin-bottom:6px">${c}</div><div style="font-size:12px;color:#888">${ts.map(t=>esc(t.name)).join(' · ')}</div></div>`).join('')}</div>`;
+  root.innerHTML=`<div class="sec-hdr"><span class="sec-title">Einstellungen</span></div>
+    <div class="c" style="padding:14px;margin-top:10px"><label style="font-size:11px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:var(--t3);display:block;margin-bottom:8px">Wetter-Stadt</label><input id="setCity" value="${esc(s.weather_city||'')}" style="margin-bottom:8px"><button class="btn" onclick="saveSettings()" style="width:100%">Speichern</button></div>
+    <div class="c" style="padding:14px;margin-top:10px"><div style="font-size:11px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:var(--t3);margin-bottom:10px">Fähigkeiten · ${tools.length} Tools</div>${Object.entries(cats).map(([c,ts])=>`<div style="margin-bottom:10px"><span class="chip" style="display:inline-block;margin-bottom:4px">${c}</span><div style="font-size:11px;color:var(--t3);margin-top:2px">${ts.map(t=>esc(t.name)).join(' · ')}</div></div>`).join('')}</div>`;
 };
 async function saveSettings(){await post('/api/settings',{weather_city:$('#setCity').value});toast('Gespeichert ✓');}
 async function importHealth(){const btn=event.target;btn.textContent='⏳ …';btn.disabled=true;try{const r=await post('/api/health/import',{});toast(r.days>0?`✓ ${r.days} Tage importiert`:'Keine neuen Daten');go(CUR);}catch(e){toast('Fehler beim Import');}finally{btn.textContent='☁️ iCloud sync';btn.disabled=false;}}
-function logHRV(){formSheet('HRV eintragen',`<label style="font-size:12px;color:var(--muted)">HRV (ms)</label><input id="f1" type="number" min="1" max="200" placeholder="z.B. 48" style="margin-top:6px"><label style="font-size:12px;color:var(--muted);margin-top:10px;display:block">Datum (leer = heute)</label><input id="f2" type="date" style="margin-top:6px">`,async()=>{const v=+$('#f1').value;if(!v){toast('Bitte Wert eingeben');return;}const payload={hrv:v};const d=$('#f2').value;if(d)payload.date=d;await post('/api/health/manual',payload);closeSheet();toast('HRV gespeichert ✓');go(CUR);});}
+function logHRV(){formSheet('HRV eintragen',`<label style="font-size:12px;color:var(--t2)">HRV (ms)</label><input id="f1" type="number" min="1" max="200" placeholder="z.B. 48" style="margin-top:6px"><label style="font-size:12px;color:var(--t2);margin-top:10px;display:block">Datum (leer = heute)</label><input id="f2" type="date" style="margin-top:6px">`,async()=>{const v=+$('#f1').value;if(!v){toast('Bitte Wert eingeben');return;}const payload={hrv:v};const d=$('#f2').value;if(d)payload.date=d;await post('/api/health/manual',payload);closeSheet();toast('HRV gespeichert ✓');go(CUR);});}
 
 // ════════ Charts ════════
-function lineChart(id,labels,series){const ctx=document.getElementById(id);if(!ctx)return;if(charts[id])charts[id].destroy();charts[id]=new Chart(ctx,{type:'line',data:{labels,datasets:series.map(s=>({label:s.label,data:s.data,borderColor:s.color,backgroundColor:s.color+'22',tension:.4,fill:true,pointRadius:0,borderWidth:2,yAxisID:s.y1?'y1':'y'}))},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{color:'#888',boxWidth:10,font:{size:10}}}},scales:{x:{ticks:{color:'#555',font:{size:9},maxTicksLimit:7},grid:{display:false}},y:{ticks:{color:'#555',font:{size:9}},grid:{color:'#1a1a1e'}},y1:series.some(s=>s.y1)?{position:'right',ticks:{color:'#555',font:{size:9}},grid:{display:false}}:{display:false}}}});}
-function barChart(id,labels,data){const ctx=document.getElementById(id);if(!ctx)return;if(charts[id])charts[id].destroy();charts[id]=new Chart(ctx,{type:'bar',data:{labels,datasets:[{data,backgroundColor:'#eab308aa',borderRadius:4}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{color:'#555',font:{size:9},maxTicksLimit:8},grid:{display:false}},y:{ticks:{color:'#555',font:{size:9}},grid:{color:'#1a1a1e'}}}}});}
+function lineChart(id,labels,series){const ctx=document.getElementById(id);if(!ctx)return;if(charts[id])charts[id].destroy();charts[id]=new Chart(ctx,{type:'line',data:{labels,datasets:series.map(s=>({label:s.label,data:s.data,borderColor:s.color,backgroundColor:s.color+'18',tension:.4,fill:true,pointRadius:0,borderWidth:1.5,yAxisID:s.y1?'y1':'y'}))},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{color:'#555',boxWidth:8,font:{size:9}}}},scales:{x:{ticks:{color:'#444',font:{size:9},maxTicksLimit:7},grid:{display:false}},y:{ticks:{color:'#444',font:{size:9}},grid:{color:'#111113'}},y1:series.some(s=>s.y1)?{position:'right',ticks:{color:'#444',font:{size:9}},grid:{display:false}}:{display:false}}}});}
+function barChart(id,labels,data){const ctx=document.getElementById(id);if(!ctx)return;if(charts[id])charts[id].destroy();charts[id]=new Chart(ctx,{type:'bar',data:{labels,datasets:[{data,backgroundColor:'rgba(245,196,0,.35)',borderRadius:3}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{color:'#444',font:{size:9},maxTicksLimit:8},grid:{display:false}},y:{ticks:{color:'#444',font:{size:9}},grid:{color:'#111113'}}}}});}
 
 // ════════ Forms ════════
-function formSheet(title,fields,onsave){sheet(`<div style="width:40px;height:4px;background:#222224;border-radius:99px;margin:0 auto 16px"></div><div style="font-weight:700;font-size:18px;margin-bottom:14px">${title}</div><div style="display:flex;flex-direction:column;gap:10px">${fields}</div><button class="btn" id="fsave" style="width:100%;margin-top:16px">Speichern</button>`);$('#fsave').onclick=onsave;}
+function formSheet(title,fields,onsave){sheet(`<div style="width:32px;height:3px;background:var(--bd);border-radius:99px;margin:0 auto 14px"></div><div style="font-size:13px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:var(--t3);margin-bottom:14px">${title}</div><div style="display:flex;flex-direction:column;gap:10px">${fields}</div><button class="btn" id="fsave" style="width:100%;margin-top:14px">Speichern</button>`);$('#fsave').onclick=onsave;}
 function addTask(){
   const sheet=document.createElement('div');
   sheet.id='tasksheet';
-  sheet.style.cssText='position:fixed;inset:0;background:#060608;z-index:200;overflow-y:auto;padding:20px 16px 40px';
+  sheet.style.cssText='position:fixed;inset:0;background:var(--bg);z-index:200;overflow-y:auto;padding:20px 16px 40px';
   sheet.innerHTML=`
     <div style="display:flex;align-items:center;gap:10px;margin-bottom:20px">
-      <button onclick="document.getElementById('tasksheet').remove()" style="background:none;border:none;color:#94a3b8;font-size:20px;cursor:pointer">←</button>
+      <button onclick="document.getElementById('tasksheet').remove()" style="background:none;border:none;color:var(--t2);font-size:20px;cursor:pointer">←</button>
       <b style="font-size:17px">Neue Aufgabe</b>
     </div>
 
     <div style="margin-bottom:16px">
-      <label style="font-size:12px;color:#555;display:block;margin-bottom:6px">Titel *</label>
-      <input id="tt" placeholder="Was soll erledigt werden?" style="width:100%;box-sizing:border-box;background:#0a0a0c;border:1px solid #1e1e22;border-radius:10px;color:#e2e8f0;padding:12px;font-size:15px;font-family:inherit">
+      <label style="font-size:12px;color:var(--t3);display:block;margin-bottom:6px">Titel *</label>
+      <input id="tt" placeholder="Was soll erledigt werden?" style="width:100%;box-sizing:border-box;background:var(--s2);border:1px solid var(--bd);border-radius:6px;color:var(--tx);padding:10px;font-size:14px;font-family:inherit">
     </div>
 
     <div style="margin-bottom:16px">
-      <label style="font-size:12px;color:#555;display:block;margin-bottom:6px">Details / Kontext</label>
-      <textarea id="tn" rows="3" placeholder="Hintergründe, Links, was Alfred wissen sollte…" style="width:100%;box-sizing:border-box;background:#0a0a0c;border:1px solid #1e1e22;border-radius:10px;color:#e2e8f0;padding:12px;font-size:13px;resize:vertical;font-family:inherit"></textarea>
+      <label style="font-size:12px;color:var(--t3);display:block;margin-bottom:6px">Details / Kontext</label>
+      <textarea id="tn" rows="3" placeholder="Hintergründe, Links, was Alfred wissen sollte…" style="width:100%;box-sizing:border-box;background:var(--s2);border:1px solid var(--bd);border-radius:6px;color:var(--tx);padding:10px;font-size:13px;resize:vertical;font-family:inherit"></textarea>
     </div>
 
     <div style="margin-bottom:16px">
-      <label style="font-size:12px;color:#555;display:block;margin-bottom:8px">Wer erledigt das?</label>
+      <label style="font-size:12px;color:var(--t3);display:block;margin-bottom:8px">Wer erledigt das?</label>
       <div style="display:flex;gap:8px">
         <button id="assignMe" onclick="setAssignee('user')" style="flex:1;padding:12px;border-radius:10px;border:2px solid #22c55e;background:#0a1a0a;color:#22c55e;cursor:pointer;font-size:13px;font-weight:600">👤 Ich</button>
-        <button id="assignAlfred" onclick="setAssignee('alfred')" style="flex:1;padding:12px;border-radius:10px;border:1px solid #1e1e22;background:transparent;color:#555;cursor:pointer;font-size:13px;font-weight:600">🤖 Alfred</button>
-        <button id="assignAuto" onclick="setAssignee('auto')" style="flex:1;padding:12px;border-radius:10px;border:1px solid #1e1e22;background:transparent;color:#555;cursor:pointer;font-size:13px;font-weight:600">✨ Auto</button>
+        <button id="assignAlfred" onclick="setAssignee('alfred')" style="flex:1;padding:12px;border-radius:10px;border:1px solid #1e1e22;background:transparent;color:var(--t3);cursor:pointer;font-size:13px;font-weight:600">🤖 Alfred</button>
+        <button id="assignAuto" onclick="setAssignee('auto')" style="flex:1;padding:12px;border-radius:10px;border:1px solid #1e1e22;background:transparent;color:var(--t3);cursor:pointer;font-size:13px;font-weight:600">✨ Auto</button>
       </div>
-      <div id="alfrednote" style="display:none;margin-top:8px;font-size:12px;color:#fcd34d;background:#0a0a0c;padding:8px 12px;border-radius:8px">
+      <div id="alfrednote" style="display:none;margin-top:8px;font-size:12px;color:var(--y);background:#0a0a0c;padding:8px 12px;border-radius:8px">
         🤖 Alfred übernimmt diese Aufgabe selbstständig und erarbeitet ein Ergebnis.
       </div>
     </div>
 
     <div style="display:flex;gap:10px;margin-bottom:16px">
       <div style="flex:1">
-        <label style="font-size:12px;color:#555;display:block;margin-bottom:6px">Typ</label>
-        <select id="tk" style="width:100%;background:#0a0a0c;border:1px solid #1e1e22;border-radius:10px;color:#e2e8f0;padding:10px;font-size:13px">
+        <label style="font-size:12px;color:var(--t3);display:block;margin-bottom:6px">Typ</label>
+        <select id="tk" style="width:100%;background:#0a0a0c;border:1px solid #1e1e22;border-radius:10px;color:var(--tx);padding:10px;font-size:13px">
           <option value="task">Aufgabe</option>
           <option value="project">Projekt</option>
           <option value="checklist">Checkliste</option>
         </select>
       </div>
       <div style="flex:1">
-        <label style="font-size:12px;color:#555;display:block;margin-bottom:6px">Priorität</label>
-        <select id="tp" style="width:100%;background:#0a0a0c;border:1px solid #1e1e22;border-radius:10px;color:#e2e8f0;padding:10px;font-size:13px">
+        <label style="font-size:12px;color:var(--t3);display:block;margin-bottom:6px">Priorität</label>
+        <select id="tp" style="width:100%;background:#0a0a0c;border:1px solid #1e1e22;border-radius:10px;color:var(--tx);padding:10px;font-size:13px">
           <option value="medium">🟡 Mittel</option>
           <option value="high">🔴 Hoch</option>
           <option value="low">🟢 Niedrig</option>
@@ -1240,8 +1418,8 @@ function addTask(){
     </div>
 
     <div style="margin-bottom:24px">
-      <label style="font-size:12px;color:#555;display:block;margin-bottom:6px">Fällig (optional)</label>
-      <input id="td" placeholder="z.B. morgen 9:00 oder 20.06.2026" style="width:100%;box-sizing:border-box;background:#0a0a0c;border:1px solid #1e1e22;border-radius:10px;color:#e2e8f0;padding:12px;font-size:13px;font-family:inherit">
+      <label style="font-size:12px;color:var(--t3);display:block;margin-bottom:6px">Fällig (optional)</label>
+      <input id="td" placeholder="z.B. morgen 9:00 oder 20.06.2026" style="width:100%;box-sizing:border-box;background:#0a0a0c;border:1px solid #1e1e22;border-radius:10px;color:var(--tx);padding:12px;font-size:13px;font-family:inherit">
     </div>
 
     <button onclick="submitTask()" class="btn" style="width:100%;padding:14px;font-size:15px;font-weight:600">Erstellen</button>`;
@@ -1302,7 +1480,7 @@ function addSubtask(pid){formSheet('Unteraufgabe',`<input id="f1" placeholder="T
 function addEvent(){
   const now=new Date();const pad=n=>String(n).padStart(2,'0');
   const def=now.getFullYear()+'-'+pad(now.getMonth()+1)+'-'+pad(now.getDate())+'T'+pad(now.getHours()+1)+':00';
-  formSheet('Neuer Termin',`<input id="f1" placeholder="Titel" style="display:block;width:100%;margin-bottom:10px;padding:8px;background:#0a0a0c;border:1px solid #1e1e22;border-radius:6px;color:#fff;font-size:14px"><label style="font-size:12px;color:#555">Start</label><input id="f2" type="datetime-local" value="${def}" style="display:block;width:100%;margin-bottom:10px;padding:8px;background:#0a0a0c;border:1px solid #1e1e22;border-radius:6px;color:#fff;font-size:14px"><label style="font-size:12px;color:#555">Ende (optional)</label><input id="f3" type="datetime-local" style="display:block;width:100%;margin-bottom:10px;padding:8px;background:#0a0a0c;border:1px solid #1e1e22;border-radius:6px;color:#fff;font-size:14px"><input id="f4" placeholder="Ort (optional)" style="display:block;width:100%;padding:8px;background:#0a0a0c;border:1px solid #1e1e22;border-radius:6px;color:#fff;font-size:14px">`,
+  formSheet('Neuer Termin',`<input id="f1" placeholder="Titel" style="display:block;width:100%;margin-bottom:10px;padding:8px;background:#0a0a0c;border:1px solid #1e1e22;border-radius:6px;color:#fff;font-size:14px"><label style="font-size:12px;color:var(--t3)">Start</label><input id="f2" type="datetime-local" value="${def}" style="display:block;width:100%;margin-bottom:10px;padding:8px;background:#0a0a0c;border:1px solid #1e1e22;border-radius:6px;color:#fff;font-size:14px"><label style="font-size:12px;color:var(--t3)">Ende (optional)</label><input id="f3" type="datetime-local" style="display:block;width:100%;margin-bottom:10px;padding:8px;background:#0a0a0c;border:1px solid #1e1e22;border-radius:6px;color:#fff;font-size:14px"><input id="f4" placeholder="Ort (optional)" style="display:block;width:100%;padding:8px;background:#0a0a0c;border:1px solid #1e1e22;border-radius:6px;color:#fff;font-size:14px">`,
   async()=>{
     const t=$('#f1').value,s=$('#f2').value,e=$('#f3').value,l=$('#f4').value;
     if(!t||!s){toast('Titel und Start erforderlich');return;}
@@ -1314,10 +1492,10 @@ function addMeal(){formSheet('Mahlzeit',`<input id="f1" placeholder="Beschreibun
 function addWorkout(){formSheet('Training (manuell)',`<input id="f1" placeholder="Titel"><select id="f2"><option value="strength">Kraft</option><option value="run">Lauf</option><option value="mobility">Mobility</option><option value="other">Andere</option></select><div style="display:flex;gap:8px"><input id="f3" type="number" placeholder="Dauer min"><input id="f4" type="number" step="0.1" placeholder="km"></div>`,async()=>{await post('/api/workouts',{title:$('#f1').value,type:$('#f2').value,duration_min:+$('#f3').value||null,distance_km:+$('#f4').value||null});closeSheet();toast('Erfasst ✓');if(CUR==='body')go(CUR);});}
 function importWorkout(){
   formSheet('Training importieren',
-    `<div style="font-size:13px;color:var(--muted)">Lade eine Datei hoch (Text/CSV/JSON-Export deiner Gym-App) ODER füge den Text direkt ein – Alfred parst Übungen & Sätze automatisch.</div>
-     <label class="soft" style="display:flex;align-items:center;justify-content:center;gap:8px;padding:16px;border-radius:14px;cursor:pointer;border:1px dashed var(--line)">📎 Datei wählen<input id="ffile" type="file" accept=".txt,.csv,.json,.md,.log,text/*" style="display:none"></label>
-     <div id="ffname" style="font-size:12px;color:#fcd34d;text-align:center"></div>
-     <div style="text-align:center;font-size:11px;color:var(--muted)">– oder –</div>
+    `<div style="font-size:13px;color:var(--t2)">Lade eine Datei hoch (Text/CSV/JSON-Export deiner Gym-App) ODER füge den Text direkt ein – Alfred parst Übungen & Sätze automatisch.</div>
+     <label class="btn-g" style="display:flex;align-items:center;justify-content:center;gap:8px;padding:16px;border-radius:14px;cursor:pointer;border:1px dashed var(--line)">📎 Datei wählen<input id="ffile" type="file" accept=".txt,.csv,.json,.md,.log,text/*" style="display:none"></label>
+     <div id="ffname" style="font-size:12px;color:var(--y);text-align:center"></div>
+     <div style="text-align:center;font-size:11px;color:var(--t2)">– oder –</div>
      <textarea id="f1" rows="6" placeholder="Push Day\nBankdrücken 5x5 @80kg\nSchrägbank KH 3x10 @28kg\nDips 3x12"></textarea>`,
     async()=>{
       const btn=$('#fsave');let text=$('#f1').value.trim();
@@ -1334,13 +1512,13 @@ const HABIT_EMOJIS=['📚','🏃','🧘','💪','💧','🥗','😴','🚭','�
 function addHabit(){
   formSheet('Neue Routine',
     `<input id="f1" placeholder="Name (z.B. Meditieren)">
-     <select id="f3" style="background:#0a0a0c;color:#e2e8f0;border:1px solid #1e1e22;border-radius:10px;padding:10px 12px;font-size:14px;width:100%">
+     <select id="f3" style="background:#0a0a0c;color:var(--tx);border:1px solid #1e1e22;border-radius:10px;padding:10px 12px;font-size:14px;width:100%">
        <option value="morning">🌅 Morning Routine</option>
        <option value="day">☀️ Rest of Day</option>
        <option value="evening">🌙 Evening Routine</option>
      </select>
      <input id="f2" type="hidden" value="📚">
-     <div style="font-size:12px;color:var(--muted)">Emoji wählen</div>
+     <div style="font-size:12px;color:var(--t2)">Emoji wählen</div>
      <div id="emojiGrid" style="display:grid;grid-template-columns:repeat(7,1fr);gap:6px">
        ${HABIT_EMOJIS.map((e,i)=>`<button type="button" class="emojiBtn soft" data-e="${e}" style="border:none;border-radius:11px;padding:9px 0;font-size:20px;cursor:pointer;${i===0?'outline:2px solid var(--accent)':''}">${e}</button>`).join('')}
      </div>`,
@@ -1358,11 +1536,11 @@ function addGoal(){formSheet('Neues Ziel',`<input id="f1" placeholder="Titel"><s
 function addMemory(){formSheet('Etwas merken',`<textarea id="f1" rows="3" placeholder="Was soll Alfred sich merken?"></textarea><select id="f2"><option value="fact">Fakt</option><option value="preference">Vorliebe</option><option value="goal">Ziel</option><option value="context">Kontext</option></select>`,async()=>{await post('/api/memories',{content:$('#f1').value,category:$('#f2').value});closeSheet();toast('Gemerkt ✓');if(CUR==='memory')go(CUR);});}
 function updateGoal(id,title){
   formSheet(title,
-    `<label style="font-size:12px;color:var(--muted)">Fortschritt %: <span id="pv">50</span></label><input id="f1" type="range" min="0" max="100" value="50" oninput="document.getElementById('pv').textContent=this.value"><select id="f2"><option value="active">Aktiv</option><option value="done">Erledigt</option><option value="paused">Pausiert</option></select>
-     <button type="button" class="soft" style="border:none;border-radius:13px;padding:12px;color:#ef6b6b;cursor:pointer;margin-top:4px" onclick="closeSheet();deleteGoal(${id},'${esc(title)}')">🗑 Ziel löschen</button>`,
+    `<label style="font-size:12px;color:var(--t2)">Fortschritt %: <span id="pv">50</span></label><input id="f1" type="range" min="0" max="100" value="50" oninput="document.getElementById('pv').textContent=this.value"><select id="f2"><option value="active">Aktiv</option><option value="done">Erledigt</option><option value="paused">Pausiert</option></select>
+     <button type="button" class="btn-g" style="border:none;border-radius:13px;padding:12px;color:#ef6b6b;cursor:pointer;margin-top:4px" onclick="closeSheet();deleteGoal(${id},'${esc(title)}')">🗑 Ziel löschen</button>`,
     async()=>{await post(`/api/goals/${id}/progress`,{progress_pct:+$('#f1').value,status:$('#f2').value});closeSheet();toast('Aktualisiert ✓');go('goals');});}
 function deleteGoal(id,title){confirmAction(`Ziel „${title}" wirklich löschen?`,async()=>{await del('/api/goals/'+id);toast('Gelöscht');go('goals');});}
-function setProgress(id,title){formSheet(title,`<label style="font-size:12px;color:var(--muted)">Fortschritt %: <span id="pv">50</span></label><input id="f1" type="range" min="0" max="100" value="50" oninput="document.getElementById('pv').textContent=this.value">`,async()=>{await post(`/api/tasks/${id}/progress`,{progress_pct:+$('#f1').value});closeSheet();toast('✓');go('tasks');});}
+function setProgress(id,title){formSheet(title,`<label style="font-size:12px;color:var(--t2)">Fortschritt %: <span id="pv">50</span></label><input id="f1" type="range" min="0" max="100" value="50" oninput="document.getElementById('pv').textContent=this.value">`,async()=>{await post(`/api/tasks/${id}/progress`,{progress_pct:+$('#f1').value});closeSheet();toast('✓');go('tasks');});}
 
 // ════════ Actions ════════
 async function toggleHabit(id,done){if(done){await post(`/api/habits/${id}/unlog`);toast('Zurückgesetzt');}else{await post(`/api/habits/${id}/log`,{});toast('🔥 Abgehakt');}go(CUR);}
