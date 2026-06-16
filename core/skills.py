@@ -22,6 +22,7 @@ class SkillContext:
     search: object = None       # WebSearch
     reminders: object = None    # ReminderStore
     dashboard: object = None    # DashboardReader
+    channel: object = None      # CommunicationChannel (Telegram) – für proaktive Hinweise
 
 
 CTX = SkillContext()
@@ -479,11 +480,47 @@ async def _list_goals():
     {"expression": {"type": "string", "description": "Mathematischer Ausdruck z.B. '111 / 36' oder '(80 + 90) / 2'"}},
     ["expression"], "utility")
 async def _calculate(expression: str) -> str:
-    import math, statistics
-    allowed = {k: v for k, v in vars(math).items() if not k.startswith("_")}
-    allowed["statistics"] = statistics
+    import ast
+    import math
+    import operator
+    import statistics
+
+    _OPS = {
+        ast.Add: operator.add, ast.Sub: operator.sub,
+        ast.Mult: operator.mul, ast.Div: operator.truediv,
+        ast.Pow: operator.pow, ast.Mod: operator.mod,
+        ast.FloorDiv: operator.floordiv,
+        ast.USub: operator.neg, ast.UAdd: operator.pos,
+    }
+    _NAMES = {k: v for k, v in vars(math).items() if not k.startswith("_")}
+    _NAMES["statistics"] = statistics
+
+    def _eval(node):
+        if isinstance(node, ast.Expression):
+            return _eval(node.body)
+        if isinstance(node, ast.Constant) and isinstance(node.value, (int, float)):
+            return node.value
+        if isinstance(node, ast.BinOp) and type(node.op) in _OPS:
+            return _OPS[type(node.op)](_eval(node.left), _eval(node.right))
+        if isinstance(node, ast.UnaryOp) and type(node.op) in _OPS:
+            return _OPS[type(node.op)](_eval(node.operand))
+        if isinstance(node, ast.Name) and node.id in _NAMES:
+            return _NAMES[node.id]
+        if isinstance(node, ast.Call):
+            fn = _eval(node.func)
+            if callable(fn):
+                return fn(*[_eval(a) for a in node.args])
+        if isinstance(node, ast.Attribute) and isinstance(node.value, ast.Name) and node.value.id == "statistics":
+            attr = getattr(statistics, node.attr, None)
+            if callable(attr) and not node.attr.startswith("_"):
+                return attr
+        if isinstance(node, ast.List):
+            return [_eval(e) for e in node.elts]
+        raise ValueError(f"Nicht erlaubter Ausdruck: {ast.dump(node)}")
+
     try:
-        result = eval(expression, {"__builtins__": {}}, allowed)  # noqa: S307
+        tree = ast.parse(expression, mode="eval")
+        result = _eval(tree.body)
         return f"{expression} = {result}"
     except Exception as e:
         return f"Fehler: {e}"
@@ -529,3 +566,60 @@ async def _write_own_code(path: str, content: str, description: str):
     if result["ok"]:
         return f"✅ {result['message']}\nAlfred startet neu und prüft ob alles funktioniert. Bei Fehler: automatischer Rollback zu {result['backup_commit'][:8]}."
     return f"❌ {result['message']}"
+
+
+#  SKILL-FACTORY – Alfred baut sich selbst neue Tools, statt "kann ich nicht" zu sagen
+
+@T.register("create_skill",
+    "Erstellt UND AKTIVIERT SOFORT ein komplett neues Tool für dich selbst, wenn für eine "
+    "Anfrage kein passendes Tool existiert. NUTZE DIES bevor du sagst 'das kann ich nicht' "
+    "oder 'dafür habe ich keine Funktion' – baue dir die Fähigkeit stattdessen selbst. "
+    "Schreibe EINE einzige 'async def <skill_name>(...)'-Funktion, dekoriert mit "
+    "@T.register(name, beschreibung, parameter_schema, required, kategorie) – exakt im "
+    "selben Stil wie die anderen Tools in core/skills.py. Erlaubte Imports: asyncio, json, "
+    "re, math, statistics, datetime, time, uuid, httpx, config, core.* (z.B. core.db), "
+    "domains.* (bestehende Domain-Funktionen wiederverwenden!), llm.*, memory.*, tools.*. "
+    "KEIN os/subprocess/socket/eval/exec/open – wird automatisch geprüft und sonst abgelehnt. "
+    "Die Funktion muss einen String zurückgeben (wie alle anderen Tools).",
+    {
+        "skill_name": {"type": "string", "description": "snake_case Tool-Name, z.B. 'convert_currency'"},
+        "description": {"type": "string", "description": "Kurze Beschreibung wofür das Skill gut ist"},
+        "source_code": {"type": "string", "description": "Vollständiger Python-Code: Decorator @T.register(...) + 'async def <skill_name>(...): ...'"},
+    },
+    ["skill_name", "description", "source_code"], "system")
+async def _create_skill(skill_name: str, description: str, source_code: str):
+    from core.skill_factory import create_skill
+    result = create_skill(skill_name, description, source_code)
+    if result["ok"]:
+        if CTX.channel:
+            try:
+                await CTX.channel.send(f"🛠️ Neues Skill erstellt: **{skill_name}**\n_{description}_")
+            except Exception:
+                pass
+        try:
+            from core import push
+            import asyncio as _asyncio
+            await _asyncio.to_thread(push.send_push, "🛠️ Neues Skill", f"{skill_name}: {description}", "/?view=settings")
+        except Exception:
+            pass
+    return f"✅ {result['message']}" if result["ok"] else f"❌ {result['message']}"
+
+
+@T.register("delete_skill",
+    "Entfernt ein zuvor von dir selbst erstelltes Skill (z.B. wenn es fehlerhaft ist oder "
+    "nicht mehr gebraucht wird). Funktioniert nur für Skills, die über create_skill entstanden sind.",
+    {"skill_name": {"type": "string", "description": "Name des zu entfernenden Skills"}},
+    ["skill_name"], "system")
+async def _delete_skill(skill_name: str):
+    from core.skill_factory import delete_skill
+    result = delete_skill(skill_name)
+    return f"✅ {result['message']}" if result["ok"] else f"❌ {result['message']}"
+
+
+@T.register("list_dynamic_skills",
+    "Listet alle Skills auf, die du dir selbst zur Laufzeit erstellt hast.",
+    {}, [], "system")
+async def _list_dynamic_skills():
+    from core.skill_factory import list_dynamic_skills
+    names = list_dynamic_skills()
+    return "\n".join(names) if names else "Noch keine selbst erstellten Skills."

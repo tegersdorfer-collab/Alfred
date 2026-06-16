@@ -12,6 +12,7 @@ from datetime import datetime
 
 from core import db, fast
 from core.db import log_event
+from llm.base import Message
 
 log = logging.getLogger(__name__)
 
@@ -69,5 +70,47 @@ class Reflection:
             self._add_note(out)
 
     async def daily_reflection(self) -> str | None:
-        """Deaktiviert – erzeugte halluzinierte Insights. Ersetzt durch KG + LZG."""
-        return None
+        """Tages-Reflexion, 1x/Tag.
+
+        Frühere Version ließ das LLM frei über den Tagesverlauf nachdenken und
+        erzeugte dabei erfundene Insights. Jetzt wählt das LLM nur noch EINES aus
+        echten, von pattern_detector berechneten Mustern aus und formuliert es kurz –
+        es darf nichts hinzuerfinden, das nicht in den Mustern steht.
+        """
+        today = datetime.now().date().isoformat()
+        if db.get_setting("last_daily_reflection_date") == today:
+            return None
+        db.set_setting("last_daily_reflection_date", today)
+
+        from domains import pattern_detector
+        try:
+            patterns = pattern_detector.detect_all(days=7)
+        except Exception as e:
+            log.debug(f"daily_reflection: Pattern-Detector-Fehler: {e}")
+            return None
+        if not patterns:
+            return None
+
+        prompt = (
+            "Hier sind echte, aus Timos Daten der letzten 7 Tage berechnete Muster:\n"
+            + "\n".join(f"- {p}" for p in patterns)
+            + "\n\nWähle GENAU EINES dieser Muster aus, das für Timo am relevantesten ist, "
+            "und formuliere es als einen kurzen, konkreten Hinweis (maximal ein Satz). "
+            "Erfinde NICHTS hinzu, das nicht oben steht – keine neuen Zahlen, keine neuen "
+            "Beobachtungen. Antworte NUR mit dem Satz, ohne Anführungszeichen oder Erklärung."
+        )
+        try:
+            insight = await self.llm.chat(
+                [Message(role="user", content=prompt)], temperature=0.2, max_tokens=80,
+            )
+        except Exception as e:
+            log.debug(f"daily_reflection: LLM-Fehler: {e}")
+            return None
+
+        insight = (insight or "").strip().strip('"')
+        if not insight or len(insight) < 8 or len(insight) > 200:
+            return None
+
+        self._add_note(insight)
+        log_event("reflection", f"Tages-Reflexion: {insight[:80]}")
+        return insight

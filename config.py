@@ -1,22 +1,31 @@
 import os
+import secrets
+from pathlib import Path
 from dotenv import load_dotenv
 
 load_dotenv()
 
-# LLM
-OLLAMA_MODEL      = os.getenv("OLLAMA_MODEL", "qwen3:14b")         # Fallback wenn Routing aus
-OLLAMA_FAST_MODEL = os.getenv("OLLAMA_FAST_MODEL", "llama3.2:3b")  # 3B-Klassifikator (≠ Agent-Routing)
-OLLAMA_BASE_URL   = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
-OLLAMA_KEEP_ALIVE = os.getenv("OLLAMA_KEEP_ALIVE", "30m")          # Modell warm halten
+# Dashboard-Auth: Shared-Token, da das Dashboard sonst ohne jegliche Anmeldung auf
+# 0.0.0.0 lauscht (jeder im selben WLAN hätte sonst vollen Lese-/Schreibzugriff,
+# inkl. self_modify-Tools). Wird beim ersten Start automatisch erzeugt und in .env
+# persistiert, damit er über Neustarts hinweg stabil bleibt.
+DASHBOARD_TOKEN = os.getenv("DASHBOARD_TOKEN", "")
+if not DASHBOARD_TOKEN:
+    DASHBOARD_TOKEN = secrets.token_urlsafe(24)
+    _env_path = Path(__file__).parent / ".env"
+    try:
+        with open(_env_path, "a") as f:
+            f.write(f"\nDASHBOARD_TOKEN={DASHBOARD_TOKEN}\n")
+    except Exception:
+        pass
+    os.environ["DASHBOARD_TOKEN"] = DASHBOARD_TOKEN
 
-# ── Agent-Modell-Routing: schnell wenn möglich, stark wenn nötig ──────────────
-# Einfache Anfragen/Tool-Aktionen → schnelles Modell; komplexe Analysen/Reflexion/
-# Beratung → starkes Modell. Rein heuristisch (kein LLM-Call). Aus: LLM_ROUTING=false.
-LLM_ROUTING        = os.getenv("LLM_ROUTING", "true").strip().lower() in ("1", "true", "yes", "on", "ja")
-AGENT_MODEL_FAST   = os.getenv("AGENT_MODEL_FAST", "qwen3.5:4b")   # residentes Arbeitstier
-AGENT_MODEL_STRONG = os.getenv("AGENT_MODEL_STRONG", "qwen3.5:9b") # nur bei komplexen Anfragen
-# Starkes Modell schnell wieder entladen (16-GB-RAM: nicht beide dauerhaft warm halten)
-OLLAMA_KEEP_ALIVE_STRONG = os.getenv("OLLAMA_KEEP_ALIVE_STRONG", "2m")
+# LLM – alles lokale läuft über Ollama (ein Prozess, kein llama-server mehr nötig).
+OLLAMA_MODEL       = os.getenv("OLLAMA_MODEL", "qwen3.5:9b")        # lokales Haupt-/Fallback-Modell
+OLLAMA_BASE_URL     = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
+OLLAMA_KEEP_ALIVE   = os.getenv("OLLAMA_KEEP_ALIVE", "0")            # sofort entladen (lokales Modell springt nur sporadisch für Background-Tasks an)
+AGENT_MODEL_FAST    = os.getenv("AGENT_MODEL_FAST", "qwen3.5:9b")    # Fast-Calls (gleiches Modell, kein extra RAM)
+AGENT_MODEL_STRONG  = os.getenv("AGENT_MODEL_STRONG", "qwen3.5:9b")  # OllamaBackend-Default (Agent/Tools)
 ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY", "")
 CLAUDE_CHAT_MODEL = os.getenv("CLAUDE_CHAT_MODEL", "claude-haiku-4-5-20251001")  # Echtzeit-Chat-Antworten
 
@@ -48,6 +57,11 @@ CALENDAR_ICS_URLS = os.getenv("CALENDAR_ICS_URLS", "")   # kommagetrennt
 
 # Database
 DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://localhost:5432/alfred")
+
+# Web Push (PWA-Benachrichtigungen, Alternative/Ergänzung zu Telegram)
+VAPID_PRIVATE_KEY_PATH = os.getenv("VAPID_PRIVATE_KEY_PATH", "data/vapid_private.pem")
+VAPID_PUBLIC_KEY = os.getenv("VAPID_PUBLIC_KEY", "")
+VAPID_CLAIM_EMAIL = os.getenv("VAPID_CLAIM_EMAIL") or OWNER_EMAIL or "admin@localhost"
 
 # Thermal
 THERMAL_TARGET_CELSIUS = float(os.getenv("THERMAL_TARGET_CELSIUS", "70.0"))

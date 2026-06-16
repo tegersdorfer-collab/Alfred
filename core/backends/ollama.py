@@ -52,9 +52,9 @@ class OllamaBackend(AgentBackend):
         options = {
             "temperature": temperature,
             "num_predict": max_tokens,
-            "keep_alive": self._keep_alive,
         }
-        kwargs = dict(model=self._model, messages=messages, options=options, think=think)
+        kwargs = dict(model=self._model, messages=messages, options=options, think=think,
+                     keep_alive=self._keep_alive)
         if tools:
             kwargs["tools"] = tools
 
@@ -95,7 +95,8 @@ class OllamaBackend(AgentBackend):
                 await self._client.chat(
                     model=self._model,
                     messages=[{"role": "user", "content": "ok"}],
-                    options={"num_predict": 1, "keep_alive": self._keep_alive},
+                    options={"num_predict": 1},
+                    keep_alive=self._keep_alive,
                 )
             log.info(f"🔥 Modell {self._model} aufgewärmt")
         except Exception as e:

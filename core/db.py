@@ -389,9 +389,55 @@ MIGRATIONS = [
     "CREATE INDEX IF NOT EXISTS meals_date_idx ON meals(date);",
     "CREATE INDEX IF NOT EXISTS journal_date_idx ON journal_entries(date);",
     "ALTER TABLE journal_entries ADD COLUMN IF NOT EXISTS prompts_answers JSONB;",
+    "ALTER TABLE memories ADD COLUMN IF NOT EXISTS importance FLOAT DEFAULT 0.5;",
+    "ALTER TABLE memories ADD COLUMN IF NOT EXISTS recall_count INTEGER DEFAULT 0;",
+    "ALTER TABLE memories ADD COLUMN IF NOT EXISTS last_recalled TIMESTAMPTZ;",
+    "ALTER TABLE memories ADD COLUMN IF NOT EXISTS kg_linked BOOLEAN DEFAULT FALSE;",
     "CREATE INDEX IF NOT EXISTS agenda_status_idx ON agenda(status, run_after);",
     "CREATE INDEX IF NOT EXISTS events_log_created_idx ON events_log(created_at DESC);",
     "CREATE INDEX IF NOT EXISTS chat_messages_created_idx ON chat_messages(created_at DESC);",
+
+    # Schema-Drift-Fixes: diese Spalten/Tabellen existierten nur noch in der laufenden
+    # DB (aus einer älteren, inzwischen entfernten Migration), nicht mehr im Code.
+    # Ohne diese Statements würde eine Neuinstallation/ein Restore kaputt starten.
+    "ALTER TABLE habits ADD COLUMN IF NOT EXISTS category TEXT DEFAULT 'day';",
+    "ALTER TABLE calendar_events ADD COLUMN IF NOT EXISTS gcal_id TEXT;",
+    """
+    CREATE TABLE IF NOT EXISTS kg_entities (
+        id          SERIAL PRIMARY KEY,
+        name        TEXT NOT NULL,
+        type        TEXT NOT NULL,
+        description TEXT,
+        aliases     TEXT[] DEFAULT '{}',
+        created_at  TIMESTAMPTZ DEFAULT NOW(),
+        updated_at  TIMESTAMPTZ DEFAULT NOW(),
+        UNIQUE (name, type)
+    );
+    """,
+    """
+    CREATE TABLE IF NOT EXISTS kg_relations (
+        id          SERIAL PRIMARY KEY,
+        subject_id  INTEGER NOT NULL REFERENCES kg_entities(id) ON DELETE CASCADE,
+        predicate   TEXT NOT NULL,
+        object_id   INTEGER NOT NULL REFERENCES kg_entities(id) ON DELETE CASCADE,
+        context     TEXT,
+        confidence  FLOAT DEFAULT 0.8,
+        source      TEXT DEFAULT 'extract',
+        created_at  TIMESTAMPTZ DEFAULT NOW(),
+        UNIQUE (subject_id, predicate, object_id)
+    );
+    """,
+
+    # Web-Push-Subscriptions (PWA-Benachrichtigungen)
+    """
+    CREATE TABLE IF NOT EXISTS push_subscriptions (
+        id          SERIAL PRIMARY KEY,
+        endpoint    TEXT NOT NULL UNIQUE,
+        p256dh      TEXT NOT NULL,
+        auth        TEXT NOT NULL,
+        created_at  TIMESTAMPTZ DEFAULT NOW()
+    );
+    """,
 ]
 
 

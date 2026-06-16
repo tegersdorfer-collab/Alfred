@@ -20,8 +20,8 @@ async def ask(prompt: str, max_tokens: int = 20, temperature: float = 0.1) -> st
             resp = await _client.chat(
                 model=config.AGENT_MODEL_FAST,
                 messages=[{"role": "user", "content": prompt}],
-                options={"temperature": temperature, "num_predict": max_tokens,
-                         "keep_alive": config.OLLAMA_KEEP_ALIVE},
+                options={"temperature": temperature, "num_predict": max_tokens},
+                keep_alive=config.OLLAMA_KEEP_ALIVE,
             )
         return (resp.message.content or "").strip()
     except Exception as e:
@@ -39,7 +39,8 @@ async def warmup() -> None:
         await _client.chat(
             model=config.AGENT_MODEL_FAST,
             messages=[{"role": "user", "content": "ok"}],
-            options={"num_predict": 1, "keep_alive": config.OLLAMA_KEEP_ALIVE},
+            options={"num_predict": 1},
+            keep_alive=config.OLLAMA_KEEP_ALIVE,
         )
         log.info(f"🔥 Schnellmodell {config.AGENT_MODEL_FAST} aufgewärmt")
     except Exception as e:

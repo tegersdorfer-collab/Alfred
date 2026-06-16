@@ -53,6 +53,12 @@ class Autopilot:
             return
         await self.channel.send(text)
         try:
+            from core import push
+            import asyncio as _asyncio
+            await _asyncio.to_thread(push.send_push, "Alfred", text, "/?view=chat")
+        except Exception:
+            pass
+        try:
             self.lzg.save_kzg_turn("assistant", text)
         except Exception:
             pass
@@ -135,6 +141,7 @@ class Autopilot:
         try:
             active = db.query(
                 """SELECT * FROM tasks WHERE assigned_to='alfred'
+                   AND parent_id IS NULL
                    AND status NOT IN ('done','archived')
                    AND (suggestion_status IS NULL OR suggestion_status='accepted')
                    AND (hold_until IS NULL OR hold_until < NOW())
@@ -251,17 +258,31 @@ class Autopilot:
         elif phase == "finalizing":
             BUS.emit("task_working", f"✍️ Fasst zusammen: {title_short}", detail=getattr(self.llm,'model_name',''))
             result = await finalize_task(task, self.llm)
-            db.execute(
-                "UPDATE tasks SET status='done', execution_phase='done', completed_at=NOW(), alfred_result=%s WHERE id=%s",
-                (result[:4000], tid)
-            )
-            # Kurze Zusammenfassung senden
-            preview = result[:600] + ("…" if len(result) > 600 else "")
-            await self._send(
-                f"✅ **{task['title']}** erledigt\n\n{preview}\n\n_(Vollständiges Ergebnis im Hub unter Aufgaben)_",
-                kind="task_result"
-            )
-            log.info(f"🎉 Task abgeschlossen: {task['title']}")
+            if result is None:
+                # Alle Unteraufgaben sind fehlgeschlagen (z.B. LLM nicht erreichbar) –
+                # NICHT als Erfolg melden, sondern ehrlich als Fehlschlag
+                db.execute(
+                    "UPDATE tasks SET status='archived', execution_phase='done', "
+                    "rejection_reason='Alle Unteraufgaben fehlgeschlagen' WHERE id=%s",
+                    (tid,)
+                )
+                await self._send(
+                    f"⚠️ **{task['title']}** konnte nicht erledigt werden – alle Schritte sind fehlgeschlagen.",
+                    kind="task_result"
+                )
+                log.warning(f"❌ Task fehlgeschlagen (alle Unteraufgaben archiviert): {task['title']}")
+            else:
+                db.execute(
+                    "UPDATE tasks SET status='done', execution_phase='done', completed_at=NOW(), alfred_result=%s WHERE id=%s",
+                    (result[:4000], tid)
+                )
+                # Kurze Zusammenfassung senden
+                preview = result[:600] + ("…" if len(result) > 600 else "")
+                await self._send(
+                    f"✅ **{task['title']}** erledigt\n\n{preview}\n\n_(Vollständiges Ergebnis im Hub unter Aufgaben)_",
+                    kind="task_result"
+                )
+                log.info(f"🎉 Task abgeschlossen: {task['title']}")
 
     def _guard(self):
         """Context-Manager: nutzt den geteilten LLM-Lock falls vorhanden."""

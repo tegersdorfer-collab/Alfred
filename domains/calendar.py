@@ -138,9 +138,19 @@ def find_event(query: str) -> dict | None:
     return None
 
 
-def update_event(uid: str, title: str = None, start: datetime = None,
-                 end: datetime = None, location: str = None, notes: str = None) -> bool:
+def update_event(uid: str | None, title: str = None, start: datetime = None,
+                 end: datetime = None, location: str = None, notes: str = None,
+                 gcal_id: str | None = None) -> bool:
     """Aktualisiert einen Alfred-Event (DB + Google Calendar)."""
+    if not uid:
+        # Termin existiert nur in Google Calendar, nicht in der Alfred-DB
+        if gcal_id and gcal_writer.is_available():
+            return bool(gcal_writer.update_event(
+                gcal_id, title=title, start=start, end=end,
+                location=location, description=notes,
+            ))
+        return False
+
     fields, vals = [], []
     if title:    fields.append("title = %s");    vals.append(title)
     if start:    fields.append("start_ts = %s"); vals.append(start)

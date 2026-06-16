@@ -1,5 +1,10 @@
 """Robuste Zeit-/Datum-Parser für Tool-Argumente vom LLM."""
 from datetime import date, datetime, timedelta
+from zoneinfo import ZoneInfo
+
+import config
+
+_TZ = ZoneInfo(getattr(config, "OWNER_TIMEZONE", "Europe/Berlin"))
 
 _WEEKDAYS_DE = {
     "montag": 0, "dienstag": 1, "mittwoch": 2, "donnerstag": 3,
@@ -17,6 +22,13 @@ def _next_weekday(now: datetime, wd: int) -> datetime:
 
 
 def parse_datetime(s: str) -> datetime | None:
+    """Parst eine Zeitangabe und gibt sie tz-aware (config.OWNER_TIMEZONE) zurück,
+    damit naive datetimes nicht implizit von der Postgres-Session-Timezone abhängen."""
+    dt = _parse_naive(s)
+    return dt.replace(tzinfo=_TZ) if dt else None
+
+
+def _parse_naive(s: str) -> datetime | None:
     if not s:
         return None
     s = s.strip().lower()

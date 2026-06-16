@@ -176,20 +176,11 @@ async def generate_insight_task(llm: LLMProvider, lzg=None) -> bool:
         pass
 
     # Dedup
+    from core.dedup import is_duplicate_title
     recent = db.query("SELECT title FROM tasks WHERE status != 'archived' ORDER BY created_at DESC LIMIT 50")
-    _stopwords = {"python", "skript", "einer", "einen", "eines", "basierend", "durch",
-                  "sowie", "oder", "dass", "nicht", "werden", "können", "diese", "dieses",
-                  "beim", "nach", "über", "unter", "vor", "analyse", "erstellung",
-                  "generierung", "berechnung", "validierung", "erstellen", "berechnen"}
-    new_kw = {w for w in title.lower().split() if len(w) > 5 and w not in _stopwords}
-    for r in recent:
-        existing_kw = {w for w in r["title"].lower().split() if len(w) > 5 and w not in _stopwords}
-        if not new_kw or not existing_kw:
-            continue
-        overlap = len(new_kw & existing_kw) / max(1, len(new_kw | existing_kw))
-        if overlap >= 0.30:
-            log.debug(f"Insight-Task als Duplikat verworfen: {title[:60]}")
-            return False
+    if is_duplicate_title(title, [r["title"] for r in recent]):
+        log.debug(f"Insight-Task als Duplikat verworfen: {title[:60]}")
+        return False
 
     db.execute(
         "INSERT INTO tasks (title, notes, assigned_to, suggestion_status, priority) VALUES (%s,%s,%s,'proposed','high')",

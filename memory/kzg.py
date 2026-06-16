@@ -39,7 +39,7 @@ class KZG:
         """
         Jüngste Turns innerhalb eines Token-Budgets (4 Zeichen ≈ 1 Token).
         Passt sich an Nachrichtenlänge an statt hart auf N Turns zu schneiden.
-        Ältere Fakten gehen nicht verloren – der Compressor destilliert sie ins LZG,
+        Ältere Fakten gehen nicht verloren – der MemoryExtractor destilliert sie ins LZG,
         von wo die Memory-Suche sie bei Bedarf zurückholt.
         """
         selected: list[Turn] = []

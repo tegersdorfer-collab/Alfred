@@ -17,7 +17,12 @@ ALFRED_DIR = Path(__file__).resolve().parent.parent
 # Erlaubte Pfade (relativ zu ALFRED_DIR)
 _ALLOWED_DIRS = {"domains", "core", "web", "memory", "tools", "llm", "identity"}
 _ALLOWED_EXTENSIONS = {".py", ".html", ".md", ".json", ".css", ".js"}
-_BLOCKED_FILES = {"core/db.py", ".env", "main.py"}   # kritische Dateien schützen
+_BLOCKED_FILES = {
+    "core/db.py", ".env", "main.py",
+    "web/api.py",                 # Dashboard-Auth/Routing – Agent soll eigene Zugriffskontrolle nicht ändern
+    "communication/telegram.py",  # Telegram-Allowlist – Agent soll sich nicht selbst freischalten können
+    "domains/self_modify.py",     # Agent soll seine eigene Sandbox/Blockliste nicht erweitern können
+}   # kritische Dateien schützen
 
 
 def _safe_path(rel_path: str) -> Optional[Path]:
@@ -93,6 +98,8 @@ def write_file(rel_path: str, content: str, description: str) -> dict:
     if p is None:
         return {"ok": False, "message": f"Pfad '{rel_path}' nicht erlaubt."}
 
+    old_content = p.read_text(encoding="utf-8") if p.exists() else ""
+
     # Backup vor Änderung
     backup_commit = git_backup(f"vor: {description[:60]}")
     if not backup_commit:
@@ -106,6 +113,8 @@ def write_file(rel_path: str, content: str, description: str) -> dict:
     except Exception as e:
         return {"ok": False, "message": f"Schreiben fehlgeschlagen: {e}"}
 
+    _log_change("code_write", rel_path, description, old_content, content, backup_commit)
+
     # Neustart via Watchdog triggern
     triggered = _trigger_restart(backup_commit)
     if not triggered:
@@ -116,6 +125,24 @@ def write_file(rel_path: str, content: str, description: str) -> dict:
         "backup_commit": backup_commit,
         "message": f"'{rel_path}' aktualisiert. Neustart läuft — Rollback-Punkt: {backup_commit[:8]}",
     }
+
+
+def _log_change(kind: str, path: str, description: str, old_content: str,
+                new_content: str, commit: str = "") -> None:
+    """Protokolliert eine Selbst-Veränderung fürs Dashboard ('Was hat Alfred selbst verändert')."""
+    import difflib
+    from core import db as _db
+
+    diff = "\n".join(difflib.unified_diff(
+        (old_content or "").splitlines(), (new_content or "").splitlines(),
+        fromfile=f"{path} (vorher)", tofile=f"{path} (nachher)", lineterm="",
+    ))
+    _db.log_event("self_modify", f"{path}: {description[:200]}", {
+        "kind": kind, "path": path, "commit": commit,
+        "old_content": (old_content or "")[:200_000],
+        "new_content": (new_content or "")[:200_000],
+        "diff": diff[:50_000],
+    })
 
 
 def _trigger_restart(rollback_commit: str) -> bool:

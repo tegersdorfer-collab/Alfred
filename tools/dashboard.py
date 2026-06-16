@@ -117,7 +117,10 @@ class DashboardReader:
         ev = calendar_d.find_event(query)
         if not ev:
             return f"Kein Termin gefunden für '{query}'."
-        calendar_d.update_event(ev["uid"], title=title, start=start, end=end, location=location)
+        ok = calendar_d.update_event(ev.get("uid"), title=title, start=start, end=end,
+                                     location=location, gcal_id=ev.get("gcal_id"))
+        if not ok:
+            return f"Termin '{ev['title']}' konnte nicht aktualisiert werden."
         return f"Termin '{ev['title']}' aktualisiert."
 
     def delete_event(self, query: str) -> str:

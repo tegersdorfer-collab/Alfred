@@ -34,7 +34,6 @@ from tools.search import WebSearch
 from domains import pattern_detector
 from tools.dashboard import DashboardReader
 from tools.reminders import ReminderStore
-from tools.router import pick_model
 from core.status import BUS
 import config
 
@@ -58,11 +57,11 @@ class Orchestrator:
     def __init__(self, channel: CommunicationChannel, lzg: LZG, thermal: ThermalMonitor,
                  chat_llm: LLMProvider, bg_llm: LLMProvider, embed_llm: LLMProvider,
                  agent_backend: AgentBackend):
-        # chat_llm      → Echtzeit-Chat (Haiku)
-        # bg_llm        → Background-Tasks, Proaktiv, Briefing (Gemma4 oder Ollama)
+        # chat_llm      → Echtzeit-Chat (Haiku) — speed-kritisch
+        # bg_llm        → Background-Tasks, Proaktiv, Briefing (llama-server lokal) — qualitätskritisch
         # embed_llm     → Embeddings für Memory (immer Ollama)
         # agent_backend → Tool-Calling im ReAct-Loop (Claude oder Ollama)
-        self.llm          = chat_llm   # Alias für Kompatibilität
+        self.llm          = chat_llm   # Alias für Kompatibilität (Chat)
         self.chat_llm     = chat_llm
         self.bg_llm       = bg_llm
         self.embed_llm    = embed_llm
@@ -118,13 +117,9 @@ class Orchestrator:
             else:
                 mems = self.lzg.get_all(limit=10)
             # recall_count erhöhen für genutzte Memories (Ebbinghaus: Wiederholung stärkt)
-            from core import db as _db
             for m in mems:
                 try:
-                    _db.execute(
-                        "UPDATE memories SET recall_count = recall_count + 1, last_recalled = NOW() WHERE id = %s",
-                        (m.id,),
-                    )
+                    self.forgetting.bump_recall(m.id)
                 except Exception:
                     pass
             return self.lzg.format_for_context(mems)
@@ -171,6 +166,16 @@ class Orchestrator:
             "erinnern, abhaken etc.) MUSST du das passende Tool aufrufen. NIEMALS sagen 'ich habe "
             "keine Funktion dafür' oder 'ich kann das nicht' wenn ein passendes Tool existiert. "
             "Beispiel: 'Lösch den Termin X' → delete_calendar_event aufrufen.\n"
+            "AUFGABEN-ZUWEISUNG: Wenn du create_task aufrufst, entscheidet das System automatisch "
+            "ob du (Alfred) oder Timo die Aufgabe bekommt – du musst das NICHT selbst entscheiden "
+            "oder erklären. Ruf einfach create_task auf. NIEMALS sagen 'ich kann mir keine Aufgaben "
+            "zuweisen' – das stimmt nicht, das passiert automatisch im Hintergrund.\n"
+            "FÄHIGKEITSLÜCKEN: Wenn für eine Anfrage KEIN passendes Tool existiert, sag NIEMALS "
+            "einfach 'das kann ich nicht' oder 'dafür habe ich keine Funktion'. Nutze statt­dessen "
+            "create_skill, um dir selbst ein neues Tool zu bauen (Python-Code, sofort aktiv, kein "
+            "Neustart nötig) – und ruf es danach direkt auf um Timos Anfrage zu erledigen. Nur wenn "
+            "create_skill selbst einen Fehler zurückgibt (z.B. Tages-Limit erreicht oder Validierung "
+            "fehlgeschlagen), erklär Timo ehrlich was nicht ging.\n"
             "ZEIT/DATUM: Nutze den Wert aus '## Aktuell' weiter unten als aktuelle Zeit (Europe/Berlin). "
             "Rechne Wochentage/relative Angaben IMMER ab heute. Für Termine/Reminder nutze "
             "Formate wie 'morgen 14:00', 'heute 18:30' oder 'TT.MM.JJJJ HH:MM' – immer LOKALE Zeit, "
@@ -231,6 +236,7 @@ class Orchestrator:
             self.kzg.add("assistant", response)
             self._persist_msg("assistant", response)
             BUS.emit("response", response)
+            self._resume_idle()
             return
         # ───────────────────────────────────────────────────────────────────────
 
@@ -262,7 +268,7 @@ class Orchestrator:
         stream_cb, finalize = await self._make_stream()
 
         allowed = skills.T.select_tools(msg.text)
-        model, keep_alive = pick_model(msg.text)
+        model = self.agent.model_name
         # force_tools=True wenn Tools vorhanden UND Aktionswort erkannt
         force_tools = bool(allowed) and skills.T.is_action(msg.text)
         try:
@@ -327,7 +333,7 @@ class Orchestrator:
 
         system = await self._build_system_prompt(text)
         allowed = skills.T.select_tools(text)
-        model, keep_alive = pick_model(text)
+        model = self.agent.model_name
         force_tools = bool(allowed) and skills.T.is_action(text)
         try:
             response, trace = await self.agent.run(
@@ -362,7 +368,7 @@ class Orchestrator:
         """Generiert einen Task-Vorschlag aus einem Datenereignis (fire & forget)."""
         try:
             from domains.task_executor import suggest_one
-            await suggest_one(trigger, self.llm, self.lzg)
+            await suggest_one(trigger, self.bg_llm, self.lzg)
         except Exception as e:
             log.debug(f"suggest_from_event: {e}")
 
@@ -439,6 +445,12 @@ class Orchestrator:
                             log.info(f"🕐 Forgetting: {stats}")
                     except Exception as e:
                         log.debug(f"ForgettingCurve: {e}", exc_info=True)
+                    # Tägliches DB-Backup (gated, läuft intern nur 1x/Tag)
+                    try:
+                        from core import backup as _backup
+                        await asyncio.to_thread(_backup.maybe_run_daily)
+                    except Exception as e:
+                        log.debug(f"Backup: {e}", exc_info=True)
                     # Health aus iCloud nachziehen: stündlich, oder alle 15min wenn heute fehlt
                     try:
                         now_h = datetime.now()
@@ -466,7 +478,7 @@ class Orchestrator:
                                     from domains.task_executor import suggest_one
                                     ok = await suggest_one(
                                         f"Neue Gesundheitsdaten für {new_days} Tag(e) importiert",
-                                        self.llm, self.lzg
+                                        self.bg_llm, self.lzg
                                     )
                                     if ok:
                                         self._last_health_suggestion = now_h
@@ -481,7 +493,7 @@ class Orchestrator:
                         (now_p - self._last_pattern_run).total_seconds() > 86400):
                     self._last_pattern_run = now_p
                     try:
-                        n = await pattern_detector.update_memories(self.lzg, self.llm)
+                        n = await pattern_detector.update_memories(self.lzg, self.bg_llm)
                         if n:
                             log.info(f"🔍 Pattern Detector: {n} neue Muster gespeichert")
                     except Exception as e:
@@ -502,7 +514,7 @@ class Orchestrator:
                         self._last_insight_run = now_i
                         try:
                             from domains.insight_engine import generate_insight_task
-                            await generate_insight_task(self.llm, self.lzg)
+                            await generate_insight_task(self.bg_llm, self.lzg)
                         except Exception as e:
                             log.debug(f"Insight-Engine: {e}", exc_info=True)
 
@@ -559,9 +571,17 @@ class Orchestrator:
 
         # Skills binden
         skills.bind(SkillContext(
-            lzg=self.lzg, llm=self.llm, search=self._search,
+            lzg=self.lzg, llm=self.bg_llm, search=self._search,
             reminders=self._reminders, dashboard=self._dashboard,
+            channel=self.channel,
         ))
+
+        # Dynamisch erstellte Skills aus vorherigen Sessions wieder aktivieren
+        try:
+            from core.skill_factory import load_all_on_startup
+            load_all_on_startup()
+        except Exception as e:
+            log.error(f"Dynamische Skills konnten nicht geladen werden: {e}")
 
         # KZG aus letzter Session
         try:
@@ -586,7 +606,6 @@ class Orchestrator:
             await self.llm.pull_if_missing()
 
         # Modelle aufwärmen (parallel) – vermeidet Cold-Start.
-        # Bei Routing das residente schnelle Modell warm halten (nicht den Fallback).
         asyncio.create_task(self.agent.warmup())
         asyncio.create_task(fast.warmup())
 

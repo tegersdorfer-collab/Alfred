@@ -152,9 +152,12 @@ def select_tools(text: str) -> list[str]:
     has_action = any(w in t for w in _ACTION_WORDS)
     is_question = "?" in text
 
-    # Reines Gespräch ohne Bezug → keine Tools (schnell)
+    # Reines Gespräch ohne Bezug → fast path, aber create_skill/calculate bleiben
+    # verfügbar – sonst hat der Agent ausgerechnet bei unerwarteten/neuen Anfragen
+    # (die selten in eine Keyword-Kategorie fallen) gar keine Tools zur Wahl.
     if not cats and not has_action:
-        return []
+        return [n for n in ("create_skill", "list_dynamic_skills", "delete_skill", "calculate")
+                if n in REGISTRY]
 
     names = [name for name, tool in REGISTRY.items() if tool.category in cats]
 
@@ -168,4 +171,12 @@ def select_tools(text: str) -> list[str]:
             if n not in names:
                 names.append(n)
 
-    return names[:12]   # Prefill begrenzen
+    names = names[:12]   # Prefill begrenzen
+
+    # create_skill MUSS immer verfügbar sein, sobald überhaupt Tools im Spiel sind –
+    # sonst fehlt es genau dann, wenn kein passendes Tool zur Kategorie passt.
+    for n in ("create_skill", "list_dynamic_skills", "delete_skill"):
+        if n in REGISTRY and n not in names:
+            names.append(n)
+
+    return names

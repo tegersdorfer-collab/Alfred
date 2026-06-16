@@ -10,8 +10,7 @@ from datetime import date, datetime
 from pathlib import Path
 
 from fastapi import FastAPI, Request
-from fastapi.responses import HTMLResponse, StreamingResponse, JSONResponse
-from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import HTMLResponse, PlainTextResponse, StreamingResponse, JSONResponse
 
 import config
 from core import db, tools as T
@@ -24,8 +23,25 @@ WEB_DIR = Path(__file__).parent
 
 def create_app(orch=None) -> FastAPI:
     app = FastAPI(title="Alfred Dashboard", docs_url=None, redoc_url=None)
-    app.add_middleware(CORSMiddleware, allow_origins=["*"],
-                       allow_methods=["*"], allow_headers=["*"])
+
+    # Dashboard läuft auf 0.0.0.0 (LAN-erreichbar) und hatte bisher KEINE Auth –
+    # jedes Gerät im selben Netz konnte lesen/schreiben und sogar self_modify-Tools
+    # über den Chat-Endpunkt triggern. Shared-Token via Header oder Query-Param
+    # (Query-Param nötig, da EventSource keine Custom-Header unterstützt).
+    @app.middleware("http")
+    async def _require_token(request: Request, call_next):
+        # Browser holt diese beiden ohne unsere JS-Header/Query-Param (PWA-Manifest,
+        # Service-Worker-Registrierung) – enthalten nur App-Metadaten, kein Risiko.
+        if request.url.path in ("/sw.js", "/manifest.json"):
+            return await call_next(request)
+        token = request.headers.get("x-alfred-token") or request.query_params.get("token")
+        if token != config.DASHBOARD_TOKEN:
+            return PlainTextResponse(
+                "Unauthorized – fehlender oder falscher ?token= Parameter.\n"
+                "Token steht in .env (DASHBOARD_TOKEN) oder im Alfred-Startup-Log.",
+                status_code=401,
+            )
+        return await call_next(request)
 
     # ── Status / Overview ────────────────────────────────────────────────────
     @app.get("/api/status")
@@ -80,6 +96,82 @@ def create_app(orch=None) -> FastAPI:
         except Exception:
             out["fitness"] = {}
         return out
+
+    # ── Backups ───────────────────────────────────────────────────────────────
+    @app.get("/api/backups")
+    def get_backups():
+        from core import backup as _backup
+        return _backup.list_backups()
+
+    @app.post("/api/backups/run")
+    async def trigger_backup():
+        from core import backup as _backup
+        result = await asyncio.to_thread(_backup.run_backup)
+        return result
+
+    # ── Selbst-Änderungen (Karpathy-Style "generate-verify": zeigt was Alfred ──
+    # selbst an sich verändert hat – create_skill/delete_skill/write_own_code) ──
+    @app.get("/api/self-changes")
+    def self_changes(limit: int = 50):
+        rows = db.query(
+            "SELECT id, type, summary, detail, created_at FROM events_log "
+            "WHERE type = 'self_modify' ORDER BY created_at DESC LIMIT %s",
+            (limit,),
+        )
+        out = []
+        for r in rows:
+            d = r["detail"] or {}
+            out.append({
+                "id": r["id"], "summary": r["summary"], "kind": d.get("kind"),
+                "path": d.get("path"), "commit": d.get("commit"),
+                "created_at": r["created_at"].isoformat(),
+            })
+        return out
+
+    @app.get("/api/self-changes/{change_id}")
+    def self_change_detail(change_id: int):
+        row = db.query_one(
+            "SELECT id, summary, detail, created_at FROM events_log WHERE id=%s AND type='self_modify'",
+            (change_id,),
+        )
+        if not row:
+            return JSONResponse({"error": "Nicht gefunden"}, 404)
+        d = row["detail"] or {}
+        return {
+            "id": row["id"], "summary": row["summary"], "created_at": row["created_at"].isoformat(),
+            "kind": d.get("kind"), "path": d.get("path"), "commit": d.get("commit"),
+            "diff": d.get("diff", ""),
+        }
+
+    @app.post("/api/self-changes/{change_id}/revert")
+    def self_change_revert(change_id: int):
+        row = db.query_one(
+            "SELECT detail FROM events_log WHERE id=%s AND type='self_modify'", (change_id,)
+        )
+        if not row:
+            return JSONResponse({"error": "Nicht gefunden"}, 404)
+        d = row["detail"] or {}
+        kind, path = d.get("kind"), d.get("path")
+        old_content = d.get("old_content", "")
+
+        if kind == "skill_create" or kind == "skill_delete":
+            from core.skill_factory import delete_skill, create_skill, SKILLS_DIR
+            skill_name = Path(path).stem
+            if kind == "skill_create":
+                result = delete_skill(skill_name)
+            else:
+                # War gelöscht → Quellcode (ohne den Auto-Header) wieder anlegen
+                src = old_content.split('"""\n', 2)
+                body = src[2] if len(src) == 3 else old_content
+                result = create_skill(skill_name, f"Revert von Löschung (Change #{change_id})", body)
+            return result
+
+        if kind == "code_write":
+            from domains.self_modify import write_file
+            result = write_file(path, old_content, f"Revert von Change #{change_id}")
+            return result
+
+        return {"ok": False, "message": f"Unbekannte Änderungsart '{kind}', kann nicht automatisch rückgängig gemacht werden."}
 
     @app.get("/api/weather")
     async def api_weather():
@@ -546,6 +638,95 @@ def create_app(orch=None) -> FastAPI:
     def del_kg_relation(rid: int):
         db.execute("DELETE FROM kg_relations WHERE id=%s", (rid,)); return {"ok": True}
 
+    @app.get("/api/knowledge/heatmap")
+    def knowledge_heatmap():
+        """Wie oft taucht jede Entität in Beziehungen UND in Chat-Nachrichten auf."""
+        entities = db.query("SELECT id, name, type FROM kg_entities WHERE name != 'Timo' ORDER BY name")
+        out = []
+        for e in entities:
+            rel_count = db.query_one(
+                "SELECT COUNT(*) c FROM kg_relations WHERE subject_id=%s OR object_id=%s",
+                (e["id"], e["id"]),
+            )["c"]
+            chat_count = db.query_one(
+                "SELECT COUNT(*) c FROM chat_messages WHERE content ILIKE %s",
+                (f"%{e['name']}%",),
+            )["c"]
+            out.append({
+                "name": e["name"], "type": e["type"],
+                "relations": rel_count, "mentions": chat_count,
+                "score": rel_count + chat_count,
+            })
+        out.sort(key=lambda x: x["score"], reverse=True)
+        return out
+
+    # ── Journal-Themen (Tag-Cloud aus Wort-Häufigkeit) ──────────────────────────
+    @app.get("/api/journal/themes")
+    def journal_themes(days: int = 90):
+        rows = db.query(
+            "SELECT content, prompts_answers FROM journal_entries "
+            "WHERE date >= CURRENT_DATE - %s",
+            (days,),
+        )
+        stopwords = {
+            "ich", "und", "der", "die", "das", "den", "dem", "des", "ein", "eine",
+            "einen", "einem", "einer", "ist", "war", "bin", "war", "auch", "noch",
+            "aber", "nicht", "mit", "von", "für", "auf", "habe", "hat", "hatte",
+            "sehr", "mehr", "heute", "mich", "mir", "mein", "meine", "wie", "was",
+            "dass", "sich", "sind", "wird", "werden", "kann", "könnte", "soll",
+            "über", "unter", "nach", "schon", "etwas", "alle", "alles", "nur",
+            "dann", "doch", "wenn", "weil", "diese", "dieser", "dieses", "dabei",
+        }
+        from collections import Counter
+        import re as _re
+        counter = Counter()
+        for r in rows:
+            text = r.get("content") or ""
+            pa = r.get("prompts_answers")
+            if pa:
+                items = pa if isinstance(pa, list) else []
+                text += " " + " ".join(i.get("answer", "") for i in items if isinstance(i, dict))
+            words = _re.findall(r"[a-zA-ZäöüÄÖÜß]{4,}", text.lower())
+            counter.update(w for w in words if w not in stopwords)
+        return [{"word": w, "count": c} for w, c in counter.most_common(40)]
+
+    # ── Wochen-/Monats-Rückblick ─────────────────────────────────────────────────
+    @app.get("/api/review")
+    def review(period: str = "week"):
+        days = 7 if period == "month_compare" else (30 if period == "month" else 7)
+        health = db.query(
+            "SELECT date, steps, sleep_duration, resting_hr, hrv FROM health_data "
+            "WHERE date >= CURRENT_DATE - %s ORDER BY date", (days,)
+        )
+        prev_health = db.query(
+            "SELECT steps, sleep_duration, resting_hr, hrv FROM health_data "
+            "WHERE date >= CURRENT_DATE - %s AND date < CURRENT_DATE - %s", (days * 2, days)
+        )
+        def _avg(rows, key):
+            vals = [r[key] for r in rows if r.get(key) is not None]
+            return round(sum(vals) / len(vals), 1) if vals else None
+
+        cur_avg = {k: _avg(health, k) for k in ("steps", "sleep_duration", "resting_hr", "hrv")}
+        prev_avg = {k: _avg(prev_health, k) for k in ("steps", "sleep_duration", "resting_hr", "hrv")}
+
+        tasks_done = db.query_one(
+            "SELECT COUNT(*) c FROM tasks WHERE status='done' AND completed_at >= NOW() - (%s || ' days')::interval",
+            (days,),
+        )["c"]
+        mood_rows = db.query(
+            "SELECT mood, energy FROM journal_entries WHERE date >= CURRENT_DATE - %s", (days,)
+        )
+        avg_mood = _avg(mood_rows, "mood")
+        avg_energy = _avg(mood_rows, "energy")
+
+        return {
+            "period": period, "days": days,
+            "health": {"current": cur_avg, "previous": prev_avg},
+            "tasks_done": tasks_done,
+            "mood_avg": avg_mood, "energy_avg": avg_energy,
+            "journal_entries": len(mood_rows),
+        }
+
     # ── Alfred Mind (Events, Reflexionen, Agenda) ────────────────────────────────
     @app.get("/api/mind")
     def mind():
@@ -693,8 +874,14 @@ def create_app(orch=None) -> FastAPI:
     # ── Index ─────────────────────────────────────────────────────────────────────
     @app.get("/", response_class=HTMLResponse)
     def index():
+        html = (WEB_DIR / "index.html").read_text()
+        html = html.replace(
+            "<script>",
+            f"<script>window.ALFRED_TOKEN={json.dumps(config.DASHBOARD_TOKEN)};</script>\n<script>",
+            1,
+        )
         return HTMLResponse(
-            (WEB_DIR / "index.html").read_text(),
+            html,
             headers={"Cache-Control": "no-store, no-cache, must-revalidate", "Pragma": "no-cache"},
         )
 
@@ -748,11 +935,6 @@ def _health_dict(h):
             "exercise_minutes": h.exercise_minutes, "sleep": h.sleep_duration,
             "sleep_deep": h.sleep_deep, "resting_hr": h.resting_hr, "hrv": h.hrv,
             "weight": h.weight}
-
-
-def _task_dict(t):
-    return {"id": t.id, "title": t.title, "status": t.status, "priority": t.priority,
-            "due": t.due_date.strftime("%d.%m") if t.due_date else None}
 
 
 def _event_dict(e):

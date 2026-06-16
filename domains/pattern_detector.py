@@ -142,15 +142,19 @@ def _habit_patterns(days: int = 30) -> list[str]:
     """Analysiert Gewohnheits-Streaks und Konsistenz."""
     since = date.today() - timedelta(days=days)
     rows = db.query(
-        "SELECT h.name, h.emoji, COUNT(hl.id) as completions "
+        "SELECT h.name, h.emoji, h.created_at, COUNT(hl.id) as completions "
         "FROM habits h LEFT JOIN habit_logs hl ON h.id = hl.habit_id "
-        "AND hl.logged_date >= %s "
-        "WHERE h.active = true GROUP BY h.id, h.name, h.emoji",
+        "AND hl.date >= %s "
+        "WHERE h.active = true GROUP BY h.id, h.name, h.emoji, h.created_at",
         (since,),
     )
     patterns = []
     for r in rows:
-        rate = r["completions"] / days * 100
+        # Konsistenz nur gegen die Tage rechnen, seit denen die Habit tatsächlich existiert
+        # (sonst wirkt eine brandneue Habit künstlich "inkonsequent")
+        tracked_days = min(days, (date.today() - r["created_at"].date()).days + 1) if r.get("created_at") else days
+        tracked_days = max(tracked_days, 1)
+        rate = r["completions"] / tracked_days * 100
         name = r["name"]
         emoji = r["emoji"] or "✅"
         if rate >= 80:

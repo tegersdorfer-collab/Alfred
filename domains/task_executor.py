@@ -167,18 +167,8 @@ async def plan_task(task: dict, llm: LLMProvider, lzg=None) -> dict:
             pass
     mem_str = "\n".join(f"- {m}" for m in memories) or "Keine"
 
-    # Zuerst Claude Haiku versuchen (besser für komplexes Reasoning)
-    from llm.claude import ClaudeProvider
-    import config
-    planner_llm = llm
-    if config.ANTHROPIC_API_KEY:
-        try:
-            planner_llm = ClaudeProvider()
-        except Exception:
-            pass
-
     try:
-        resp = await planner_llm.chat(
+        resp = await llm.chat(
             messages=[Message(role="user", content=PLAN_PROMPT.format(
                 title=task["title"],
                 notes_line=notes_line,
@@ -269,20 +259,10 @@ async def execute_next_subtask(task: dict, llm: LLMProvider, search=None) -> boo
         except Exception as e:
             log.warning(f"Websuche fehlgeschlagen: {e}")
 
-    # Claude Haiku für Ausführung nutzen
-    from llm.claude import ClaudeProvider
-    import config
-    exec_llm = llm
-    if config.ANTHROPIC_API_KEY:
-        try:
-            exec_llm = ClaudeProvider()
-        except Exception:
-            pass
-
     subtask_title = sub["title"] if not _notes.startswith("{") else payload.get("title", sub["title"])
 
     try:
-        result = await exec_llm.chat(
+        result = await llm.chat(
             messages=[Message(role="user", content=EXECUTE_SUBTASK_PROMPT.format(
                 main_title=task["title"],
                 subtask_title=subtask_title,
@@ -309,14 +289,19 @@ async def execute_next_subtask(task: dict, llm: LLMProvider, search=None) -> boo
     return len(remaining) > 0
 
 
-async def finalize_task(task: dict, llm: LLMProvider) -> str:
-    """Fasst alle Unteraufgaben-Ergebnisse zum finalen Ergebnis zusammen."""
+async def finalize_task(task: dict, llm: LLMProvider) -> str | None:
+    """Fasst alle Unteraufgaben-Ergebnisse zum finalen Ergebnis zusammen.
+    Gibt None zurück, wenn Unteraufgaben existierten aber ALLE fehlgeschlagen sind
+    (Caller muss das als Fehlschlag behandeln, nicht als Erfolg melden)."""
     done_subs = db.query(
         "SELECT title, notes FROM tasks WHERE parent_id=%s AND status='done' ORDER BY id ASC",
         (task["id"],)
     )
 
     if not done_subs:
+        had_subtasks = db.query("SELECT 1 FROM tasks WHERE parent_id=%s LIMIT 1", (task["id"],))
+        if had_subtasks:
+            return None
         return "Aufgabe erledigt (keine Unteraufgaben)."
 
     # Wenn nur eine Unteraufgabe → direkt das Ergebnis
@@ -329,17 +314,8 @@ async def finalize_task(task: dict, llm: LLMProvider) -> str:
     )
     notes_line = f"Details: {task['notes']}" if task.get("notes") else ""
 
-    from llm.claude import ClaudeProvider
-    import config
-    synth_llm = llm
-    if config.ANTHROPIC_API_KEY:
-        try:
-            synth_llm = ClaudeProvider()
-        except Exception:
-            pass
-
     try:
-        return await synth_llm.chat(
+        return await llm.chat(
             messages=[Message(role="user", content=SYNTHESIZE_PROMPT.format(
                 title=task["title"],
                 notes_line=notes_line,
@@ -357,16 +333,8 @@ async def finalize_task(task: dict, llm: LLMProvider) -> str:
 async def execute_task(task: dict, llm: LLMProvider, lzg=None) -> str:
     """Legacy: einfache Ausführung ohne Unteraufgaben."""
     notes_line = f"Details: {task['notes']}" if task.get("notes") else ""
-    from llm.claude import ClaudeProvider
-    import config
-    exec_llm = llm
-    if config.ANTHROPIC_API_KEY:
-        try:
-            exec_llm = ClaudeProvider()
-        except Exception:
-            pass
     try:
-        return await exec_llm.chat(
+        return await llm.chat(
             messages=[Message(role="user", content=f"Erledige diese Aufgabe vollständig:\n\nAufgabe: {task['title']}\n{notes_line}\n\nLiefere ein konkretes, verwertbares Ergebnis. Kein 'ich könnte...' – direkt das Ergebnis.")],
             temperature=0.7, max_tokens=1200,
         )
@@ -438,26 +406,13 @@ async def suggest_one(trigger: str, llm: LLMProvider, lzg=None) -> bool:
 
     # Duplikat-Check: ähnliche Titel erkennen (Wort-Jaccard + Thema-Keywords)
     try:
+        from core.dedup import is_duplicate_title
         recent = _db.query(
             "SELECT title FROM tasks WHERE status != 'archived' ORDER BY created_at DESC LIMIT 50"
         )
-        title_lower = title.lower()
-        # Stopwörter herausfiltern, nur echte Inhaltswörter
-        _stopwords = {"python", "skript", "einer", "einen", "eines", "basierend", "durch",
-                      "durch", "sowie", "oder", "dass", "nicht", "werden", "können",
-                      "diese", "dieses", "diese", "beim", "nach", "über", "unter", "vor",
-                      "analyse", "erstellung", "generierung", "berechnung", "validierung",
-                      "erstellen", "berechnen", "validieren", "identifikation", "isolierung"}
-        new_kw = {w for w in title_lower.split() if len(w) > 5 and w not in _stopwords}
-        for r in recent:
-            existing = r["title"].lower()
-            existing_kw = {w for w in existing.split() if len(w) > 5 and w not in _stopwords}
-            if not new_kw or not existing_kw:
-                continue
-            overlap = len(new_kw & existing_kw) / max(1, len(new_kw | existing_kw))
-            if overlap >= 0.30:
-                log.debug(f"Suggestion als Duplikat verworfen (overlap={overlap:.2f}): {title[:60]}")
-                return False
+        if is_duplicate_title(title, [r["title"] for r in recent]):
+            log.debug(f"Suggestion als Duplikat verworfen: {title[:60]}")
+            return False
     except Exception as e:
         log.debug(f"Duplikat-Check fehlgeschlagen: {e}")
 

@@ -47,7 +47,8 @@ class OllamaProvider(LLMProvider):
                     await self._client.chat(
                         model=name,
                         messages=[{"role": "user", "content": ""}],
-                        options={"keep_alive": 0, "num_predict": 1},
+                        options={"num_predict": 1},
+                        keep_alive=0,
                     )
                     import logging; logging.getLogger(__name__).info(f"🗑️  Entlade {name} für {self._model}")
         except Exception:
@@ -68,8 +69,8 @@ class OllamaProvider(LLMProvider):
         kwargs = dict(
             model=self._model,
             messages=self._build_messages(messages, system),
-            options={"temperature": temperature, "num_predict": max_tokens,
-                     "keep_alive": config.OLLAMA_KEEP_ALIVE},
+            options={"temperature": temperature, "num_predict": max_tokens},
+            keep_alive=config.OLLAMA_KEEP_ALIVE,
             think=think,
         )
         if format:

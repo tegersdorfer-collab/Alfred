@@ -61,22 +61,21 @@ async def main():
         chat_llm = OllamaProvider()
         log.info(f"💬 Chat-LLM: Ollama {cfg.OLLAMA_MODEL} (kein API-Key)")
 
-    # ── Agent-Backend: immer Ollama (lokales Modell für Agenten/Tools) ────────
-    from core.backends.ollama import OllamaBackend
-    agent_backend = OllamaBackend()
-    log.info(f"🔧 Agent-Backend: Ollama ({cfg.AGENT_MODEL_STRONG})")
-
-    # ── Background-LLM: MLXProvider (direkt via mlx_lm, kein Ollama) ─────────
-    bg_model = cfg.MLX_BG_MODEL if cfg.MLX_BG_MODEL else None
-    if bg_model:
-        from llm.mlx_provider import MLXProvider
-        bg_llm = MLXProvider(model_id=bg_model)
-        log.info(f"🧠 Background-LLM: {bg_model} (MLX direkt)")
+    # ── Agent-Backend: Haiku (user-facing Chat + Tool-Calls) ────────────────────
+    if cfg.ANTHROPIC_API_KEY:
+        from core.backends.claude import ClaudeBackend
+        agent_backend = ClaudeBackend(model=cfg.CLAUDE_CHAT_MODEL)
+        log.info(f"🔧 Agent-Backend: {cfg.CLAUDE_CHAT_MODEL} (Haiku, user-facing)")
     else:
-        bg_llm = OllamaProvider()
-        log.info(f"🧠 Background-LLM: Ollama {cfg.OLLAMA_MODEL}")
+        from core.backends.ollama import OllamaBackend
+        agent_backend = OllamaBackend()
+        log.info(f"🔧 Agent-Backend: Ollama ({cfg.AGENT_MODEL_STRONG}, Fallback)")
 
-    # ── Embed-LLM: immer Ollama (kein Embedding via Claude/MLX) ──────────────
+    # ── Background-LLM: Ollama (proaktiv, Briefing, Reflexion) ────────────────
+    bg_llm = OllamaProvider()
+    log.info(f"🧠 Background-LLM: Ollama {cfg.OLLAMA_MODEL}")
+
+    # ── Embed-LLM: immer Ollama (kein Embedding via Claude) ───────────────────
     embed_llm = OllamaProvider()
 
     lzg     = LZG()
@@ -109,7 +108,7 @@ async def main():
 
     await orchestrator.start()
     asyncio.create_task(api_server.serve())
-    log.info("🖥️  Dashboard läuft auf http://localhost:7779")
+    log.info(f"🖥️  Dashboard läuft auf http://localhost:7779/?token={cfg.DASHBOARD_TOKEN}")
     await stop_event.wait()
 
 
