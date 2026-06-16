@@ -1,24 +1,14 @@
 import os
-import secrets
 from pathlib import Path
 from dotenv import load_dotenv
 
 load_dotenv()
 
-# Dashboard-Auth: Shared-Token, da das Dashboard sonst ohne jegliche Anmeldung auf
-# 0.0.0.0 lauscht (jeder im selben WLAN hätte sonst vollen Lese-/Schreibzugriff,
-# inkl. self_modify-Tools). Wird beim ersten Start automatisch erzeugt und in .env
-# persistiert, damit er über Neustarts hinweg stabil bleibt.
-DASHBOARD_TOKEN = os.getenv("DASHBOARD_TOKEN", "")
-if not DASHBOARD_TOKEN:
-    DASHBOARD_TOKEN = secrets.token_urlsafe(24)
-    _env_path = Path(__file__).parent / ".env"
-    try:
-        with open(_env_path, "a") as f:
-            f.write(f"\nDASHBOARD_TOKEN={DASHBOARD_TOKEN}\n")
-    except Exception:
-        pass
-    os.environ["DASHBOARD_TOKEN"] = DASHBOARD_TOKEN
+# Dashboard-Zugriff: kein App-Token mehr nötig (war PWA-feindlich, da iOS den
+# Homescreen-Start_url fix auf "/" setzt, kein Platz für ?token=). Stattdessen
+# bindet main.py den Server NUR auf die Tailscale-IP – im normalen LAN/WLAN ist
+# das Dashboard dadurch unsichtbar, nur über Tailscale (eigene Geräte) erreichbar.
+DASHBOARD_HOST = os.getenv("DASHBOARD_HOST", "100.107.172.123")
 
 # LLM – alles lokale läuft über Ollama (ein Prozess, kein llama-server mehr nötig).
 OLLAMA_MODEL       = os.getenv("OLLAMA_MODEL", "qwen3.5:9b")        # lokales Haupt-/Fallback-Modell

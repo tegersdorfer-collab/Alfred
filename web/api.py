@@ -10,7 +10,7 @@ from datetime import date, datetime
 from pathlib import Path
 
 from fastapi import FastAPI, Request
-from fastapi.responses import HTMLResponse, PlainTextResponse, StreamingResponse, JSONResponse
+from fastapi.responses import HTMLResponse, StreamingResponse, JSONResponse
 
 import config
 from core import db, tools as T
@@ -24,24 +24,9 @@ WEB_DIR = Path(__file__).parent
 def create_app(orch=None) -> FastAPI:
     app = FastAPI(title="Alfred Dashboard", docs_url=None, redoc_url=None)
 
-    # Dashboard läuft auf 0.0.0.0 (LAN-erreichbar) und hatte bisher KEINE Auth –
-    # jedes Gerät im selben Netz konnte lesen/schreiben und sogar self_modify-Tools
-    # über den Chat-Endpunkt triggern. Shared-Token via Header oder Query-Param
-    # (Query-Param nötig, da EventSource keine Custom-Header unterstützt).
-    @app.middleware("http")
-    async def _require_token(request: Request, call_next):
-        # Browser holt diese beiden ohne unsere JS-Header/Query-Param (PWA-Manifest,
-        # Service-Worker-Registrierung) – enthalten nur App-Metadaten, kein Risiko.
-        if request.url.path in ("/sw.js", "/manifest.json"):
-            return await call_next(request)
-        token = request.headers.get("x-alfred-token") or request.query_params.get("token")
-        if token != config.DASHBOARD_TOKEN:
-            return PlainTextResponse(
-                "Unauthorized – fehlender oder falscher ?token= Parameter.\n"
-                "Token steht in .env (DASHBOARD_TOKEN) oder im Alfred-Startup-Log.",
-                status_code=401,
-            )
-        return await call_next(request)
+    # Kein App-Token mehr: main.py bindet den Server nur auf die Tailscale-IP,
+    # das Netzwerk selbst ist die Zugriffskontrolle (nur eigene Tailscale-Geräte
+    # erreichen den Port überhaupt). Macht PWA-Homescreen-Start_url "/" möglich.
 
     # ── Status / Overview ────────────────────────────────────────────────────
     @app.get("/api/status")
@@ -108,6 +93,32 @@ def create_app(orch=None) -> FastAPI:
         from core import backup as _backup
         result = await asyncio.to_thread(_backup.run_backup)
         return result
+
+    # ── Web Push (PWA-Benachrichtigungen) ───────────────────────────────────────
+    @app.get("/api/push/vapid-public-key")
+    def push_vapid_key():
+        return {"key": config.VAPID_PUBLIC_KEY}
+
+    @app.post("/api/push/subscribe")
+    async def push_subscribe(req: Request):
+        d = await req.json()
+        from core import push as _push
+        keys = d.get("keys", {})
+        _push.add_subscription(d["endpoint"], keys.get("p256dh", ""), keys.get("auth", ""))
+        return {"ok": True}
+
+    @app.post("/api/push/unsubscribe")
+    async def push_unsubscribe(req: Request):
+        d = await req.json()
+        from core import push as _push
+        _push.remove_subscription(d["endpoint"])
+        return {"ok": True}
+
+    @app.post("/api/push/test")
+    async def push_test():
+        from core import push as _push
+        n = await asyncio.to_thread(_push.send_push, "Alfred", "Test-Benachrichtigung — Push funktioniert! 🎉", "/")
+        return {"ok": True, "sent": n}
 
     # ── Selbst-Änderungen (Karpathy-Style "generate-verify": zeigt was Alfred ──
     # selbst an sich verändert hat – create_skill/delete_skill/write_own_code) ──
@@ -737,6 +748,15 @@ def create_app(orch=None) -> FastAPI:
             "agenda": _jsonable(db.query("SELECT kind, title, status, created_at FROM agenda ORDER BY created_at DESC LIMIT 20")),
         }
 
+    # ── "Was ist heute schiefgelaufen" ──────────────────────────────────────────
+    @app.get("/api/errors/today")
+    def errors_today():
+        rows = db.query(
+            "SELECT summary, detail, created_at FROM events_log "
+            "WHERE type='error' AND created_at >= CURRENT_DATE ORDER BY created_at DESC"
+        )
+        return {"count": len(rows), "errors": _jsonable(rows)}
+
     # ── Tools-Katalog ────────────────────────────────────────────────────────────
     @app.get("/api/tools")
     def tools_list():
@@ -874,14 +894,8 @@ def create_app(orch=None) -> FastAPI:
     # ── Index ─────────────────────────────────────────────────────────────────────
     @app.get("/", response_class=HTMLResponse)
     def index():
-        html = (WEB_DIR / "index.html").read_text()
-        html = html.replace(
-            "<script>",
-            f"<script>window.ALFRED_TOKEN={json.dumps(config.DASHBOARD_TOKEN)};</script>\n<script>",
-            1,
-        )
         return HTMLResponse(
-            html,
+            (WEB_DIR / "index.html").read_text(),
             headers={"Cache-Control": "no-store, no-cache, must-revalidate", "Pragma": "no-cache"},
         )
 

@@ -50,6 +50,7 @@ def _fetch_ics(days_ahead: int = 60) -> list[dict]:
                 cal = ICal.from_ical(r.text)
             except Exception as e:
                 log.warning(f"ICS-Fetch fehlgeschlagen: {e}")
+                db.log_error("Kalender-ICS-Sync", e)
                 continue
             for comp in cal.walk("VEVENT"):
                 try:

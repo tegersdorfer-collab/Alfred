@@ -87,11 +87,37 @@ async def main():
         channel=channel, lzg=lzg, thermal=thermal,
     )
 
-    # Dashboard-API im selben Prozess (geteilter State mit dem Agent)
+    # Dashboard-API im selben Prozess (geteilter State mit dem Agent).
+    # Bindet NUR auf die Tailscale-IP – im normalen LAN/WLAN unsichtbar, kein
+    # App-Token mehr nötig (PWA-Homescreen-Start_url kann so fix "/" bleiben).
+    # Fällt auf localhost zurück falls Tailscale gerade nicht läuft (z.B. Debug).
+    import socket as _socket
     import uvicorn
     from web.api import create_app
+
+    def _local_ips() -> set[str]:
+        ips = set()
+        try:
+            for info in _socket.getaddrinfo(_socket.gethostname(), None):
+                ips.add(info[4][0])
+        except Exception:
+            pass
+        try:
+            import subprocess as _sp
+            out = _sp.run(["ifconfig"], capture_output=True, text=True, timeout=3).stdout
+            ips.update(_re.findall(r"inet (\d+\.\d+\.\d+\.\d+)", out))
+        except Exception:
+            pass
+        return ips
+
+    import re as _re
+    dashboard_host = cfg.DASHBOARD_HOST
+    if dashboard_host not in _local_ips():
+        log.warning(f"⚠️  Tailscale-IP {dashboard_host} nicht aktiv – Dashboard bindet auf localhost (nur diese Maschine).")
+        dashboard_host = "127.0.0.1"
+
     api_app = create_app(orchestrator)
-    api_conf = uvicorn.Config(api_app, host="0.0.0.0", port=7779, log_level="warning")
+    api_conf = uvicorn.Config(api_app, host=dashboard_host, port=7779, log_level="warning")
     api_server = uvicorn.Server(api_conf)
 
     loop = asyncio.get_event_loop()
@@ -108,7 +134,7 @@ async def main():
 
     await orchestrator.start()
     asyncio.create_task(api_server.serve())
-    log.info(f"🖥️  Dashboard läuft auf http://localhost:7779/?token={cfg.DASHBOARD_TOKEN}")
+    log.info(f"🖥️  Dashboard läuft auf http://{dashboard_host}:7779")
     await stop_event.wait()
 
 

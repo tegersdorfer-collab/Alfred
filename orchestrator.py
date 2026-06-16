@@ -421,6 +421,7 @@ class Orchestrator:
                 await self.autopilot.tick()
             except Exception as e:
                 log.debug(f"Autopilot-Tick: {e}", exc_info=True)
+                db.log_error("Autopilot-Tick", e)
 
             # Wartung nur wenn Timo nicht aktiv ist (Modell freihalten)
             if not self._user_active():
@@ -429,6 +430,7 @@ class Orchestrator:
                     await self.reflection.daily_reflection()
                 except Exception as e:
                     log.debug(f"Reflexion: {e}", exc_info=True)
+                    db.log_error("Reflexion", e)
                 # Memory-Wartung max 1x/Stunde:
                 # Nur noch Vektor-Dedup (kein LLM-Compressor → kein Halluzinationsrisiko)
                 now = datetime.now()
@@ -439,18 +441,21 @@ class Orchestrator:
                         await self.consolidator.consolidate_silent()
                     except Exception as e:
                         log.debug(f"Consolidator: {e}", exc_info=True)
+                        db.log_error("Memory-Consolidator", e)
                     try:
                         stats = await self.forgetting.run()
                         if stats["forgotten"] or stats["chat_pruned"]:
                             log.info(f"🕐 Forgetting: {stats}")
                     except Exception as e:
                         log.debug(f"ForgettingCurve: {e}", exc_info=True)
+                        db.log_error("ForgettingCurve", e)
                     # Tägliches DB-Backup (gated, läuft intern nur 1x/Tag)
                     try:
                         from core import backup as _backup
                         await asyncio.to_thread(_backup.maybe_run_daily)
                     except Exception as e:
                         log.debug(f"Backup: {e}", exc_info=True)
+                        db.log_error("DB-Backup", e)
                     # Health aus iCloud nachziehen: stündlich, oder alle 15min wenn heute fehlt
                     try:
                         now_h = datetime.now()
@@ -486,6 +491,7 @@ class Orchestrator:
                                     log.debug(f"Health-Suggestion: {_e}")
                     except Exception as e:
                         log.debug(f"Health-Refresh: {e}", exc_info=True)
+                        db.log_error("Health-Refresh", e)
 
                 # Pattern-Erkennung 1x täglich (86400s)
                 now_p = datetime.now()
@@ -498,6 +504,7 @@ class Orchestrator:
                             log.info(f"🔍 Pattern Detector: {n} neue Muster gespeichert")
                     except Exception as e:
                         log.debug(f"Pattern Detector: {e}", exc_info=True)
+                        db.log_error("Pattern-Detector", e)
 
                 # Insight-Engine: alle 4h wenn keine aktiven Alfred-Tasks
                 now_i = datetime.now()
@@ -517,6 +524,7 @@ class Orchestrator:
                             await generate_insight_task(self.bg_llm, self.lzg)
                         except Exception as e:
                             log.debug(f"Insight-Engine: {e}", exc_info=True)
+                            db.log_error("Insight-Engine", e)
 
             # Adaptiver Takt: kürzer wenn Alfred gerade an Tasks arbeitet
             try:

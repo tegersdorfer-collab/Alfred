@@ -479,3 +479,10 @@ def log_event(type_: str, summary: str, detail: dict | None = None) -> None:
         )
     except Exception as e:
         log.debug(f"log_event fehlgeschlagen: {e}")
+
+
+def log_error(source: str, exc: Exception) -> None:
+    """Protokolliert einen Fehler fürs Dashboard-Widget 'Was ist heute schiefgelaufen'.
+    Bewusst nur an den wichtigsten Stellen genutzt (nicht jeder der ~200 try/except-Blöcke
+    im Code), damit das Widget auf echte Feature-Ausfälle zeigt statt auf Rauschen."""
+    log_event("error", f"{source}: {exc}", {"source": source, "error": str(exc)})

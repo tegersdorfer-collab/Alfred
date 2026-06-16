@@ -418,8 +418,6 @@ label.field-label{display:block;font-size:11px;letter-spacing:.5px;text-transfor
 
 <script>
 const API=location.origin; let CUR='home'; let charts={};
-const TOKEN=window.ALFRED_TOKEN||'';
-const withToken=(url)=>url+(url.includes('?')?'&':'?')+'token='+encodeURIComponent(TOKEN);
 const NAV=[['home','⌂','Home'],['chat','◎','Chat'],['body','♡','Health'],['habits','▣','Habits'],
   ['tasks','◻','Tasks'],['calendar','⊟','Kalender'],['nutrition','⊕','Ernährung'],
   ['journal','▤','Journal'],['goals','◈','Ziele'],['memory','⬡','Memory'],
@@ -428,10 +426,7 @@ const NAV=[['home','⌂','Home'],['chat','◎','Chat'],['body','♡','Health'],[
 const $=(s,r=document)=>r.querySelector(s);
 const el=(h)=>{const d=document.createElement('div');d.innerHTML=h.trim();return d.firstChild;};
 const view=()=>$('#view');
-async function api(p,o){
-  o=o||{};o.headers=Object.assign({'X-Alfred-Token':TOKEN},o.headers||{});
-  const r=await fetch(API+p,o);return r.json();
-}
+async function api(p,o){const r=await fetch(API+p,o);return r.json();}
 async function post(p,b){return api(p,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(b||{})});}
 async function del(p){return api(p,{method:'DELETE'});}
 function esc(s){return(s||'').replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));}
@@ -522,7 +517,7 @@ function applyStatus(evt){
 }
 
 function startStatusStream(){
-  const es=new EventSource(withToken(`${API}/api/status/stream`));
+  const es=new EventSource(`${API}/api/status/stream`);
   es.onmessage=ev=>{try{applyStatus(JSON.parse(ev.data));}catch(e){}};
   es.onerror=()=>setTimeout(startStatusStream, 5000); // reconnect
 }
@@ -561,6 +556,27 @@ function openMore(){
     </div>`);
 }
 function feedIcon(t){return {thought:'◎',action:'⚡',tool:'⊞',reflection:'◈',briefing:'◉',review:'◬',reminder:'⊡',health:'♡',system:'⚙'}[t]||'·';}
+
+async function loadErrorWidget(){
+  const box=$('#h-errwidget'); if(!box)return;
+  try{
+    const r=await api('/api/errors/today');
+    if(!r.count){box.innerHTML='';return;}
+    box.innerHTML=`<div class="c" style="padding:10px 14px;margin-top:8px;border-color:rgba(255,59,104,.25);cursor:pointer" onclick="toggleErrList()">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <span style="font-size:12px;color:var(--red)">⚠️ ${r.count} Fehler heute</span>
+        <span style="font-size:10px;color:var(--t3)">Details ▾</span>
+      </div>
+      <div id="errList" style="display:none;margin-top:8px;font-size:11px;color:var(--t2)">
+        ${r.errors.map(e=>`<div style="padding:4px 0;border-top:1px solid var(--bd)">
+          <span style="color:var(--t3)">${new Date(e.created_at).toLocaleTimeString('de',{hour:'2-digit',minute:'2-digit'})}</span>
+          ${esc(e.summary.slice(0,120))}
+        </div>`).join('')}
+      </div>
+    </div>`;
+  }catch(e){box.innerHTML='';}
+}
+function toggleErrList(){const l=$('#errList');if(l)l.style.display=l.style.display==='none'?'':'none';}
 
 // ════════ HOME ════════
 VIEWS.home=async(root)=>{
@@ -618,7 +634,9 @@ VIEWS.home=async(root)=>{
     <span class="sdot ${hsType}"></span>
     <span class="stxt" style="flex:1;font-size:12px">${STATUS_ICONS[hsType]||'·'} ${esc(hsCur.text||'Bereit')}</span>
     <span style="font-size:10px;color:var(--t3);letter-spacing:.3px">MIND →</span>
-  </div>`;
+  </div>
+  <div id="h-errwidget"></div>`;
+  loadErrorWidget();
 
   // Quick actions
   $('#h-quick').innerHTML=`<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px">
@@ -705,6 +723,7 @@ VIEWS.chat=async(root)=>{
     <div id="cmsgs" style="flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:8px;padding:0 0 12px"></div>
     <div style="display:flex;gap:8px;padding-top:8px;border-top:1px solid var(--bd)">
       <textarea id="cin" rows="1" placeholder="Nachricht…" style="flex:1;resize:none;max-height:120px;background:var(--s2);border:1px solid var(--bd);border-radius:6px;padding:8px 12px;font-size:14px;color:var(--tx);font-family:inherit;outline:none" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendChat();}"></textarea>
+      <button class="btn-g" id="micBtn" onclick="toggleVoiceInput()" style="height:38px;width:38px;align-self:flex-end;font-size:16px">🎤</button>
       <button class="btn" onclick="sendChat()" style="height:38px;padding:0 16px;align-self:flex-end">↑</button>
     </div>
     <div style="font-size:10px;color:var(--t3);margin-top:5px;text-align:center">Enter zum Senden · Shift+Enter für Zeilenumbruch</div>
@@ -716,12 +735,33 @@ VIEWS.chat=async(root)=>{
   const ta=$('#cin');ta.addEventListener('input',()=>{ta.style.height='auto';ta.style.height=Math.min(120,ta.scrollHeight)+'px';});
 };
 function chatBubble(role,content){return el(`<div class="msg ${role==='user'?'msg-u':'msg-a'}">${md(content)}</div>`);}
+
+let _recog=null;
+function toggleVoiceInput(){
+  const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+  const btn=$('#micBtn');
+  if(!SR){toast('Spracheingabe wird von diesem Browser nicht unterstützt');return;}
+  if(_recog){_recog.stop();return;}
+  _recog=new SR();
+  _recog.lang='de-DE';_recog.interimResults=true;_recog.continuous=false;
+  const ta=$('#cin');
+  const base=ta.value;
+  btn.style.color='var(--red)';btn.textContent='⏹';
+  _recog.onresult=(e)=>{
+    let txt='';for(let i=0;i<e.results.length;i++)txt+=e.results[i][0].transcript;
+    ta.value=(base?base+' ':'')+txt;
+    ta.style.height='auto';ta.style.height=Math.min(120,ta.scrollHeight)+'px';
+  };
+  _recog.onerror=()=>{toast('Spracheingabe-Fehler');};
+  _recog.onend=()=>{btn.style.color='';btn.textContent='🎤';_recog=null;};
+  _recog.start();
+}
 async function sendChat(){
   const inp=$('#cin');const text=inp.value.trim();if(!text)return;inp.value='';inp.style.height='auto';
   const box=$('#cmsgs');box.appendChild(chatBubble('user',text));
   const a=chatBubble('assistant','…');box.appendChild(a);box.scrollTop=box.scrollHeight;
   try{
-    const es=new EventSource(withToken(`${API}/api/chat/stream?text=${encodeURIComponent(text)}`));
+    const es=new EventSource(`${API}/api/chat/stream?text=${encodeURIComponent(text)}`);
     es.onmessage=(ev)=>{const d=JSON.parse(ev.data);
       if(d.partial){a.innerHTML=md(d.partial);}
       if('done' in d){a.innerHTML=md(d.done);if(d.tools&&d.tools.length){a.appendChild(el(`<div style="margin-top:6px;display:flex;gap:4px;flex-wrap:wrap">${d.tools.map(t=>`<span class="chip">🔧 ${t}</span>`).join('')}</div>`));}es.close();}
@@ -1617,7 +1657,7 @@ VIEWS.mind=async(root)=>{
   $('#mNotes').innerHTML=(m.notes||[]).length?m.notes.map(n=>`<div style="font-size:13px;color:#fef3c7;padding:4px 0">• ${esc(n)}</div>`).join(''):'<span style="color:var(--t3);font-size:13px">Lernt noch…</span>';
   $('#mRef').innerHTML=(m.reflections||[]).length?m.reflections.map(r=>`<div style="font-size:13px;padding:6px 0;border-bottom:1px solid var(--bd)">🪞 ${esc(r.content)}</div>`).join(''):'<span style="color:var(--t3);font-size:13px">Noch keine.</span>';
   const feed=$('#mFeed');feed.innerHTML=(m.events||[]).map(e=>`<div style="display:flex;gap:8px;padding:4px 0;font-size:12px;color:#888"><span>${feedIcon(e.type)}</span><span style="flex:1">${esc(e.summary)}</span></div>`).join('');
-  try{const es=new EventSource(withToken(`${API}/api/feed/stream`));es.onmessage=ev=>{if(CUR!=='mind'){es.close();return;}const e=JSON.parse(ev.data);feed.prepend(el(`<div style="display:flex;gap:8px;padding:4px 0;font-size:12px;color:#888"><span>${feedIcon(e.type)}</span><span style="flex:1">${esc(e.summary)}</span></div>`));};}catch(e){}
+  try{const es=new EventSource(`${API}/api/feed/stream`);es.onmessage=ev=>{if(CUR!=='mind'){es.close();return;}const e=JSON.parse(ev.data);feed.prepend(el(`<div style="display:flex;gap:8px;padding:4px 0;font-size:12px;color:#888"><span>${feedIcon(e.type)}</span><span style="flex:1">${esc(e.summary)}</span></div>`));};}catch(e){}
 };
 
 // ════════ ANALYTICS ════════
@@ -1679,6 +1719,16 @@ VIEWS.settings=async(root)=>{
     <div class="c" style="padding:14px;margin-top:10px"><div style="font-size:11px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:var(--t3);margin-bottom:10px">Fähigkeiten · ${tools.length} Tools</div>${Object.entries(cats).map(([c,ts])=>`<div style="margin-bottom:10px"><span class="chip" style="display:inline-block;margin-bottom:4px">${c}</span><div style="font-size:11px;color:var(--t3);margin-top:2px">${ts.map(t=>esc(t.name)).join(' · ')}</div></div>`).join('')}</div>
     <div class="c" style="padding:14px;margin-top:10px">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+        <span style="font-size:11px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:var(--t3)">Push-Benachrichtigungen</span>
+      </div>
+      <div id="pushStatus" style="font-size:12px;color:var(--t3);margin-bottom:10px">Lädt…</div>
+      <div style="display:flex;gap:8px">
+        <button class="btn" id="pushBtn" style="flex:1;padding:8px;font-size:12px" onclick="togglePush()">…</button>
+        <button class="btn-g" style="padding:8px 12px;font-size:12px" onclick="testPush()">Test</button>
+      </div>
+    </div>
+    <div class="c" style="padding:14px;margin-top:10px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
         <span style="font-size:11px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:var(--t3)">Backups</span>
         <button class="btn" style="padding:6px 12px;font-size:11px" onclick="runBackupNow()">💾 Jetzt sichern</button>
       </div>
@@ -1688,8 +1738,52 @@ VIEWS.settings=async(root)=>{
       <span style="font-size:11px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:var(--t3);display:block;margin-bottom:10px">Was hat Alfred selbst verändert?</span>
       <div id="selfChangeList" style="font-size:12px;color:var(--t3)">Lädt…</div>
     </div>`;
-  loadBackups();loadSelfChanges();
+  loadBackups();loadSelfChanges();initPushUI();
 };
+
+function urlB64ToUint8Array(b64){
+  const pad='='.repeat((4-b64.length%4)%4);
+  const base64=(b64+pad).replace(/-/g,'+').replace(/_/g,'/');
+  const raw=atob(base64);
+  return Uint8Array.from([...raw].map(c=>c.charCodeAt(0)));
+}
+async function getPushSub(){
+  if(!('serviceWorker' in navigator)||!('PushManager' in window))return null;
+  const reg=await navigator.serviceWorker.ready;
+  return reg.pushManager.getSubscription();
+}
+async function initPushUI(){
+  const box=$('#pushStatus'),btn=$('#pushBtn');
+  if(!('serviceWorker' in navigator)||!('PushManager' in window)){
+    box.textContent='Dieser Browser unterstützt keine Push-Benachrichtigungen.';btn.disabled=true;btn.textContent='Nicht verfügbar';return;
+  }
+  const sub=await getPushSub();
+  if(sub){box.textContent='✓ Aktiv auf diesem Gerät.';btn.textContent='Deaktivieren';}
+  else{box.textContent='Noch nicht aktiviert auf diesem Gerät.';btn.textContent='Aktivieren';}
+}
+async function togglePush(){
+  const btn=$('#pushBtn');btn.disabled=true;
+  try{
+    const existing=await getPushSub();
+    if(existing){
+      await api('/api/push/unsubscribe',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({endpoint:existing.endpoint})});
+      await existing.unsubscribe();
+      toast('Push deaktiviert');
+    }else{
+      const perm=await Notification.requestPermission();
+      if(perm!=='granted'){toast('Berechtigung verweigert');btn.disabled=false;return;}
+      const {key}=await api('/api/push/vapid-public-key');
+      if(!key){toast('Kein VAPID-Key konfiguriert');btn.disabled=false;return;}
+      const reg=await navigator.serviceWorker.ready;
+      const sub=await reg.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:urlB64ToUint8Array(key)});
+      const j=sub.toJSON();
+      await api('/api/push/subscribe',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(j)});
+      toast('Push aktiviert ✓');
+    }
+  }catch(e){toast('Fehler: '+e.message);}
+  btn.disabled=false;initPushUI();
+}
+async function testPush(){const r=await post('/api/push/test',{});toast(r.sent>0?`✓ An ${r.sent} Gerät(e) gesendet`:'Kein aktives Gerät registriert');}
 
 async function loadBackups(){
   const list=await api('/api/backups');
