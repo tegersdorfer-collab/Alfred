@@ -22,15 +22,15 @@ spricht über Telegram und ein eigenes mobil-first Dashboard.
 - **Code-Write**: selbst-modifizierender Code mit Revert-Funktion
 
 ### Gedächtnis
-- **KZG** (Kurzzeit): rollendes Kontext-Fenster
+- **KZG** (Kurzzeit): rollendes Kontext-Fenster mit **Rolling Checkpoints** — ältere Turns werden via LLM komprimiert statt hart abgeschnitten (MemGPT-Muster)
 - **LZG** (Langzeit): pgvector Embeddings, semantische Suche
 - **Knowledge-Graph**: Entitäten + Relationen (kg_entities / kg_relations)
-- Memory-Extraktion aus Chat & Journal, Konsolidierung, Forgetting-Curve
+- Memory-Extraktion aus Chat & Journal, Konsolidierung, Ebbinghaus Forgetting-Curve
 
 ### Domänen (Concierge-Skills)
 | Domäne | Highlights |
 |--------|-----------|
-| **Health** | HealthKit-Push von iOS, steps, HRV, Schlaf, Gewicht |
+| **Health** | HealthKit-Push von iOS (Hintergrund-Delivery), steps, HRV, HR-Min/Avg/Max, Schlaf, Gewicht, SpO₂ |
 | **Fitness** | Workout-Log, Satz-Tracking, Muskelgruppen-Analyse, AlphaProgression |
 | **Ernährung** | Mahlzeiten, Makros, adaptiver Kalorie-Rechner (Bulk-Trend) |
 | **Habits** | Streak, Commit-Graph, Drag-Reihenfolge, Kategorien |
@@ -45,7 +45,9 @@ spricht über Telegram und ein eigenes mobil-first Dashboard.
 - **13 Views**: Home, Chat, Health, Habits, Tasks, Kalender, Ernährung, Journal, Ziele, Memory, A.I. Mind, Analytics, Settings
 - **Live-Chat** mit SSE-Streaming direkt zum Agent-Kern
 - **Live-Status**: Echtzeit-Aktivitäts-Feed (was Alfred gerade macht)
+- **Ernährung**: 4 Ring-Charts (Kalorien, Protein, Carbs, Fett) mit Overflow-Farbe, adaptive Ziele via BMR × Aktivitätsfaktor + Gewichtstrend-Regression
 - **Charts**: Health-Trends, Schlaf, Schritte, Habits-Konsistenz, Wissens-Graph (vis.js)
+- **`/health` Endpoint**: Systemstatus-Check (DB, Ollama, Telegram, Orchestrator)
 - **Web Push**: PWA-Benachrichtigungen (VAPID)
 - **Backup**: automatische & manuelle DB-Backups
 - **Self-Changes**: Diff-Viewer + Revert für alle Selbst-Änderungen
@@ -59,8 +61,8 @@ spricht über Telegram und ein eigenes mobil-first Dashboard.
 | DB | PostgreSQL 16 + pgvector |
 | Backend | FastAPI + uvicorn |
 | Frontend | Vanilla JS PWA (Chart.js, vis.js) |
-| Kommunikation | python-telegram-bot |
-| Health-Import | Swift-App → HTTP Push |
+| Kommunikation | python-telegram-bot (Text, Voice/Whisper, Fotos/llava:7b) |
+| Health-Import | Swift-App → HealthKit Background Delivery → HTTP Push |
 
 ## Setup
 
