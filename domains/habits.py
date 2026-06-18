@@ -58,23 +58,53 @@ def streak(habit_id: int) -> int:
     return s
 
 
+def _streak_from_dates(done_dates: set) -> int:
+    """Berechnet Streak aus einer Set von date-Objekten."""
+    s = 0
+    d = date.today()
+    if d not in done_dates and (d - timedelta(days=1)) in done_dates:
+        d = d - timedelta(days=1)
+    while d in done_dates:
+        s += 1
+        d -= timedelta(days=1)
+    return s
+
+
 def habit_overview(days: int = 30) -> list[dict]:
-    """Habits mit Streak + letzten N Tagen Logs (für Heatmap)."""
-    out = []
+    """Habits mit Streak + letzten N Tagen Logs – alle Logs in einem Query."""
+    habits_list = list_habits()
+    if not habits_list:
+        return []
+
+    ids = [h["id"] for h in habits_list]
     start = date.today() - timedelta(days=days - 1)
-    for h in list_habits():
-        logs = db.query(
-            "SELECT date, done FROM habit_logs WHERE habit_id=%s AND date >= %s",
-            (h["id"], start),
-        )
-        done_dates = {str(l["date"]) for l in logs if l["done"]}
-        today_done = str(date.today()) in done_dates
+
+    # Einen Query für alle Habit-Logs + alle historischen Logs (für Streak-Berechnung)
+    all_logs = db.query(
+        "SELECT habit_id, date, done FROM habit_logs WHERE habit_id = ANY(%s) AND done=TRUE",
+        (ids,),
+    )
+
+    # Gruppieren nach habit_id
+    from collections import defaultdict
+    logs_by_habit: dict[int, set] = defaultdict(set)
+    for row in all_logs:
+        d = row["date"] if isinstance(row["date"], date) else date.fromisoformat(str(row["date"]))
+        logs_by_habit[row["habit_id"]].add(d)
+
+    today = date.today()
+    out = []
+    for h in habits_list:
+        all_dates = logs_by_habit[h["id"]]
+        recent_dates = {d for d in all_dates if d >= start}
+        done_dates_str = sorted(str(d) for d in recent_dates)
+        today_done = today in recent_dates
         out.append({
             **h,
-            "streak": streak(h["id"]),
+            "streak": _streak_from_dates(all_dates),
             "today_done": today_done,
-            "done_dates": sorted(done_dates),
-            "done_count": len(done_dates),
+            "done_dates": done_dates_str,
+            "done_count": len(recent_dates),
         })
     return out
 

@@ -13,9 +13,14 @@ from fastapi import FastAPI, Request
 from fastapi.responses import HTMLResponse, StreamingResponse, JSONResponse
 
 import config
-from core import db, tools as T
+from core import db, tools as T, backup
 from core.status import BUS
-from domains import habits, fitness, nutrition, journal, goals, weather, tasks as tasks_d
+from core.skill_factory import delete_skill, create_skill, SKILLS_DIR
+from core.timeparse import parse_datetime, parse_date
+from core.jsonutil import extract_json
+from domains import habits, fitness, nutrition, journal, goals, weather, tasks as tasks_d, calendar as cal_d
+from domains.task_executor import classify, learn_from_rejection
+from domains.self_modify import write_file
 
 log = logging.getLogger("alfred.api")
 WEB_DIR = Path(__file__).parent
@@ -27,6 +32,37 @@ def create_app(orch=None) -> FastAPI:
     # Kein App-Token mehr: main.py bindet den Server nur auf die Tailscale-IP,
     # das Netzwerk selbst ist die Zugriffskontrolle (nur eigene Tailscale-Geräte
     # erreichen den Port überhaupt). Macht PWA-Homescreen-Start_url "/" möglich.
+
+    # ── System Health-Check ──────────────────────────────────────────────────
+    @app.get("/health")
+    async def system_health():
+        """Schnell-Check: DB, Ollama, Telegram — für Monitoring und Aufwach-Diagnose."""
+        import httpx as _httpx
+        checks = {}
+
+        # DB
+        try:
+            db.query_one("SELECT 1")
+            checks["db"] = "ok"
+        except Exception as e:
+            checks["db"] = f"error: {e}"
+
+        # Ollama
+        try:
+            async with _httpx.AsyncClient(timeout=3) as c:
+                r = await c.get(f"{config.OLLAMA_BASE_URL}/api/tags")
+            checks["ollama"] = "ok" if r.status_code == 200 else f"http {r.status_code}"
+        except Exception as e:
+            checks["ollama"] = f"error: {e}"
+
+        # Telegram (nur prüfen ob Token gesetzt)
+        checks["telegram"] = "ok" if config.TELEGRAM_BOT_TOKEN else "no token"
+
+        # Orchestrator
+        checks["orchestrator"] = "ok" if orch is not None else "not attached"
+
+        ok = all(v == "ok" for v in checks.values())
+        return JSONResponse({"ok": ok, "checks": checks}, status_code=200 if ok else 503)
 
     # ── Status / Overview ────────────────────────────────────────────────────
     @app.get("/api/status")
@@ -85,13 +121,11 @@ def create_app(orch=None) -> FastAPI:
     # ── Backups ───────────────────────────────────────────────────────────────
     @app.get("/api/backups")
     def get_backups():
-        from core import backup as _backup
-        return _backup.list_backups()
+        return backup.list_backups()
 
     @app.post("/api/backups/run")
     async def trigger_backup():
-        from core import backup as _backup
-        result = await asyncio.to_thread(_backup.run_backup)
+        result = await asyncio.to_thread(backup.run_backup)
         return result
 
     # ── Web Push (PWA-Benachrichtigungen) ───────────────────────────────────────
@@ -166,7 +200,7 @@ def create_app(orch=None) -> FastAPI:
         old_content = d.get("old_content", "")
 
         if kind == "skill_create" or kind == "skill_delete":
-            from core.skill_factory import delete_skill, create_skill, SKILLS_DIR
+
             skill_name = Path(path).stem
             if kind == "skill_create":
                 result = delete_skill(skill_name)
@@ -178,7 +212,7 @@ def create_app(orch=None) -> FastAPI:
             return result
 
         if kind == "code_write":
-            from domains.self_modify import write_file
+
             result = write_file(path, old_content, f"Revert von Change #{change_id}")
             return result
 
@@ -197,8 +231,22 @@ def create_app(orch=None) -> FastAPI:
 
     @app.post("/api/health/import")
     async def health_import():
-        n = await asyncio.to_thread(lambda: __import__("domains.health", fromlist=["import_from_icloud"]).import_from_icloud())
+        import domains.health as _h
+        _h._last_updated = None  # Cache-Bypass: manueller Import soll immer schreiben
+        n = await asyncio.to_thread(_h.import_health)
         return {"ok": True, "days": n}
+
+    @app.post("/api/health/push")
+    async def health_push(req: Request):
+        """Swift-App pusht HealthKit-Daten direkt (keine Pull-Abhängigkeit mehr)."""
+        import domains.health as _h
+        try:
+            data = await req.json()
+        except Exception:
+            return JSONResponse({"ok": False, "error": "Invalid JSON"}, status_code=400)
+        _h._last_updated = None  # Push überschreibt immer (neueste Daten vom Gerät)
+        n = await asyncio.to_thread(_h.process_health_data, data)
+        return {"ok": True, "written": n == 1}
 
     @app.post("/api/health/manual")
     async def health_manual(req: Request):
@@ -238,9 +286,8 @@ def create_app(orch=None) -> FastAPI:
     async def reorder_habits(req: Request):
         """Body: [{id: 1, sort_order: 0}, ...]"""
         items = await req.json()
-        from core import db as _db
         for item in items:
-            _db.execute("UPDATE habits SET sort_order = %s WHERE id = %s",
+            db.execute("UPDATE habits SET sort_order = %s WHERE id = %s",
                         (item["sort_order"], item["id"]))
         return {"ok": True}
 
@@ -256,8 +303,7 @@ def create_app(orch=None) -> FastAPI:
             fields.append("emoji = %s"); vals.append(d["emoji"])
         if fields:
             vals.append(hid)
-            from core import db as _db
-            _db.execute(f"UPDATE habits SET {', '.join(fields)} WHERE id = %s", vals)
+            db.execute(f"UPDATE habits SET {', '.join(fields)} WHERE id = %s", vals)
         return {"ok": True}
 
     @app.post("/api/habits/{hid}/log")
@@ -286,7 +332,7 @@ def create_app(orch=None) -> FastAPI:
     @app.post("/api/tasks")
     async def create_task(req: Request):
         d = await req.json()
-        from core.timeparse import parse_datetime
+
         due = parse_datetime(d["due"]) if d.get("due") else None
         tid = tasks_d.create_task(title=d["title"], priority=d.get("priority", "medium"),
                                   kind=d.get("kind", "task"), due=due,
@@ -297,7 +343,7 @@ def create_app(orch=None) -> FastAPI:
             db.execute("UPDATE tasks SET assigned_to=%s WHERE id=%s", (explicit, tid))
         elif orch:
             try:
-                from domains.task_executor import classify
+
                 assignee = await classify(d["title"], d.get("notes"), orch.llm)
                 db.execute("UPDATE tasks SET assigned_to=%s WHERE id=%s", (assignee, tid))
             except Exception:
@@ -329,7 +375,7 @@ def create_app(orch=None) -> FastAPI:
         # Alfred lernt daraus
         if orch and reason:
             try:
-                from domains.task_executor import learn_from_rejection
+
                 import asyncio
                 asyncio.create_task(learn_from_rejection(tid, reason, orch.lzg, orch.embed_llm))
             except Exception:
@@ -377,7 +423,7 @@ def create_app(orch=None) -> FastAPI:
     @app.post("/api/calendar")
     async def create_event(req: Request):
         d = await req.json()
-        from core.timeparse import parse_datetime
+
         from datetime import datetime as dt_
         def _parse(s):
             if not s: return None
@@ -396,7 +442,7 @@ def create_app(orch=None) -> FastAPI:
 
     @app.put("/api/calendar/{uid}")
     async def update_event(uid: str, req: Request):
-        from domains import calendar as cal_d
+
         from datetime import datetime as dt_
         d = await req.json()
         def _parse(s):
@@ -412,7 +458,7 @@ def create_app(orch=None) -> FastAPI:
 
     @app.delete("/api/calendar/{uid}")
     def delete_event(uid: str):
-        from domains import calendar as cal_d
+
         cal_d.delete_event(uid)
         return {"ok": True}
 
@@ -469,7 +515,7 @@ def create_app(orch=None) -> FastAPI:
 
         if not orch:
             return JSONResponse({"error": "kein Kern"}, 503)
-        from core.jsonutil import extract_json
+
         prompt = (
             "Parse diesen Trainings-Dump in JSON. Format:\n"
             '{"title":"...","type":"strength|run|mobility","duration_min":null,'
@@ -509,6 +555,120 @@ def create_app(orch=None) -> FastAPI:
                                  calories=d.get("calories"), protein_g=d.get("protein_g"),
                                  carbs_g=d.get("carbs_g"), fat_g=d.get("fat_g"))
         return {"id": mid}
+
+    @app.get("/api/nutrition/goals")
+    def nutrition_goals():
+        """Adaptiver Kalorie-Rechner für Bulk.
+        Basis: BMR × Aktivitätsfaktor + Surplus.
+        Anpassung: Gewichtstrend aus DB vs. Zielrate → ±kcal akkumuliert in settings.
+        """
+        HEIGHT_CM = 192
+        AGE = 19
+        WEIGHT_KG = 84        # Stargewicht / Fallback
+        TARGET_WEIGHT = 90
+        BULK_SURPLUS = 300
+        ACTIVITY_FACTOR = 1.65
+        TARGET_KG_PER_WEEK = 0.25   # sauberer Bulk
+        ADJUST_STEP = 150            # kcal pro Anpassungsschritt
+        MAX_ADJUSTMENT = 600         # maximale Gesamtabweichung vom Basis-Ziel
+
+        # Aktuelles Gewicht: neuester DB-Eintrag
+        w_row = db.query_one(
+            "SELECT weight, date FROM health_data WHERE weight IS NOT NULL ORDER BY date DESC LIMIT 1"
+        )
+        current_weight = w_row["weight"] if w_row else WEIGHT_KG
+
+        # BMR mit aktuellem Gewicht
+        bmr = 10 * current_weight + 6.25 * HEIGHT_CM - 5 * AGE + 5
+        tdee_base = bmr * ACTIVITY_FACTOR
+
+        # Aktivitäts-Bonus heutiger Tag vs. 7-Tage-Schnitt
+        act_rows = db.query(
+            "SELECT active_calories FROM health_data "
+            "WHERE date >= CURRENT_DATE - 7 AND active_calories IS NOT NULL ORDER BY date DESC LIMIT 7"
+        )
+        avg_active = sum(r["active_calories"] for r in act_rows) / len(act_rows) if act_rows else 350
+        today_row = db.query_one("SELECT active_calories FROM health_data WHERE date = CURRENT_DATE")
+        today_active = (today_row or {}).get("active_calories") or avg_active
+        activity_bonus = max(0, today_active - avg_active)
+
+        # ── Gewichtstrend-Analyse (lineare Regression) ───────────────────────
+        w_rows = db.query(
+            "SELECT date, weight FROM health_data WHERE weight IS NOT NULL "
+            "AND date >= CURRENT_DATE - 60 ORDER BY date ASC"
+        )
+        trend_status = "insufficient_data"
+        actual_kg_per_week = None
+        trend_adjustment = int(db.get_setting("bulk_kcal_adjustment") or 0)
+
+        if len(w_rows) >= 2:
+            # Tage seit erstem Eintrag als x, Gewicht als y
+            from datetime import date as _date
+            dates = [r["date"] if isinstance(r["date"], _date) else _date.fromisoformat(str(r["date"])) for r in w_rows]
+            weights = [float(r["weight"]) for r in w_rows]
+            x0 = dates[0]
+            xs = [(d - x0).days for d in dates]
+            n = len(xs)
+            mx = sum(xs) / n
+            my = sum(weights) / n
+            denom = sum((xi - mx) ** 2 for xi in xs)
+            if denom > 0:
+                slope_per_day = sum((xs[i] - mx) * (weights[i] - my) for i in range(n)) / denom
+                actual_kg_per_week = round(slope_per_day * 7, 3)
+                span_days = (dates[-1] - dates[0]).days
+
+                if span_days >= 14:
+                    diff = actual_kg_per_week - TARGET_KG_PER_WEEK
+                    if diff < -0.05:       # zu langsam → mehr essen
+                        trend_status = "too_slow"
+                        new_adj = min(trend_adjustment + ADJUST_STEP, MAX_ADJUSTMENT)
+                    elif diff > 0.1:       # zu schnell → weniger essen
+                        trend_status = "too_fast"
+                        new_adj = max(trend_adjustment - ADJUST_STEP, -MAX_ADJUSTMENT)
+                    else:
+                        trend_status = "on_track"
+                        new_adj = trend_adjustment
+
+                    # Nur speichern wenn sich etwas geändert hat
+                    if new_adj != trend_adjustment:
+                        db.set_setting("bulk_kcal_adjustment", str(new_adj))
+                        trend_adjustment = new_adj
+                else:
+                    trend_status = "not_enough_span"
+
+        tdee = tdee_base + activity_bonus
+        kcal_goal = round(tdee + BULK_SURPLUS + trend_adjustment)
+
+        # Makros: 2.2g P/kg, 1.0g F/kg, Rest Carbs
+        protein_g = round(current_weight * 2.2)
+        fat_g = round(current_weight * 1.0)
+        carbs_g = round((kcal_goal - protein_g * 4 - fat_g * 9) / 4)
+
+        return {
+            "kcal": kcal_goal,
+            "protein": protein_g,
+            "carbs": max(carbs_g, 50),
+            "fat": fat_g,
+            "meta": {
+                "bmr": round(bmr),
+                "current_weight": current_weight,
+                "activity_factor": ACTIVITY_FACTOR,
+                "tdee_base": round(tdee_base),
+                "activity_bonus": round(activity_bonus),
+                "tdee": round(tdee),
+                "surplus": BULK_SURPLUS,
+                "trend_adjustment": trend_adjustment,
+                "trend_status": trend_status,
+                "actual_kg_per_week": actual_kg_per_week,
+                "target_kg_per_week": TARGET_KG_PER_WEEK,
+            }
+        }
+
+    @app.post("/api/nutrition/goals/reset-adjustment")
+    def reset_bulk_adjustment():
+        """Setzt die akkumulierte Kalorie-Anpassung zurück."""
+        db.set_setting("bulk_kcal_adjustment", "0")
+        return {"ok": True}
 
     # ── Journal ──────────────────────────────────────────────────────────────────
     @app.get("/api/journal")
@@ -590,7 +750,6 @@ def create_app(orch=None) -> FastAPI:
     @app.post("/api/goals")
     async def create_goal(req: Request):
         d = await req.json()
-        from core.timeparse import parse_date
         dl = parse_date(d["deadline"]) if d.get("deadline") else None
         gid = goals.create_goal(title=d["title"], category=d.get("category", "general"),
                                 target_value=d.get("target_value"), unit=d.get("unit"),

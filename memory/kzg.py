@@ -18,19 +18,39 @@ class Turn:
 class KZG:
     """
     Kurzzeitgedächtnis: Speichert den laufenden Gesprächsverlauf.
-    Ältere Turns werden abgeschnitten wenn Limit erreicht.
+    Wenn das Limit erreicht wird, werden ältere Turns in einem Checkpoint-Summary
+    komprimiert (MemGPT-Muster) statt hart abgeschnitten.
     """
 
     def __init__(self, max_turns: int | None = None):
         self.max_turns = max_turns or config.KZG_MAX_TURNS
         self._turns: list[Turn] = []
         self._session_start = datetime.now()
+        self._checkpoint_summary: str | None = None  # komprimierte ältere Turns
+        self._needs_checkpoint: bool = False          # Orchestrator soll Summary bauen
 
     def add(self, role: str, content: str) -> None:
         self._turns.append(Turn(role=role, content=content))
-        # Älteste Turns entfernen wenn über Limit
         if len(self._turns) > self.max_turns:
-            self._turns = self._turns[-self.max_turns:]
+            # Wenn noch kein Checkpoint läuft: markieren statt hart schneiden
+            if not self._needs_checkpoint:
+                self._needs_checkpoint = True
+            # Hard-Fallback: nie mehr als max_turns * 1.5 im RAM
+            if len(self._turns) > int(self.max_turns * 1.5):
+                self._turns = self._turns[-self.max_turns:]
+
+    def should_checkpoint(self) -> bool:
+        """True wenn der Orchestrator einen Checkpoint-Summary generieren soll."""
+        return self._needs_checkpoint
+
+    def apply_checkpoint(self, summary: str, compress_count: int) -> None:
+        """
+        Speichert den generierten Summary und entfernt die zusammengefassten Turns.
+        compress_count: wie viele der ältesten Turns komprimiert wurden.
+        """
+        self._checkpoint_summary = summary
+        self._turns = self._turns[compress_count:]
+        self._needs_checkpoint = False
 
     def get_messages(self) -> list[Message]:
         return [Message(role=t.role, content=t.content) for t in self._turns]
@@ -38,9 +58,8 @@ class KZG:
     def recent_messages(self, max_tokens: int = 3000, min_turns: int = 4) -> list[Message]:
         """
         Jüngste Turns innerhalb eines Token-Budgets (4 Zeichen ≈ 1 Token).
-        Passt sich an Nachrichtenlänge an statt hart auf N Turns zu schneiden.
-        Ältere Fakten gehen nicht verloren – der MemoryExtractor destilliert sie ins LZG,
-        von wo die Memory-Suche sie bei Bedarf zurückholt.
+        Wenn ein Checkpoint-Summary existiert, wird er als erster user-Turn eingebettet
+        damit der Kontext früherer Turns nicht verloren geht.
         """
         selected: list[Turn] = []
         budget = max_tokens
@@ -51,7 +70,19 @@ class KZG:
             selected.append(t)
             budget -= cost
         selected.reverse()
-        return [Message(role=t.role, content=t.content) for t in selected]
+        messages = [Message(role=t.role, content=t.content) for t in selected]
+        if self._checkpoint_summary and messages:
+            summary_msg = Message(
+                role="user",
+                content=f"[Gesprächs-Zusammenfassung früherer Turns]\n{self._checkpoint_summary}",
+            )
+            messages = [summary_msg] + messages
+        return messages
+
+    def get_turns_for_summary(self) -> list[Turn]:
+        """Gibt die älteste Hälfte der Turns zurück – für Checkpoint-Generierung."""
+        half = max(4, len(self._turns) // 2)
+        return self._turns[:half]
 
     def get_turns(self) -> list[Turn]:
         return list(self._turns)

@@ -1,98 +1,128 @@
 """
 Health-Domäne (alfred-nativ).
-Quelle: iCloud Health.json (vom iOS-Shortcut geschrieben) – direkt gelesen,
-KEINE Abhängigkeit von der ai-dashboard. Schreibt in alfred.health_data.
+Datenquelle: Swift-App pusht via POST /api/health/push (HealthKit background delivery).
+Fallback-Poll alle 30 Minuten falls Push nicht kommt (HEALTH_API_URL).
 """
-import json
 import logging
-import os
-from datetime import date, datetime, timedelta
+from datetime import datetime
+
+import httpx
 
 from core import db
 import config
 
 log = logging.getLogger(__name__)
 
-# Mapping Health.json-Key → (Spalte, Transform)
 _R2 = lambda v: round(v * 100) / 100
 _R1 = lambda v: round(v * 10) / 10
-_MAP = {
-    "stepCount":            ("steps",            lambda v: round(v)),
-    "activeCalories":       ("active_calories",  lambda v: round(v)),
-    "exerciseMinutes":      ("exercise_minutes", lambda v: round(v)),
-    "restingHeartRate":     ("resting_hr",       lambda v: round(v)),
-    "heartRateVariability": ("hrv",              _R2),
-    "vo2Max":               ("vo2max",           _R2),
-    "oxygenSaturation":     ("blood_oxygen",     lambda v: round(v * 100 * 100) / 100),
-    "weight":               ("weight",           _R2),
-    "bmi":                  ("bmi",              _R2),
-    "bodyFat":              ("body_fat",         lambda v: round(v * 100 * 100) / 100),
-    "walkingDistance":      ("distance",         lambda v: round((v / 1000) * 100) / 100),
-    "dietaryEnergy":        ("calories",         lambda v: round(v)),
-    "dietaryProtein":       ("protein",          _R1),
-    "dietaryCarbohydrates": ("carbs",            _R1),
-    "dietaryFatTotal":      ("fat",              _R1),
-    "wristTemperature":     ("body_temp",        _R2),
-}
 
-_COLS = ["steps", "active_calories", "exercise_minutes", "stand_hours", "distance",
-         "weight", "body_fat", "bmi", "resting_hr", "hrv", "vo2max",
-         "sleep_duration", "sleep_deep", "sleep_rem", "sleep_core", "sleep_awake",
-         "blood_oxygen", "body_temp", "calories", "protein", "carbs", "fat", "water"]
+_last_updated: str | None = None  # Änderungserkennung via lastUpdated-Feld
 
 
-def _health_json_path() -> str:
-    return os.path.expanduser(config.HEALTH_JSON_PATH)
+def process_health_data(data: dict) -> int:
+    """
+    Verarbeitet ein Health-JSON-Dict und schreibt es in die DB.
+    Wird sowohl vom Pull (import_health) als auch vom Push-Endpoint genutzt.
+    Gibt 1 bei erfolgreichem Schreiben zurück, 0 sonst.
+    """
+    global _last_updated
+
+    last_updated = data.get("lastUpdated", "")
+    if last_updated and last_updated == _last_updated:
+        log.debug("🩺 Health: keine neuen Daten (lastUpdated unverändert)")
+        return 0
+    _last_updated = last_updated
+
+    day = data.get("date")
+    if not day:
+        log.warning("Health-JSON enthält kein 'date'-Feld")
+        return 0
+
+    fields: dict = {}
+
+    def s(col, val):
+        if val is not None:
+            fields[col] = val
+
+    s("steps",            _safe(data.get("steps"), round))
+    s("active_calories",  _safe(data.get("activeEnergyKcal"), round))
+    s("exercise_minutes", _safe(data.get("exerciseMinutes"), round))
+    s("weight",           _safe(data.get("weightKg"), _R2))
+    s("hrv",      _safe(data.get("hrv") or data.get("heartRateVariability"), _R2))
+    s("vo2max",   _safe(data.get("vo2Max"), _R2))
+    s("bmi",      _safe(data.get("bmi"), _R2))
+    s("body_fat", _safe(data.get("bodyFatPercent"), _R2))
+    # oxygenSaturationPercent ist schon 0-100; oxygenSaturation war 0-1
+    spo2 = data.get("oxygenSaturationPercent") or data.get("oxygenSaturation")
+    if spo2 is not None:
+        s("blood_oxygen", _R2(spo2 if spo2 > 2 else spo2 * 100))
+    s("body_temp", _safe(data.get("wristTemperature"), _R2))
+    s("calories",  _safe(data.get("dietaryEnergy"), round))
+    s("protein",   _safe(data.get("dietaryProtein"), _R1))
+    s("carbs",     _safe(data.get("dietaryCarbohydrates"), _R1))
+    s("fat",       _safe(data.get("dietaryFatTotal"), _R1))
+    s("water",     _safe(data.get("water"), _R1))
+    # distanceWalkingRunningKm (Swift) oder walkingDistanceKm (Legacy)
+    s("distance",  _safe(data.get("distanceWalkingRunningKm") or data.get("walkingDistanceKm"), _R2))
+
+    # Herzfrequenz
+    s("resting_hr", _safe(data.get("restingHeartRate"), round))
+    s("hr_avg",     _safe(data.get("heartRateAvg"), round))
+    s("hr_max",     _safe(data.get("heartRateMax"), round))
+    s("hr_min",     _safe(data.get("heartRateMin"), round))
+
+    sleep = data.get("sleep") or {}
+    s("sleep_duration", _safe(sleep.get("totalMinutes"),  lambda v: _R2(v / 60)))
+    s("sleep_deep",     _safe(sleep.get("deepMinutes"),   lambda v: _R2(v / 60)))
+    s("sleep_rem",      _safe(sleep.get("remMinutes"),    lambda v: _R2(v / 60)))
+    s("sleep_core",     _safe(sleep.get("coreMinutes"),   lambda v: _R2(v / 60)))
+    in_bed = sleep.get("inBedMinutes")
+    total  = sleep.get("totalMinutes")
+    if in_bed is not None and total is not None:
+        s("sleep_awake", _R2((in_bed - total) / 60))
+
+    if not fields:
+        log.warning("Health-JSON: keine bekannten Felder gefunden")
+        return 0
+
+    cols = list(fields.keys())
+    updates = ", ".join(f"{c}=EXCLUDED.{c}" for c in cols)
+    sql = (
+        f"INSERT INTO health_data (date, {', '.join(cols)}, updated_at) "
+        f"VALUES (%s, {', '.join(['%s']*len(cols))}, NOW()) "
+        f"ON CONFLICT (date) DO UPDATE SET {updates}, updated_at=NOW()"
+    )
+    db.execute(sql, tuple([day] + [fields[c] for c in cols]))
+    log.info(f"🩺 Health: {day} geschrieben ({len(fields)} Felder, via {'push' if last_updated else 'pull'})")
+    return 1
+
+
+def import_health() -> int:
+    """Fallback-Poll: holt health_latest.json von der Swift-App."""
+    url = getattr(config, "HEALTH_API_URL", "")
+    if not url:
+        return 0
+    try:
+        resp = httpx.get(url, timeout=10)
+        resp.raise_for_status()
+        data = resp.json()
+    except Exception as e:
+        log.warning(f"Health-Fetch fehlgeschlagen ({url}): {e}")
+        return 0
+    return process_health_data(data)
+
+
+def _safe(val, fn):
+    if val is None:
+        return None
+    try:
+        return fn(val)
+    except Exception:
+        return None
 
 
 def import_from_icloud() -> int:
-    """Liest Health.json und upsertet alle enthaltenen Tage. Gibt Anzahl Tage zurück."""
-    path = _health_json_path()
-    if not os.path.exists(path):
-        log.warning(f"Health.json nicht gefunden: {path}")
-        return 0
-    with open(path) as f:
-        data = json.load(f)
-
-    days: dict[str, dict] = {}
-
-    def setv(d, field, value):
-        days.setdefault(d, {})[field] = value
-
-    for key, (col, fn) in _MAP.items():
-        for e in data.get(key, []) or []:
-            try:
-                setv(e["date"], col, fn(e["value"]))
-            except Exception:
-                pass
-
-    # Schlaf (Minuten → Stunden) + Stadien
-    for e in data.get("sleepTime", []) or []:
-        try:
-            d = e["date"]
-            setv(d, "sleep_duration", _R2(e["value"] / 60))
-            st = e.get("stages") or {}
-            if st:
-                setv(d, "sleep_deep",  _R2(st.get("deep", 0) / 60))
-                setv(d, "sleep_rem",   _R2(st.get("rem", 0) / 60))
-                setv(d, "sleep_core",  _R2(st.get("core", 0) / 60))
-                setv(d, "sleep_awake", _R2(st.get("awake", 0) / 60))
-        except Exception:
-            pass
-
-    n = 0
-    for d, fields in days.items():
-        if not fields:
-            continue
-        cols = list(fields.keys())
-        updates = ", ".join(f"{c}=EXCLUDED.{c}" for c in cols)
-        sql = (f"INSERT INTO health_data (date, {', '.join(cols)}, updated_at) "
-               f"VALUES (%s, {', '.join(['%s']*len(cols))}, NOW()) "
-               f"ON CONFLICT (date) DO UPDATE SET {updates}, updated_at=NOW()")
-        db.execute(sql, tuple([d] + [fields[c] for c in cols]))
-        n += 1
-    log.info(f"🩺 Health-Import: {n} Tage aus iCloud aktualisiert")
-    return n
+    return import_health()
 
 
 def recent(days: int = 7) -> list[dict]:

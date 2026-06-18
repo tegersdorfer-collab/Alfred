@@ -20,13 +20,15 @@ def ensure_single_instance():
     pidfile = "/tmp/alfred.pid"
     if os.path.exists(pidfile):
         try:
-            old_pid = int(open(pidfile).read().strip())
+            with open(pidfile) as f:
+                old_pid = int(f.read().strip())
             os.kill(old_pid, 0)
             log.error(f"Alfred läuft bereits (PID {old_pid}). Beende mit: kill {old_pid}")
             sys.exit(1)
         except (ProcessLookupError, ValueError, OSError):
             pass  # Alter Prozess tot
-    open(pidfile, "w").write(str(os.getpid()))
+    with open(pidfile, "w") as f:
+        f.write(str(os.getpid()))
     import atexit
     atexit.register(lambda: os.unlink(pidfile) if os.path.exists(pidfile) else None)
 

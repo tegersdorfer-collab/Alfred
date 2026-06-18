@@ -31,13 +31,28 @@ from core.reflection import Reflection
 from core.db import log_event
 
 from tools.search import WebSearch
-from domains import pattern_detector
+from domains import pattern_detector, alphaprogression
+from domains.task_executor import suggest_one
+from domains.insight_engine import generate_insight_task
 from tools.dashboard import DashboardReader
 from tools.reminders import ReminderStore
+from core import backup
+from core.skill_factory import load_all_on_startup
 from core.status import BUS
 import config
 
 log = logging.getLogger(__name__)
+
+
+def _safe_task(coro, label: str):
+    """Erstellt einen asyncio-Task mit Exception-Logging statt silenter Failure."""
+    async def _wrapper():
+        try:
+            await coro
+        except Exception as e:
+            log.warning(f"Background-Task '{label}' fehlgeschlagen: {e}", exc_info=True)
+            db.log_error(label, e)
+    return asyncio.create_task(_wrapper())
 
 
 def _load_identity() -> str:
@@ -241,12 +256,12 @@ class Orchestrator:
         # ───────────────────────────────────────────────────────────────────────
 
         # ── Alpha Progression Auto-Import ──────────────────────────────────────
-        from domains import alphaprogression as _ap
+        _ap = alphaprogression
         _ap_url = _ap.extract_link(msg.text)
         if _ap_url:
             BUS.emit("thinking", "Alpha Progression wird importiert…")
             try:
-                import asyncio as _asyncio
+                _asyncio = asyncio
                 loop = _asyncio.get_running_loop()
                 response = await loop.run_in_executor(None, _ap.fetch_and_log, _ap_url)
             except Exception as _e:
@@ -257,7 +272,7 @@ class Orchestrator:
             BUS.emit("response", response)
             # Task-Vorschlag nach Workout-Import
             if "✅" in response:
-                asyncio.create_task(self._suggest_from_event(f"Neues Workout eingetragen: {response[:120]}"))
+                _safe_task(self._suggest_from_event(f"Neues Workout eingetragen: {response[:120]}"), "suggest_from_event")
             return
         # ───────────────────────────────────────────────────────────────────────
 
@@ -298,13 +313,13 @@ class Orchestrator:
 
         # Hintergrund: Lernen
         tools_used = [t["tool"] for t in trace]
-        asyncio.create_task(self._post_turn(msg.text, response))
+        _safe_task(self._post_turn(msg.text, response), "post_turn")
         # Trigger für Task-Vorschlag bei relevanten Tool-Nutzungen
         trigger_tools = {"create_habit", "create_task", "create_goal", "add_event", "log_workout"}
         if any(t in trigger_tools for t in tools_used):
-            asyncio.create_task(self._suggest_from_event(
+            _safe_task(self._suggest_from_event(
                 f"Alfred hat gerade '{', '.join(t for t in tools_used if t in trigger_tools)}' ausgeführt: {msg.text[:120]}"
-            ))
+            ), "suggest_from_event")
         self._resume_idle()
 
     async def dashboard_respond(self, text: str, stream_cb=None) -> tuple[str, list]:
@@ -314,12 +329,12 @@ class Orchestrator:
         self._persist_msg("user", text, channel="dashboard")
 
         # ── Alpha Progression Auto-Import ──────────────────────────────────────
-        from domains import alphaprogression as _ap
+        _ap = alphaprogression
         _ap_url = _ap.extract_link(text)
         if _ap_url:
             BUS.emit("thinking", "Alpha Progression wird importiert…")
             try:
-                import asyncio as _asyncio
+                _asyncio = asyncio
                 loop = _asyncio.get_running_loop()
                 response = await loop.run_in_executor(None, _ap.fetch_and_log, _ap_url)
             except Exception as _e:
@@ -348,7 +363,7 @@ class Orchestrator:
         self.kzg.add("assistant", response)
         self._persist_msg("assistant", response, channel="dashboard",
                           meta={"tools": [t["tool"] for t in trace], "model": model})
-        asyncio.create_task(self._post_turn(text, response))
+        _safe_task(self._post_turn(text, response), "post_turn")
         return response, trace
 
     async def _post_turn(self, user_text: str, response: str) -> None:
@@ -358,16 +373,16 @@ class Orchestrator:
         if n > 0:
             BUS.emit("memory", f"🧠 {n} neue{'r' if n == 1 else ''} Fakt{'' if n == 1 else 'en'} gespeichert")
             # Neue Fakten/Ziele → Task-Vorschlag
-            asyncio.create_task(self._suggest_from_event(
+            _safe_task(self._suggest_from_event(
                 f"Neue Information über Timo: {user_text[:100]}"
-            ))
+            ), "suggest_from_memory")
         else:
             BUS.emit("idle", "Bereit")
 
     async def _suggest_from_event(self, trigger: str) -> None:
         """Generiert einen Task-Vorschlag aus einem Datenereignis (fire & forget)."""
         try:
-            from domains.task_executor import suggest_one
+
             await suggest_one(trigger, self.bg_llm, self.lzg)
         except Exception as e:
             log.debug(f"suggest_from_event: {e}")
@@ -417,131 +432,147 @@ class Orchestrator:
             except Exception as e:
                 log.debug(f"Thermal-Check: {e}", exc_info=True)
 
-            try:
-                await self.autopilot.tick()
-            except Exception as e:
-                log.debug(f"Autopilot-Tick: {e}", exc_info=True)
-                db.log_error("Autopilot-Tick", e)
+            await self._tick_autopilot()
 
-            # Wartung nur wenn Timo nicht aktiv ist (Modell freihalten)
             if not self._user_active():
-                # Tages-Reflexion (gated, 1x/Tag intern)
-                try:
-                    await self.reflection.daily_reflection()
-                except Exception as e:
-                    log.debug(f"Reflexion: {e}", exc_info=True)
-                    db.log_error("Reflexion", e)
-                # Memory-Wartung max 1x/Stunde:
-                # Nur noch Vektor-Dedup (kein LLM-Compressor → kein Halluzinationsrisiko)
-                now = datetime.now()
-                if (self._last_consolidation is None or
-                        (now - self._last_consolidation).total_seconds() > 3600):
-                    self._last_consolidation = now
-                    try:
-                        await self.consolidator.consolidate_silent()
-                    except Exception as e:
-                        log.debug(f"Consolidator: {e}", exc_info=True)
-                        db.log_error("Memory-Consolidator", e)
-                    try:
-                        stats = await self.forgetting.run()
-                        if stats["forgotten"] or stats["chat_pruned"]:
-                            log.info(f"🕐 Forgetting: {stats}")
-                    except Exception as e:
-                        log.debug(f"ForgettingCurve: {e}", exc_info=True)
-                        db.log_error("ForgettingCurve", e)
-                    # Tägliches DB-Backup (gated, läuft intern nur 1x/Tag)
-                    try:
-                        from core import backup as _backup
-                        await asyncio.to_thread(_backup.maybe_run_daily)
-                    except Exception as e:
-                        log.debug(f"Backup: {e}", exc_info=True)
-                        db.log_error("DB-Backup", e)
-                    # Health aus iCloud nachziehen: stündlich, oder alle 15min wenn heute fehlt
-                    try:
-                        now_h = datetime.now()
-                        today_missing = not db.query_one(
-                            "SELECT 1 FROM health_data WHERE date=CURRENT_DATE AND steps IS NOT NULL LIMIT 1"
-                        )
-                        health_interval = 900 if today_missing else 3600
-                        since_last = (now_h - self._last_health_refresh).total_seconds() if self._last_health_refresh else health_interval + 1
-                        if since_last >= health_interval:
-                            self._last_health_refresh = now_h
-                        new_days = await asyncio.to_thread(self._dashboard.refresh_health) if since_last >= health_interval else 0
-                        if new_days and self._proactive_tracker.can_send_data_event():
-                            # Neue Gesundheitsdaten → proaktive Nachricht + Task-Vorschlag
-                            thought = await self._proactive_engine.generate()
-                            if thought and await self._proactive_engine.evaluate(thought):
-                                await self.autopilot._send(thought, kind="health_update")
-                                self._proactive_tracker.record_sent()
-                            # Task-Vorschlag aus Health-Daten (max 1x/24h)
-                            _since_last_sug = (
-                                (now_h - self._last_health_suggestion).total_seconds()
-                                if self._last_health_suggestion else 86401
-                            )
-                            if _since_last_sug > 86400:
-                                try:
-                                    from domains.task_executor import suggest_one
-                                    ok = await suggest_one(
-                                        f"Neue Gesundheitsdaten für {new_days} Tag(e) importiert",
-                                        self.bg_llm, self.lzg
-                                    )
-                                    if ok:
-                                        self._last_health_suggestion = now_h
-                                except Exception as _e:
-                                    log.debug(f"Health-Suggestion: {_e}")
-                    except Exception as e:
-                        log.debug(f"Health-Refresh: {e}", exc_info=True)
-                        db.log_error("Health-Refresh", e)
+                await self._tick_reflection()
+                await self._tick_maintenance()   # Memory, Backup, Health (1h-Gate)
+                await self._tick_health()        # Health-Refresh (30min-Gate)
+                await self._tick_patterns()      # Pattern-Erkennung (1d-Gate)
+                await self._tick_insights()      # Insight-Engine (4h-Gate)
 
-                # Pattern-Erkennung 1x täglich (86400s)
-                now_p = datetime.now()
-                if (self._last_pattern_run is None or
-                        (now_p - self._last_pattern_run).total_seconds() > 86400):
-                    self._last_pattern_run = now_p
-                    try:
-                        n = await pattern_detector.update_memories(self.lzg, self.bg_llm)
-                        if n:
-                            log.info(f"🔍 Pattern Detector: {n} neue Muster gespeichert")
-                    except Exception as e:
-                        log.debug(f"Pattern Detector: {e}", exc_info=True)
-                        db.log_error("Pattern-Detector", e)
+            await asyncio.sleep(self._next_delay())
 
-                # Insight-Engine: alle 4h wenn keine aktiven Alfred-Tasks
-                now_i = datetime.now()
-                _since_insight = (
-                    (now_i - self._last_insight_run).total_seconds()
-                    if self._last_insight_run else 14401
-                )
-                if _since_insight > 14400:
-                    has_active = db.query(
-                        "SELECT 1 FROM tasks WHERE assigned_to='alfred' AND status NOT IN ('done','archived') "
-                        "AND (suggestion_status IS NULL OR suggestion_status='accepted') LIMIT 1"
-                    )
-                    if not has_active:
-                        self._last_insight_run = now_i
-                        try:
-                            from domains.insight_engine import generate_insight_task
-                            await generate_insight_task(self.bg_llm, self.lzg)
-                        except Exception as e:
-                            log.debug(f"Insight-Engine: {e}", exc_info=True)
-                            db.log_error("Insight-Engine", e)
+    async def _tick_autopilot(self) -> None:
+        try:
+            await self.autopilot.tick()
+        except Exception as e:
+            log.debug(f"Autopilot-Tick: {e}", exc_info=True)
+            db.log_error("Autopilot-Tick", e)
 
-            # Adaptiver Takt: kürzer wenn Alfred gerade an Tasks arbeitet
+    async def _tick_reflection(self) -> None:
+        try:
+            await self.reflection.daily_reflection()
+        except Exception as e:
+            log.debug(f"Reflexion: {e}", exc_info=True)
+            db.log_error("Reflexion", e)
+
+    async def _tick_maintenance(self) -> None:
+        """Memory-Konsolidierung + Forgetting + Backup + KZG-Checkpoint — max 1x/Stunde."""
+        now = datetime.now()
+        if self._last_consolidation and (now - self._last_consolidation).total_seconds() < 3600:
+            # KZG-Checkpoint kann öfter ausgeführt werden (unabhängig vom 1h-Gate)
+            await self._maybe_kzg_checkpoint()
+            return
+        self._last_consolidation = now
+        for coro, label in [
+            (self.consolidator.consolidate_silent(), "Memory-Consolidator"),
+            (self._run_forgetting(), "ForgettingCurve"),
+            (asyncio.to_thread(backup.maybe_run_daily), "DB-Backup"),
+        ]:
             try:
-                nxt = self._reminders.next_due_seconds()
+                await coro
             except Exception as e:
-                log.debug(f"Reminder-next_due: {e}", exc_info=True)
-                nxt = None
-            # Aktive Alfred-Task? → 8s Takt statt 60s
-            from core import db as _db
-            has_active_task = _db.query(
-                "SELECT 1 FROM tasks WHERE assigned_to='alfred' AND status='in_progress' AND execution_phase IN ('executing','finalizing') LIMIT 1"
-            )
-            if has_active_task:
-                delay = 8
-            else:
-                delay = 60 if nxt is None else max(5, min(60, nxt + 1))
-            await asyncio.sleep(delay)
+                log.debug(f"{label}: {e}", exc_info=True)
+                db.log_error(label, e)
+        await self._maybe_kzg_checkpoint()
+
+    async def _maybe_kzg_checkpoint(self) -> None:
+        """Komprimiert ältere KZG-Turns in einen Summary wenn Limit erreicht."""
+        if not self.kzg.should_checkpoint():
+            return
+        turns = self.kzg.get_turns_for_summary()
+        if not turns:
+            return
+        lines = "\n".join(
+            f"{'Timo' if t.role == 'user' else 'Alfred'}: {t.content}" for t in turns
+        )
+        prompt = (
+            "Fasse das folgende Gespräch prägnant auf Deutsch zusammen (max 200 Wörter). "
+            "Behalte wichtige Fakten, Entscheidungen und Aufgaben.\n\n" + lines
+        )
+        try:
+            summary = await self.bg_llm.complete(prompt, max_tokens=300)
+            self.kzg.apply_checkpoint(summary, len(turns))
+            log.info(f"📝 KZG-Checkpoint: {len(turns)} Turns komprimiert")
+        except Exception as e:
+            log.warning(f"KZG-Checkpoint fehlgeschlagen: {e}")
+
+    async def _run_forgetting(self) -> None:
+        stats = await self.forgetting.run()
+        if stats["forgotten"] or stats["chat_pruned"]:
+            log.info(f"🕐 Forgetting: {stats}")
+
+    async def _tick_health(self) -> None:
+        """Health-Refresh von Swift-App — alle 30 Minuten."""
+        now = datetime.now()
+        since = (now - self._last_health_refresh).total_seconds() if self._last_health_refresh else 1801
+        if since < 1800:
+            return
+        self._last_health_refresh = now
+        try:
+            new_days = await asyncio.to_thread(self._dashboard.refresh_health)
+            if not new_days or not self._proactive_tracker.can_send_data_event():
+                return
+            thought = await self._proactive_engine.generate()
+            if thought and await self._proactive_engine.evaluate(thought):
+                await self.autopilot._send(thought, kind="health_update")
+                self._proactive_tracker.record_sent()
+            since_sug = (now - self._last_health_suggestion).total_seconds() if self._last_health_suggestion else 86401
+            if since_sug > 86400:
+                ok = await suggest_one(f"Neue Gesundheitsdaten für {new_days} Tag(e) importiert", self.bg_llm, self.lzg)
+                if ok:
+                    self._last_health_suggestion = now
+        except Exception as e:
+            log.debug(f"Health-Refresh: {e}", exc_info=True)
+            db.log_error("Health-Refresh", e)
+
+    async def _tick_patterns(self) -> None:
+        """Pattern-Erkennung — 1x täglich."""
+        now = datetime.now()
+        if self._last_pattern_run and (now - self._last_pattern_run).total_seconds() < 86400:
+            return
+        self._last_pattern_run = now
+        try:
+            n = await pattern_detector.update_memories(self.lzg, self.bg_llm)
+            if n:
+                log.info(f"🔍 Pattern Detector: {n} neue Muster gespeichert")
+        except Exception as e:
+            log.debug(f"Pattern Detector: {e}", exc_info=True)
+            db.log_error("Pattern-Detector", e)
+
+    async def _tick_insights(self) -> None:
+        """Insight-Engine — alle 4h, nur wenn keine aktiven Alfred-Tasks."""
+        now = datetime.now()
+        since = (now - self._last_insight_run).total_seconds() if self._last_insight_run else 14401
+        if since < 14400:
+            return
+        has_active = db.query(
+            "SELECT 1 FROM tasks WHERE assigned_to='alfred' AND status NOT IN ('done','archived') "
+            "AND (suggestion_status IS NULL OR suggestion_status='accepted') LIMIT 1"
+        )
+        if has_active:
+            return
+        self._last_insight_run = now
+        try:
+            await generate_insight_task(self.bg_llm, self.lzg)
+        except Exception as e:
+            log.debug(f"Insight-Engine: {e}", exc_info=True)
+            db.log_error("Insight-Engine", e)
+
+    def _next_delay(self) -> int:
+        """Adaptiver Takt: 8s bei aktiver Alfred-Task, sonst bis zu 60s."""
+        try:
+            nxt = self._reminders.next_due_seconds()
+        except Exception:
+            nxt = None
+        has_active = db.query(
+            "SELECT 1 FROM tasks WHERE assigned_to='alfred' AND status='in_progress' "
+            "AND execution_phase IN ('executing','finalizing') LIMIT 1"
+        )
+        if has_active:
+            return 8
+        return 60 if nxt is None else max(5, min(60, nxt + 1))
 
     # ── Persistenz ──────────────────────────────────────────────────────────────
 
@@ -586,7 +617,7 @@ class Orchestrator:
 
         # Dynamisch erstellte Skills aus vorherigen Sessions wieder aktivieren
         try:
-            from core.skill_factory import load_all_on_startup
+
             load_all_on_startup()
         except Exception as e:
             log.error(f"Dynamische Skills konnten nicht geladen werden: {e}")

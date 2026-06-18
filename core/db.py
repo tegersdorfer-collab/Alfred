@@ -21,7 +21,7 @@ log = logging.getLogger(__name__)
 _pool: psycopg2.pool.ThreadedConnectionPool | None = None
 
 
-def init_pool(minconn: int = 1, maxconn: int = 8) -> None:
+def init_pool(minconn: int = 1, maxconn: int = 20) -> None:
     global _pool
     if _pool is not None:
         return
@@ -338,6 +338,9 @@ MIGRATIONS = [
         body_fat         DOUBLE PRECISION,
         bmi              DOUBLE PRECISION,
         resting_hr       INT,
+        hr_avg           INT,
+        hr_max           INT,
+        hr_min           INT,
         hrv              DOUBLE PRECISION,
         vo2max           DOUBLE PRECISION,
         sleep_duration   DOUBLE PRECISION,

@@ -34,15 +34,16 @@ TELEGRAM_ALLOWED_IDS = {
 }
 
 # Besitzer (persönliche Daten – aus .env, NICHT im Repo)
-OWNER_NAME     = os.getenv("OWNER_NAME", "Timo")
+OWNER_NAME     = os.getenv("OWNER_NAME") or ""
 OWNER_EMAIL    = os.getenv("OWNER_EMAIL", "")
 OWNER_TIMEZONE = os.getenv("OWNER_TIMEZONE", "Europe/Berlin")
 
-# Datenquellen (direkt von der Quelle – unabhängig von ai-dashboard)
-HEALTH_JSON_PATH  = os.getenv(
-    "HEALTH_JSON_PATH",
-    "~/Library/Mobile Documents/iCloud~is~workflow~my~workflows/Documents/Health.json",
-)
+if not OWNER_NAME:
+    import logging as _log
+    _log.getLogger("alfred.config").warning("⚠️  OWNER_NAME nicht in .env gesetzt – bitte eintragen")
+
+# Datenquellen
+HEALTH_API_URL    = os.getenv("HEALTH_API_URL", "http://100.118.250.78:8421/health_latest.json")
 CALENDAR_ICS_URLS = os.getenv("CALENDAR_ICS_URLS", "")   # kommagetrennt
 
 # Database

@@ -124,6 +124,21 @@ def _git_commit(message: str) -> str:
         return ""
 
 
+_PROMPT_INJECTION_PATTERNS = re.compile(
+    r"(ignore (previous|above|all)|system\s*prompt|you are now|jailbreak|"
+    r"disregard|override|<\s*/?system|<\s*/?instruction|\[INST\]|###\s*system)",
+    re.IGNORECASE,
+)
+
+
+def _sanitize_text(text: str, field: str, max_len: int = 200) -> str:
+    """Kürzt und prüft auf Prompt-Injection-Muster."""
+    text = text.strip()[:max_len]
+    if _PROMPT_INJECTION_PATTERNS.search(text):
+        raise SkillValidationError(f"'{field}' enthält unerlaubte Anweisungs-Muster (Prompt-Injection).")
+    return text
+
+
 def create_skill(skill_name: str, description: str, source_code: str) -> dict:
     """
     Erstellt, validiert und aktiviert ein neues Tool zur Laufzeit.
@@ -137,6 +152,11 @@ def create_skill(skill_name: str, description: str, source_code: str) -> dict:
 
     if not re.fullmatch(r"[a-z][a-z0-9_]{2,40}", skill_name):
         return {"ok": False, "message": "skill_name muss snake_case sein, 3-40 Zeichen, nur a-z/0-9/_."}
+
+    try:
+        description = _sanitize_text(description, "description")
+    except SkillValidationError as e:
+        return {"ok": False, "message": str(e)}
     if skill_name in T.REGISTRY:
         return {"ok": False, "message": f"Tool '{skill_name}' existiert bereits."}
 

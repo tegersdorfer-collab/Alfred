@@ -775,7 +775,7 @@ VIEWS.body=async(root)=>{
   root.innerHTML=`
     <div class="sec-hdr">
       <span class="sec-title">Gesundheit</span>
-      <button class="btn-g" onclick="importHealth()" style="height:28px;font-size:11px;padding:0 10px">↻ iCloud</button>
+      <button class="btn-g" onclick="importHealth()" style="height:28px;font-size:11px;padding:0 10px">↻ Sync</button>
     </div>
     <div id="b-cards"></div>
     <div class="grid2" style="margin-top:12px">
@@ -795,17 +795,16 @@ VIEWS.body=async(root)=>{
     </div>
     <div id="b-wo" style="margin-top:12px"></div>`;
   const h=await api('/api/health?days=14');
-  // last = neuester Eintrag; yesterday = zweitneuester (für Schritte & aktive kcal)
+  // last = neuester Eintrag (heute, da Swift-App live updated)
   const last=h[0]||{};
-  const yesterday=h[1]||{};
   // Gewicht & BPM: neuesten vorhandenen Wert suchen
   const lastWeight=(h.find(x=>x.weight)||{}).weight;
   const lastBpm=(h.find(x=>x.resting_hr)||{}).resting_hr;
   const card=(i,l,v,u,sub)=>`<div class="mtile" style="cursor:default;text-align:center"><div style="font-size:18px;margin-bottom:4px">${i}</div><div class="stat-val">${v??'–'}<span style="font-size:11px;color:var(--t3);font-weight:400"> ${u||''}</span></div><div class="stat-lbl">${sub||l}</div></div>`;
-  const stepsYest=(yesterday.steps||0).toLocaleString('de');
-  const kcalYest=yesterday.active_calories??'–';
+  const stepsToday=(last.steps||0).toLocaleString('de');
+  const kcalToday=last.active_calories??'–';
   const hrvVal=last.hrv?Math.round(last.hrv):'–';
-  $('#b-cards').appendChild(el(`<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px">${card('😴','Schlaf',last.sleep?last.sleep.toFixed(1):'–','h')}${card('👟','Schritte',stepsYest,'','gestern')}${card('❤️','Puls',lastBpm,'bpm')}<div class="mtile" style="cursor:pointer;text-align:center" onclick="logHRV()"><div style="font-size:18px;margin-bottom:4px">📊</div><div class="stat-val">${hrvVal}</div><div class="stat-lbl">HRV · log+</div></div>${card('🔥','Aktiv',kcalYest,'kcal','gestern')}${card('⚖️','Gewicht',lastWeight,'kg')}</div>`));
+  $('#b-cards').appendChild(el(`<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px">${card('😴','Schlaf',last.sleep?last.sleep.toFixed(1):'–','h')}${card('👟','Schritte',stepsToday,'')}${card('❤️','Puls',lastBpm,'bpm')}<div class="mtile" style="cursor:pointer;text-align:center" onclick="logHRV()"><div style="font-size:18px;margin-bottom:4px">📊</div><div class="stat-val">${hrvVal}</div><div class="stat-lbl">HRV · log+</div></div>${card('🔥','Aktiv',kcalToday,'kcal')}${card('⚖️','Gewicht',lastWeight,'kg')}</div>`));
   const rev=[...h].reverse();
   lineChart('cSleep',rev.map(x=>x.date?.slice(5)),[{label:'Schlaf',data:rev.map(x=>x.sleep),color:'#d97706'}]);
   lineChart('cWeight',rev.filter(x=>x.weight).map(x=>x.date?.slice(5)),[{label:'kg',data:rev.filter(x=>x.weight).map(x=>x.weight),color:'#eab308'}]);
@@ -1231,17 +1230,60 @@ function editEvent(e){
 }
 
 // ════════ NUTRITION ════════
+// Ring-Chart helper: SVG donut mit Overflow-Farbe, Start oben (12 Uhr)
+function ringChart(id,val,goal,color,overColor){
+  const R=46,stroke=10,C=2*Math.PI*R;
+  const pct=goal>0?val/goal:0;
+  const over=pct>1;
+  const fill=Math.min(pct,1);
+  const overfill=over?pct-1:0;
+  // transform="rotate(-90 56 56)" dreht Startpunkt auf 12 Uhr
+  const rot='transform="rotate(-90 56 56)"';
+  const base=`<circle cx="56" cy="56" r="${R}" fill="none" stroke="var(--bd)" stroke-width="${stroke}"/>`;
+  const arc=`<circle cx="56" cy="56" r="${R}" fill="none" stroke="${color}" stroke-width="${stroke}"
+    stroke-dasharray="${fill*C} ${C}" stroke-linecap="round" ${rot} style="transition:stroke-dasharray .5s"/>`;
+  const overArc=over?`<circle cx="56" cy="56" r="${R}" fill="none" stroke="${overColor}" stroke-width="${stroke-3}"
+    stroke-dasharray="${Math.min(overfill,1)*C} ${C}" stroke-linecap="round" ${rot} style="transition:stroke-dasharray .5s" opacity=".9"/>` :'';
+  return `<svg id="${id}" viewBox="0 0 112 112" width="112" height="112">${base}${arc}${overArc}</svg>`;
+}
+
 VIEWS.nutrition=async(root)=>{
   root.innerHTML=`<div class="sec-hdr"><span class="sec-title">Ernährung</span><button class="btn" onclick="addMeal()" style="height:28px;font-size:11px;padding:0 10px">+ Mahlzeit</button></div>
     <div id="nt"></div>
-    <div class="c" style="padding:14px;margin-top:12px"><div style="font-size:11px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:var(--t3);margin-bottom:8px">Verlauf 14T</div><div style="position:relative;height:120px"><canvas id="cNut"></canvas></div></div>
-    <div class="btn-g" style="padding:13px;margin-top:12px;font-size:13px;color:var(--y)">💡 Sag im Chat einfach „ich hatte zwei Marmeladentoasts" – Alfred schätzt die Makros und trägt sie ein.</div>
     <div id="nl" style="margin-top:14px"></div>`;
-  const d=await api('/api/nutrition');const t=d.totals||{};
-  const macro=(l,v,c)=>`<div style="text-align:center"><div class="stat-val" style="color:${c}">${Math.round(v||0)}</div><div class="stat-lbl">${l}</div></div>`;
-  $('#nt').appendChild(el(`<div class="c" style="padding:16px"><div style="text-align:center;margin-bottom:14px"><div class="stat-val" style="font-size:36px;color:var(--y)">${Math.round(t.kcal||0)}</div><div class="stat-lbl">kcal heute</div></div><div style="display:flex;justify-content:space-around">${macro('Protein',t.protein,'var(--tx)')}${macro('Carbs',t.carbs,'var(--t2)')}${macro('Fett',t.fat,'var(--t3)')}</div></div>`));
-  const hist=await api('/api/nutrition/history?days=14');
-  lineChart('cNut',hist.map(x=>x.date.slice(5)),[{label:'kcal',data:hist.map(x=>x.kcal),color:'#eab308'}]);
+  const [d, GOALS]=await Promise.all([api('/api/nutrition'), api('/api/nutrition/goals')]);
+  const t=d.totals||{};
+
+  // Ring-Kacheln (Ziele kommen dynamisch vom Server)
+  const rings=[
+    {key:'kcal', label:'Kalorien', unit:'kcal', val:Math.round(t.kcal||0), goal:GOALS.kcal, color:'#eab308', over:'#f97316'},
+    {key:'protein', label:'Protein', unit:'g', val:Math.round(t.protein||0), goal:GOALS.protein, color:'#3b82f6', over:'#a855f7'},
+    {key:'carbs', label:'Carbs', unit:'g', val:Math.round(t.carbs||0), goal:GOALS.carbs, color:'#22c55e', over:'#f97316'},
+    {key:'fat', label:'Fett', unit:'g', val:Math.round(t.fat||0), goal:GOALS.fat, color:'#ec4899', over:'#f97316'},
+  ];
+  // TDEE-Info klein anzeigen
+  const meta=GOALS.meta||{};
+  const trendIcon={'on_track':'✅','too_slow':'📈','too_fast':'📉','insufficient_data':'⏳','not_enough_span':'⏳'};
+  const trendLabel={'on_track':'auf Kurs','too_slow':'zu langsam','too_fast':'zu schnell','insufficient_data':'zu wenig Daten','not_enough_span':'noch < 2 Wochen'};
+  const trendStr=meta.trend_status?(` · ${trendIcon[meta.trend_status]||''}${meta.actual_kg_per_week!=null?' '+meta.actual_kg_per_week+' kg/Woche':''}`):'';
+  const adjStr=meta.trend_adjustment?` · Anpassung <b style="color:${meta.trend_adjustment>0?'#22c55e':'#f97316'}">${meta.trend_adjustment>0?'+':''}${meta.trend_adjustment} kcal</b>`:'';
+  const tdeeInfo=meta.tdee?`<div style="text-align:center;font-size:11px;color:var(--t3);margin-bottom:10px">BMR ${meta.bmr} × ${meta.activity_factor}${meta.activity_bonus>0?' + ⚡'+meta.activity_bonus:''}${adjStr}${trendStr}</div>`:'';
+  const ringHtml=rings.map(r=>`
+    <div style="display:flex;flex-direction:column;align-items:center;gap:4px">
+      <div style="position:relative">
+        ${ringChart('ring_'+r.key,r.val,r.goal,r.color,r.over)}
+        <div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;pointer-events:none">
+          <span style="font-size:15px;font-weight:700;color:var(--tx)">${r.val}</span>
+          <span style="font-size:10px;color:var(--t3)">${r.unit}</span>
+        </div>
+      </div>
+      <div style="font-size:11px;color:var(--t2);text-align:center">${r.label}<br><span style="color:var(--t3)">/ ${r.goal}${r.unit}</span></div>
+    </div>`).join('');
+  $('#nt').appendChild(el(`<div class="c" style="padding:16px">
+    ${tdeeInfo}
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;justify-items:center">${ringHtml}</div>
+  </div>`));
+
   $('#nl').appendChild(el(`<div class="c" style="padding:14px"><b>Heute</b>${(d.meals||[]).length?d.meals.map(m=>`<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--bd)"><div><div style="font-size:14px">${esc(m.description)}</div><div style="font-size:11px;color:var(--t2)">${m.meal_type}${m.protein_g?' · '+Math.round(m.protein_g)+'g P':''}${m.carbs_g?' · '+Math.round(m.carbs_g)+'g C':''}${m.fat_g?' · '+Math.round(m.fat_g)+'g F':''}</div></div>${m.calories?`<span class="chip">${m.calories} kcal</span>`:''}</div>`).join(''):'<div style="color:var(--t3);font-size:13px;margin-top:8px">Heute noch nichts.</div>'}</div>`));
 };
 
@@ -1829,7 +1871,7 @@ function revertSelfChange(id){
   });
 }
 async function saveSettings(){await post('/api/settings',{weather_city:$('#setCity').value});toast('Gespeichert ✓');}
-async function importHealth(){const btn=event.target;btn.textContent='⏳ …';btn.disabled=true;try{const r=await post('/api/health/import',{});toast(r.days>0?`✓ ${r.days} Tage importiert`:'Keine neuen Daten');go(CUR);}catch(e){toast('Fehler beim Import');}finally{btn.textContent='☁️ iCloud sync';btn.disabled=false;}}
+async function importHealth(){const btn=event.target;btn.textContent='⏳ …';btn.disabled=true;try{const r=await post('/api/health/import',{});toast(r.days>0?`✓ ${r.days} Tage importiert`:'Keine neuen Daten');go(CUR);}catch(e){toast('Fehler beim Import');}finally{btn.textContent='↻ Sync';btn.disabled=false;}}
 function logHRV(){formSheet('HRV eintragen',`<label style="font-size:12px;color:var(--t2)">HRV (ms)</label><input id="f1" type="number" min="1" max="200" placeholder="z.B. 48" style="margin-top:6px"><label style="font-size:12px;color:var(--t2);margin-top:10px;display:block">Datum (leer = heute)</label><input id="f2" type="date" style="margin-top:6px">`,async()=>{const v=+$('#f1').value;if(!v){toast('Bitte Wert eingeben');return;}const payload={hrv:v};const d=$('#f2').value;if(d)payload.date=d;await post('/api/health/manual',payload);closeSheet();toast('HRV gespeichert ✓');go(CUR);});}
 
 // ════════ Charts ════════
