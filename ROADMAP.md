@@ -1,47 +1,80 @@
-# Alfred 2.0 — Von reaktivem Bot zu autonomem AI-Concierge
+# Alfred — Roadmap
 
-> Ziel: Aus einem reaktiven Telegram-Bot ein High-End, selbst-verbesserndes
-> Lebens-Betriebssystem machen. "Leben auf Autopilot."
+> Ziel: Ein lokaler, autonomer AI-Concierge der das eigene Leben managt —
+> reaktionsschnell, proaktiv, selbst-verbessernd. "Leben auf Autopilot."
 
-## Leitprinzipien
-1. **Agentisch** – Alfred entscheidet selbst welche Tools er nutzt (echtes Function-Calling), nicht starre Regex-Regeln.
-2. **Proaktiv & autonom** – ein echtes Autopilot-System mit eigener Agenda, zeitbewussten Aktivitäten, Anomalie-Erkennung.
-3. **Selbst-verbessernd** – Reflexions-Engine, Meta-Gedächtnis über Timos Vorlieben, Verhaltensanpassung.
-4. **Schnell** – Streaming-Antworten, warmes Modell, paralleler Kontextaufbau.
-5. **Alles managen** – Health, Fitness, Habits, Ernährung, Journal, Tasks, Kalender, Ziele, Wissen.
-6. **High-End UI** – mobil-first interaktives Dashboard wie ein VIP-Produkt, kein Schulprojekt.
+---
 
-## Architektur-Phasen
+## Status: Was läuft
 
-### Phase A — Datenfundament
-- `core/db.py`: zentraler Connection-Pool, Migrations-Runner
-- Neue Tabellen (alfred DB): habits, habit_logs, workouts, exercises, workout_sets,
-  training_plans, journal_entries, meals, goals, agenda, reflections, chat_messages,
-  events_log, metrics_snapshots
+| Bereich | Status |
+|---------|--------|
+| ReAct-Agent mit nativem Tool-Calling | ✅ |
+| LLM-Routing (schnell/groß) | ✅ |
+| Ollama + Claude API + MLX Backends | ✅ |
+| PostgreSQL + pgvector Gedächtnis | ✅ |
+| Knowledge-Graph (Entitäten + Relationen) | ✅ |
+| Autopilot (Briefing, Review, Anomalien) | ✅ |
+| Reflexions-Engine + Meta-Gedächtnis | ✅ |
+| Skill-Factory (Code zur Laufzeit) | ✅ |
+| Alle Concierge-Domänen (Health, Fitness, Habits…) | ✅ |
+| Google Calendar (lesen + schreiben) | ✅ |
+| HealthKit-Push von iPhone (Swift) | ✅ |
+| Dashboard API (FastAPI, 40+ Endpoints) | ✅ |
+| Dashboard Frontend (13 Views, PWA) | ✅ |
+| Live-Chat mit SSE-Streaming | ✅ |
+| Echtzeit-Status-Feed | ✅ |
+| Web Push (VAPID) | ✅ |
+| Automatische Backups | ✅ |
+| Task-Suggestions + AI-Zuweisung | ✅ |
+| AlphaProgression (Fitness-Periodisierung) | ✅ |
 
-### Phase B — Agent-Kern (Function-Calling)
-- `core/tools.py`: Tool-Registry mit JSON-Schemas
-- `core/agent.py`: ReAct-Loop, Multi-Step-Tool-Ausführung, Qwen3 native tool calls
+---
 
-### Phase C — Domänen-Tools (Concierge-Skills)
-- Habits, Fitness/Workout, Ernährung, Journal, Ziele, Wetter, Kalender-Schreiben, Notizen, Finanzen
+## Nächste Schritte
 
-### Phase D — Speed
-- Token-Streaming nach Telegram (live-edit)
-- keep_alive (Modell warm), paralleler Kontextaufbau, Embedding-Cache, schneller Router (llama3.2:3b)
+### Frontend-Overhaul
+- [ ] Neues, cleanes UI-Design (weniger HUD, mehr Übersicht)
+- [ ] Bessere Mobile-UX (Swipe-Gesten, Pull-to-Refresh)
+- [ ] Dark/Light Mode Toggle
 
-### Phase E — Autopilot (autonome Engine)
-- `core/autopilot.py`: Agenda-Queue, zeitbewusste Aktivitäten
-  (Morgen-Briefing, Abend-Review, Health-Anomalien, Ziel-Checkins, Recherche)
+### Health & Fitness
+- [ ] Automatische Workout-Empfehlung basierend auf HRV + Schlaf
+- [ ] Körpermessungs-Tracking (Umfänge)
+- [ ] AlphaProgression — smarte Gewichtsprogression basierend auf Leistungs-Trend
 
-### Phase F — Selbst-Verbesserung
-- `core/reflection.py`: Gesprächsanalyse, Meta-Memory, Verhaltensanpassung, Selbstkritik
+### Kommunikation & Benachrichtigungen
+- [ ] WhatsApp-Integration (neben Telegram)
+- [ ] Push-Notification-Templates (Briefing, Reminder, Anomalien)
+- [ ] Smarte Benachrichtigungs-Filterung (kein Spam)
 
-### Phase G — Dashboard-Backend
-- `web/server.py` massiv erweitern: REST für alle Domänen + Chat (2-Wege) + Aktionen + SSE
+### Wissen & Recherche
+- [ ] Tieferes Web-Scraping (Artikel zusammenfassen, Quellen speichern)
+- [ ] Automatisches Wissens-Import aus Lesezeichen / Kindle Highlights
+- [ ] Periodische Themen-Recherche (Autopilot-gesteuert)
 
-### Phase H — Dashboard-Frontend
-- Mobil-first PWA, Multi-View: Command Center, Chat, Health, Fitness-App, Habits,
-  Tasks, Kalender, Journal, Ernährung, Ziele, Memory-Browser, Alfred-Mind, Analytics, Settings
+### Autonomie & Selbst-Verbesserung
+- [ ] Mehr Autopilot-Trigger (Wetterbasiertes Coaching, Erholungs-Empfehlung)
+- [ ] Bessere Lernrate: Alfred passt Ton/Stil an Timos Feedback an
+- [ ] Multi-Step Projekte: Alfred plant + führt eigenständig mehrstufige Tasks aus
 
-### Phase I — Integration & Test
+### Infrastruktur
+- [ ] Automatischer Start nach System-Neustart (launchd)
+- [ ] Monitoring: Uptime-Check + Self-Healing bei Absturz
+- [ ] Remote-Access über Tailscale absichern (read-only token für Dashboard)
+
+### Langfristig / Visionen
+- [ ] Voice-Interface (Whisper → Alfred → TTS)
+- [ ] Kamera-Integration (Mahlzeiten-Erkennung per Foto)
+- [ ] Eigenes lokales MLX-Modell das auf Timos Daten fine-getuned ist
+- [ ] Alfred als MCP-Server für Claude Code (bidirektionale Integration)
+
+---
+
+## Architektur-Prinzipien (unveränderlich)
+
+1. **Lokal first** — Daten verlassen den Mac nicht (außer explizite Cloud-Tools)
+2. **Modulare Backends** — LLM, DB, Kommunikation sind austauschbar
+3. **Kein Over-Engineering** — einfacher Code > komplexe Abstraktionen
+4. **Funktionalität > Ästhetik** — ein Feature das funktioniert > fünf die aussehen
+5. **Alfred soll lernen** — jede Interaktion macht ihn besser, nicht nur reaktiver
