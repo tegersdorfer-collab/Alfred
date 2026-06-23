@@ -787,53 +787,53 @@ def _add_research_query(topic: str):
 
 
 @T.register("fetch_and_summarize_url",
-    "Lädt eine URL (Artikel, YouTube-Seite, Blogpost), extrahiert den Text, "
-    "bewertet Kernaussagen und speichert Insights ins Second Brain.",
+    "Lädt eine URL (YouTube, TikTok, Instagram, Twitter/X, Artikel, Blog, Nachricht) via yt-dlp "
+    "oder trafilatura, analysiert den Inhalt und speichert optional ins Second Brain. "
+    "Funktioniert mit allen gängigen Plattformen.",
     {
-        "url":      {"type": "string",  "description": "URL des Artikels oder der YouTube-Seite"},
+        "url":      {"type": "string",  "description": "Beliebige URL — Video, Artikel, Social Media"},
         "save":     {"type": "boolean", "description": "In Second Brain speichern (default true)"},
         "category": {"type": "string",  "description": "brain_notes Kategorie (default 'resource')"},
     },
     ["url"], "knowledge")
 async def _fetch_and_summarize_url(url: str, save: bool = True, category: str = "resource"):
-    import httpx, re
+    from tools.url_handler import fetch, format_for_llm
     from llm import fast as _fast
 
-    # Fetch
-    try:
-        async with httpx.AsyncClient(timeout=15, follow_redirects=True,
-                                      headers={"User-Agent": "Mozilla/5.0 Alfred/1.0"}) as c:
-            r = await c.get(url)
-        html = r.text
-    except Exception as e:
-        return f"Fetch fehlgeschlagen: {e}"
+    data = await fetch(url)
 
-    # Einfache Text-Extraktion (kein BeautifulSoup nötig)
-    text = re.sub(r'<style[^>]*>.*?</style>', '', html, flags=re.DOTALL)
-    text = re.sub(r'<script[^>]*>.*?</script>', '', text, flags=re.DOTALL)
-    text = re.sub(r'<[^>]+>', ' ', text)
-    text = re.sub(r'\s+', ' ', text).strip()
-    excerpt = text[:6000]
+    if data["type"] == "unknown" and not data.get("description"):
+        return f"Konnte URL nicht laden: {url}"
 
-    if len(excerpt) < 200:
-        return "Zu wenig Text extrahiert – Seite könnte JavaScript-only sein."
+    context = format_for_llm(data)
 
-    prompt = (
-        "Analysiere diesen Web-Inhalt. Antworte auf Deutsch.\n"
-        "1. KERNAUSSAGEN: 3-5 Bullet Points (was ist wichtig/neu/interessant)\n"
-        "2. BEWERTUNG: Was ist gut, was ist fragwürdig oder oberflächlich?\n"
-        "3. RELEVANZ FÜR TIMO: Konkrete Anwendung oder nächster Schritt.\n\n"
-        f"URL: {url}\nInhalt:\n{excerpt}"
-    )
-    summary = await _fast.ask(prompt, max_tokens=400)
+    # Prompt je nach Typ anpassen
+    if data["type"] in ("video", "audio"):
+        prompt = (
+            "Analysiere diesen Video-/Audio-Inhalt. Antworte auf Deutsch.\n"
+            "1. WORUM GEHT ES: Kurze Zusammenfassung (2-3 Sätze)\n"
+            "2. KERNAUSSAGEN: 3-5 Bullet Points\n"
+            "3. RELEVANZ FÜR TIMO: Lohnt es sich anzuschauen? Warum?\n\n"
+            + context
+        )
+    else:
+        prompt = (
+            "Analysiere diesen Web-Inhalt. Antworte auf Deutsch.\n"
+            "1. KERNAUSSAGEN: 3-5 Bullet Points (was ist wichtig/neu/interessant)\n"
+            "2. BEWERTUNG: Was ist gut, was fragwürdig oder oberflächlich?\n"
+            "3. RELEVANZ FÜR TIMO: Konkrete Anwendung oder nächster Schritt.\n\n"
+            + context
+        )
+
+    summary = await _fast.ask(prompt, max_tokens=500)
 
     if save:
         from domains.second_brain import add_note
-        # Titel aus URL ableiten
-        title = url.split("/")[-1][:60].replace("-", " ").replace("_", " ") or url[:60]
-        content = f"**Quelle:** {url}\n\n{summary}"
-        add_note(title=title, content=content, category=category, tags=["web", "import"])
-        return f"✅ Zusammenfassung gespeichert:\n\n{summary[:600]}"
+        title = data.get("title") or url.split("/")[-1][:60] or url[:60]
+        tags = ["web", "import", data["platform"]]
+        content = f"**Quelle:** {url}\n**Plattform:** {data['platform']}\n\n{summary}"
+        add_note(title=title, content=content, category=category, tags=tags)
+        return f"✅ Gespeichert ({data['platform']}):\n\n{summary}"
     return summary
 
 
@@ -1167,3 +1167,28 @@ def _update_skill_procedure(name: str, new_body: str) -> str:
         return f"✅ Skill-Prozedur '{name}' aktualisiert."
     return f"❌ Skill '{name}' nicht gefunden. Mit list_skill_procedures prüfen."
 
+
+
+# ════════════════════════════════════════════════════════════════════════════
+#  STIMME / TTS
+# ════════════════════════════════════════════════════════════════════════════
+
+@T.register("speak",
+    "Schickt eine Sprachnachricht an Timo statt Text. Nutzen wenn er explizit eine Sprachantwort "
+    "möchte, oder bei Morgen-Briefings, Alerts und kurzen proaktiven Nachrichten.",
+    {
+        "text":  {"type": "string", "description": "Text der vorgelesen werden soll"},
+        "voice": {"type": "string", "description": "Stimme: af_heart (default, warm), bf_emma (klar), af_bella (expressiv)"},
+    },
+    ["text"], "general")
+async def _speak(text: str, voice: str = "af_heart"):
+    if not CTX.channel:
+        return "Kein Kommunikationskanal verfügbar."
+    from core.tts import is_available
+    if not is_available():
+        return "TTS nicht verfügbar — Kokoro-Modelle fehlen in data/tts/."
+    send_voice = getattr(CTX.channel, "send_voice", None)
+    if not send_voice:
+        return "Kanal unterstützt keine Sprachnachrichten."
+    ok = await send_voice(text, voice=voice)
+    return "🔊 Sprachnachricht gesendet." if ok else "Fallback auf Text gesendet."

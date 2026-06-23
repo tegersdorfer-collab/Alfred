@@ -1655,68 +1655,132 @@ function askDelKgEntity(id){confirmAction('Entität und alle ihre Relationen lö
 function askDelKgRelation(id){confirmAction('Relation löschen?',async()=>{await del('/api/knowledge/relation/'+id);toast('Gelöscht');go('memory');});}
 
 // ════════ MIND ════════
-VIEWS.mind=async(root)=>{
-  root.innerHTML=`<div class="sec-hdr"><span class="sec-title">Alfred Mind</span></div>
+// ── Timeline-Helpers ───────────────────────────────────────────────────────
+const TL_ICONS={thought:'◎',action:'⚡',tool:'⊞',reflection:'◈',briefing:'◉',review:'◬',
+  reminder:'⊡',health:'♡',system:'⚙',error:'✕',skill:'◈',memory:'◈'};
+const TL_COLORS={thought:'#818cf8',action:'#34d399',tool:'#60a5fa',reflection:'#c084fc',
+  briefing:'#fbbf24',review:'#a78bfa',reminder:'#fb923c',health:'#f472b6',
+  system:'#6b7280',error:'#f87171',skill:'#c084fc',memory:'#818cf8'};
 
-    <!-- Live-Status ganz oben -->
-    <div id="mindStatusBar" class="status-bar idle" style="margin-top:14px">
-      <span class="sdot idle"></span>
-      <span class="stxt" style="flex:1">💭 Bereit</span>
-      <span style="font-size:11px;color:#444" id="mindModel">–</span>
-    </div>
+function _tlRow(e){
+  const ic=TL_ICONS[e.type]||'·';
+  const col=TL_COLORS[e.type]||'var(--t3)';
+  const ts=e.created_at?e.created_at.slice(11,16):'';
+  return `<div style="display:flex;align-items:flex-start;gap:10px;padding:7px 0;border-bottom:1px solid var(--bd)">
+    <span style="font-size:13px;color:${col};min-width:16px;margin-top:1px">${ic}</span>
+    <span style="flex:1;font-size:13px;color:var(--t1);line-height:1.4">${esc(e.summary)}</span>
+    <span style="font-size:11px;color:var(--t3);white-space:nowrap;margin-top:2px">${ts}</span>
+  </div>`;
+}
 
-    <!-- Aktivitäts-Stream -->
-    <div class="c" style="padding:14px;margin-top:12px">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
-        <span style="font-size:11px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:var(--t3)">Aktivität</span>
-        <span id="mindActCount" class="chip">0 Events</span>
+let _tlDate=new Date().toISOString().slice(0,10);
+
+async function _tlLoad(date){
+  _tlDate=date;
+  const tl=await api(`/api/timeline?date=${date}`).catch(()=>({hours:[],total:0,date}));
+  const wrap=$('#tlBody');if(!wrap)return;
+  // Live-Events aus Buffer für heute dazumischen
+  const todayLive=date===new Date().toISOString().slice(0,10)?_actLog.slice(0,30):[];
+  const liveHour=new Date().getHours().toString().padStart(2,'0');
+
+  if(!tl.hours.length&&!todayLive.length){
+    wrap.innerHTML='<div style="color:var(--t3);font-size:13px;text-align:center;padding:32px 0">Keine Aktivität für diesen Tag.</div>';
+    return;
+  }
+
+  // Live-Events in tl.hours einbauen
+  const hoursMap={};
+  tl.hours.forEach(h=>{hoursMap[h.hour]=h.events;});
+  if(todayLive.length){
+    const liveEvts=todayLive.map(e=>({type:e.type,summary:e.text||'',created_at:new Date(e.ts*1000).toISOString()}));
+    hoursMap[liveHour]=[...liveEvts,...(hoursMap[liveHour]||[])];
+  }
+
+  const sortedHours=Object.entries(hoursMap).sort((a,b)=>b[0].localeCompare(a[0]));
+  wrap.innerHTML=sortedHours.map(([hour,evts])=>`
+    <div style="margin-bottom:16px">
+      <div style="font-size:10px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;
+        color:var(--t3);margin-bottom:6px;display:flex;align-items:center;gap:8px">
+        <span style="background:var(--s2);padding:2px 7px;border-radius:4px">${hour}:00</span>
+        <span style="color:var(--t3)">${evts.length} Event${evts.length!==1?'s':''}</span>
       </div>
-      <div id="actFeed" style="max-height:320px;overflow-y:auto"></div>
-    </div>
+      <div style="padding-left:8px;border-left:2px solid var(--s2)">
+        ${evts.map(_tlRow).join('')}
+      </div>
+    </div>`).join('');
 
-    <div class="grid2">
-      <div class="c" style="padding:14px;margin-top:10px"><div style="font-size:11px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:var(--t3);margin-bottom:8px">Gelernt</div><div id="mNotes"></div></div>
-      <div class="c" style="padding:14px;margin-top:10px"><div style="font-size:11px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:var(--t3);margin-bottom:8px">Reflexionen</div><div id="mRef"></div></div>
-    </div>
-    <div class="c" style="padding:14px;margin-top:10px"><div style="font-size:11px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:var(--t3);margin-bottom:8px">Event-Log</div><div id="mFeed" style="max-height:260px;overflow-y:auto"></div></div>`;
+  const cnt=$('#tlCount');
+  if(cnt)cnt.textContent=`${tl.total+(todayLive.length?` +${todayLive.length} live`:'')} Events`;
+}
 
-  // Aktueller Status initial
+VIEWS.mind=async(root)=>{
+  const today=new Date().toISOString().slice(0,10);
+  // Datumspicker: ±6 Tage
+  const days=[];
+  for(let i=0;i<7;i++){const d=new Date();d.setDate(d.getDate()-i);days.push(d.toISOString().slice(0,10));}
+  const dayPicker=days.map((d,i)=>{
+    const label=i===0?'Heute':i===1?'Gestern':d.slice(5);
+    return `<button class="btn-g tl-day${i===0?' active':''}" onclick="tlPick('${d}',this)" style="padding:4px 10px;font-size:10px">${label}</button>`;
+  }).join('');
+
+  root.innerHTML=`<div class="sec-hdr" style="display:flex;justify-content:space-between;align-items:center">
+    <span class="sec-title">Alfred Mind</span>
+    <span id="tlCount" class="chip">–</span>
+  </div>
+
+  <div id="mindStatusBar" class="status-bar idle" style="margin-top:14px">
+    <span class="sdot idle"></span>
+    <span class="stxt" style="flex:1">💭 Bereit</span>
+    <span style="font-size:11px;color:#444" id="mindModel">–</span>
+  </div>
+
+  <div class="c" style="padding:14px;margin-top:12px">
+    <div style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:12px">${dayPicker}</div>
+    <div id="tlBody">Lädt…</div>
+  </div>
+
+  <div class="grid2" style="margin-top:10px">
+    <div class="c" style="padding:14px"><div style="font-size:11px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:var(--t3);margin-bottom:8px">Gelernt</div><div id="mNotes"></div></div>
+    <div class="c" style="padding:14px"><div style="font-size:11px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:var(--t3);margin-bottom:8px">Reflexionen</div><div id="mRef"></div></div>
+  </div>`;
+
+  window.tlPick=async(date,btn)=>{
+    document.querySelectorAll('.tl-day').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+    $('#tlBody').innerHTML='<div style="color:var(--t3);font-size:13px;padding:16px 0">Lädt…</div>';
+    await _tlLoad(date);
+  };
+
+  // Status initial
   const cur=await api('/api/status/current').catch(()=>({type:'idle',text:'Bereit'}));
   const msb=$('#mindStatusBar');
   if(msb){msb.className=`status-bar ${cur.type||'idle'}`;msb.querySelector('.sdot').className=`sdot ${cur.type||'idle'}`;msb.querySelector('.stxt').textContent=`${STATUS_ICONS[cur.type||'idle']||'·'} ${cur.text||'Bereit'}`;}
   const mm=$('#mindModel');if(mm&&cur.detail)mm.textContent=cur.detail;
 
-  // Buffered activity log reinspielen
-  const actFeed=$('#actFeed');
-  _actLog.slice(0,40).forEach(evt=>{
-    const row=el(`<div class="act-row"><span>${STATUS_ICONS[evt.type]||'·'}</span><span style="flex:1;color:#fef3c7">${esc(evt.text||'')}${evt.detail?` <span style="color:var(--t2)">${esc(evt.detail)}</span>`:''}</span><span style="color:#444">${new Date(evt.ts*1000).toLocaleTimeString('de-DE',{hour:'2-digit',minute:'2-digit',second:'2-digit'})}</span></div>`);
-    actFeed.appendChild(row);
-  });
-  if(!_actLog.length) actFeed.innerHTML='<span style="color:var(--t3);font-size:13px">Warte auf Aktivität…</span>';
-  const mc=$('#mindActCount');if(mc)mc.textContent=`${_actLog.length} Events`;
-
-  // Mind-StatusBar mit globalem Stream verknüpfen (überschreibt applyStatus-Side-Effect)
+  // Live-Status-Patch
   const _origApply=applyStatus;
   const _mindPatch=(evt)=>{
     _origApply(evt);
-    if(CUR!=='mind') return;
-    if(mc)mc.textContent=`${_actLog.length} Events`;
+    if(CUR!=='mind')return;
     if(msb&&evt.type&&!evt.keepalive){
       msb.className=`status-bar ${evt.type}`;
       const sd=msb.querySelector('.sdot');if(sd)sd.className=`sdot ${evt.type}`;
       const st=msb.querySelector('.stxt');if(st)st.textContent=`${STATUS_ICONS[evt.type]||'·'} ${evt.text||''}`;
       const mmEl=$('#mindModel');if(mmEl&&evt.detail)mmEl.textContent=evt.detail;
     }
+    // Timeline für heute bei neuem Live-Event neu rendern
+    if(_tlDate===today)_tlLoad(today);
   };
-  // Temporär überschreiben während mind aktiv
   window.applyStatus=_mindPatch;
-  root._cleanup=()=>{window.applyStatus=_origApply;};
+  root._cleanup=()=>{window.applyStatus=_origApply;delete window.tlPick;};
 
+  // Parallele Daten laden
+  await _tlLoad(today);
   const m=await api('/api/mind');
-  $('#mNotes').innerHTML=(m.notes||[]).length?m.notes.map(n=>`<div style="font-size:13px;color:#fef3c7;padding:4px 0">• ${esc(n)}</div>`).join(''):'<span style="color:var(--t3);font-size:13px">Lernt noch…</span>';
-  $('#mRef').innerHTML=(m.reflections||[]).length?m.reflections.map(r=>`<div style="font-size:13px;padding:6px 0;border-bottom:1px solid var(--bd)">🪞 ${esc(r.content)}</div>`).join(''):'<span style="color:var(--t3);font-size:13px">Noch keine.</span>';
-  const feed=$('#mFeed');feed.innerHTML=(m.events||[]).map(e=>`<div style="display:flex;gap:8px;padding:4px 0;font-size:12px;color:#888"><span>${feedIcon(e.type)}</span><span style="flex:1">${esc(e.summary)}</span></div>`).join('');
-  try{const es=new EventSource(`${API}/api/feed/stream`);es.onmessage=ev=>{if(CUR!=='mind'){es.close();return;}const e=JSON.parse(ev.data);feed.prepend(el(`<div style="display:flex;gap:8px;padding:4px 0;font-size:12px;color:#888"><span>${feedIcon(e.type)}</span><span style="flex:1">${esc(e.summary)}</span></div>`));};}catch(e){}
+  const mNotes=$('#mNotes');
+  const mRef=$('#mRef');
+  if(mNotes)mNotes.innerHTML=(m.notes||[]).length?m.notes.map(n=>`<div style="font-size:13px;color:var(--t1);padding:4px 0">• ${esc(n)}</div>`).join(''):'<span style="color:var(--t3);font-size:13px">Lernt noch…</span>';
+  if(mRef)mRef.innerHTML=(m.reflections||[]).length?m.reflections.map(r=>`<div style="font-size:13px;padding:6px 0;border-bottom:1px solid var(--bd)">◈ ${esc(r.content)}</div>`).join(''):'<span style="color:var(--t3);font-size:13px">Noch keine.</span>';
 };
 
 // ════════ ANALYTICS ════════

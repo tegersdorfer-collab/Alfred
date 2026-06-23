@@ -47,6 +47,7 @@ from domains import pattern_detector, alphaprogression
 from domains.task_executor import suggest_one
 from domains.insight_engine import generate_insight_task
 from core import backup
+from core.container import services
 import config
 
 log = logging.getLogger(__name__)
@@ -173,6 +174,7 @@ class Orchestrator:
     async def start(self) -> None:
         log.info("Orchestrator startet...")
         self._bg_tasks = []
+        self._register_services()
         await self._init_db()
         await self._init_skills()
         await self._restore_memory()
@@ -183,6 +185,18 @@ class Orchestrator:
         await self.channel.start()
         log_event("system", "Alfred gestartet")
         log.info("Alfred bereit ✅")
+
+    def _register_services(self) -> None:
+        """Kern-Services im Container registrieren, damit Domain-Module sie nutzen können."""
+        services.register("lzg", self.lzg)
+        services.register("kzg", self.kzg)
+        services.register("kg", self.kg)
+        services.register("chat_llm", self.chat_llm)
+        services.register("bg_llm", self.bg_llm)
+        services.register("embed_llm", self.embed_llm)
+        services.register("channel", self.channel)
+        services.register("dashboard", self._dashboard)
+        log.debug(f"Services registriert: {services.registered()}")
 
     async def _init_db(self) -> None:
         """DB-Setup — Fehler bricht Start ab (kein Alfred ohne persistente Memory)."""

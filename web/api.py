@@ -908,6 +908,36 @@ def create_app(orch=None) -> FastAPI:
             "agenda": _jsonable(db.query("SELECT kind, title, status, created_at FROM agenda ORDER BY created_at DESC LIMIT 20")),
         }
 
+    # ── Timeline (chronologisches Activity-Log, nach Stunde gruppiert) ─────────
+    @app.get("/api/timeline")
+    def timeline(date: str | None = None, limit: int = 200):
+        """Alle Events eines Tages, nach Stunde gruppiert. date=ISO-Datum, default=heute."""
+        from datetime import date as _date
+        day = date or str(_date.today())
+        rows = db.query(
+            """
+            SELECT id, type, summary, detail, created_at
+            FROM events_log
+            WHERE DATE(created_at AT TIME ZONE 'Europe/Berlin') = %s
+            ORDER BY created_at DESC
+            LIMIT %s
+            """,
+            (day, limit),
+        )
+        hours: dict[str, list] = {}
+        for r in _jsonable(rows):
+            ts = r.get("created_at", "")
+            hour = ts[11:13] if len(ts) >= 13 else "00"
+            hours.setdefault(hour, []).append(r)
+        return {
+            "date": day,
+            "hours": [
+                {"hour": h, "events": evts}
+                for h, evts in sorted(hours.items(), reverse=True)
+            ],
+            "total": len(rows),
+        }
+
     # ── "Was ist heute schiefgelaufen" ──────────────────────────────────────────
     @app.get("/api/errors/today")
     def errors_today():

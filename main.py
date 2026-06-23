@@ -73,9 +73,10 @@ async def main():
         agent_backend = OllamaBackend()
         log.info(f"🔧 Agent-Backend: Ollama ({cfg.AGENT_MODEL_STRONG}, Fallback)")
 
-    # ── Background-LLM: Ollama (proaktiv, Briefing, Reflexion) ────────────────
-    bg_llm = OllamaProvider()
-    log.info(f"🧠 Background-LLM: Ollama {cfg.OLLAMA_MODEL}")
+    # ── Background-LLM: Routed (Spezialisten je nach Aufgabe) ─────────────────
+    from llm.routed import RoutedLLMProvider
+    bg_llm = RoutedLLMProvider()
+    log.info(f"🧠 Background-LLM: Routed (default={cfg.BG_DEFAULT_MODEL} | reasoning={cfg.BG_REASONING_MODEL} | code={cfg.BG_CODE_MODEL})")
 
     # ── Embed-LLM: immer Ollama (kein Embedding via Claude) ───────────────────
     embed_llm = OllamaProvider()
