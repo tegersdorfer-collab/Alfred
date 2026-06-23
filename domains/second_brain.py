@@ -38,7 +38,7 @@ CATEGORY_LABELS = {
     "archive": "Archiv",
 }
 
-WIKI_LINK_RE = re.compile(r"\[\[([^\]]+)\]\]")
+WIKI_LINK_RE = re.compile(r"\[\[([^\]]{1,300})\]\]")
 
 
 @dataclass

@@ -348,7 +348,7 @@ async function api(p,o){const r=await fetch(API+p,o);return r.json();}
 async function post(p,b){return api(p,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(b||{})});}
 async function del(p){return api(p,{method:'DELETE'});}
 async function put(p,b){return api(p,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(b||{})});}
-function esc(s){return(s||'').replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));}
+function esc(s){return(s||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
 function md(s){return esc(s).replace(/\*\*(.+?)\*\*/g,'<b>$1</b>').replace(/\*(.+?)\*/g,'<i>$1</i>').replace(/`(.+?)`/g,'<code style="background:var(--s2);padding:1px 5px;border-radius:5px">$1</code>');}
 function toast(t){const x=el(`<div style="position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:var(--s1);border:1px solid var(--bd);color:var(--tx);padding:9px 16px;border-radius:6px;z-index:90;font-size:13px;box-shadow:0 4px 20px rgba(0,0,0,.5);white-space:nowrap">${esc(t)}</div>`);document.body.appendChild(x);setTimeout(()=>x.remove(),1900);}
 function confirmAction(text,onyes){sheet(`<div class="sheet-handle"></div><div style="font-size:14px;margin-bottom:18px;color:var(--t2);line-height:1.5">${esc(text)}</div><div style="display:flex;gap:8px"><button class="btn-g" style="flex:1;height:38px" onclick="closeSheet()">Abbrechen</button><button class="btn-danger" style="flex:1;height:38px" id="cfYes">Löschen</button></div>`);$('#cfYes').onclick=()=>{closeSheet();onyes();};}

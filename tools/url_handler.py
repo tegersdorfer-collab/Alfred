@@ -23,9 +23,37 @@ from __future__ import annotations
 import asyncio
 import logging
 import re
+from html.parser import HTMLParser
 from urllib.parse import urlparse
 
 log = logging.getLogger(__name__)
+
+
+class _HTMLTextExtractor(HTMLParser):
+    """Extract visible text from HTML, skipping script/style blocks."""
+    _SKIP_TAGS = frozenset({"script", "style", "noscript", "head"})
+
+    def __init__(self) -> None:
+        super().__init__(convert_charrefs=True)
+        self._parts: list[str] = []
+        self._skip_depth = 0
+
+    def handle_starttag(self, tag: str, attrs: list) -> None:
+        if tag in self._SKIP_TAGS:
+            self._skip_depth += 1
+
+    def handle_endtag(self, tag: str) -> None:
+        if tag in self._SKIP_TAGS and self._skip_depth:
+            self._skip_depth -= 1
+
+    def handle_data(self, data: str) -> None:
+        if not self._skip_depth:
+            stripped = data.strip()
+            if stripped:
+                self._parts.append(stripped)
+
+    def get_text(self) -> str:
+        return " ".join(self._parts)
 
 # Plattformen die yt-dlp unterstützt (Auswahl für schnelle Erkennung)
 _YTDLP_HOSTS = {
@@ -43,26 +71,32 @@ _YTDLP_HOSTS = {
 }
 
 
+def _host_matches(host: str, *domains: str) -> bool:
+    """True if host equals or is a subdomain of any of the given domains."""
+    return any(host == d or host.endswith("." + d) for d in domains)
+
+
 def _platform(url: str) -> str:
-    host = urlparse(url).hostname or ""
-    host = host.lstrip("www.")
-    if "youtube" in host or "youtu.be" in host:
+    host = (urlparse(url).hostname or "").lower()
+    if _host_matches(host, "youtube.com", "youtu.be"):
         return "youtube"
-    if "tiktok" in host:
+    if _host_matches(host, "tiktok.com"):
         return "tiktok"
-    if "instagram" in host:
+    if _host_matches(host, "instagram.com"):
         return "instagram"
-    if "twitter" in host or "x.com" in host:
+    if _host_matches(host, "twitter.com", "x.com"):
         return "twitter"
-    if "twitch" in host:
+    if _host_matches(host, "twitch.tv"):
         return "twitch"
-    if "spotify" in host:
+    if _host_matches(host, "spotify.com"):
         return "spotify"
-    if "soundcloud" in host:
+    if _host_matches(host, "soundcloud.com"):
         return "soundcloud"
-    if "reddit" in host or "redd.it" in host:
+    if _host_matches(host, "reddit.com", "redd.it"):
         return "reddit"
-    return host.split(".")[0] if host else "unknown"
+    # Return the registrable part of the hostname (last two labels) as a safe default
+    parts = host.rsplit(".", 2)
+    return parts[-2] if len(parts) >= 2 else (host or "unknown")
 
 
 def _is_ytdlp_url(url: str) -> bool:
@@ -165,13 +199,17 @@ async def _fetch_article(url: str) -> dict:
                                       headers={"User-Agent": "Mozilla/5.0 Alfred/1.0"}) as c:
             r = await c.get(url)
         html = r.text
-        text = re.sub(r'<style[^>]*>.*?</style>', '', html, flags=re.DOTALL)
-        text = re.sub(r'<script[^>]*>.*?</script>', '', text, flags=re.DOTALL)
-        text = re.sub(r'<[^>]+>', ' ', text)
-        text = re.sub(r'\s+', ' ', text).strip()
+        extractor = _HTMLTextExtractor()
+        extractor.feed(html)
+        text = re.sub(r'\s+', ' ', extractor.get_text()).strip()
 
-        title_m = re.search(r'<title[^>]*>(.*?)</title>', html, re.IGNORECASE | re.DOTALL)
-        title = re.sub(r'<[^>]+>', '', title_m.group(1)).strip() if title_m else ""
+        # Extract <title> via a second parser pass (avoids regexp on HTML attributes)
+        title_extractor = _HTMLTextExtractor()
+        title_m = re.search(r'(?i)<title[^>]*>([\s\S]{0,512})</title>', html)
+        title = ""
+        if title_m:
+            title_extractor.feed(title_m.group(1))
+            title = title_extractor.get_text().strip()
 
         return {
             "type": "article",

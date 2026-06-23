@@ -100,7 +100,7 @@ def scan_all() -> int:
 
 def reload_skill(name: str) -> None:
     """Lädt einen einzelnen Skill neu (nach Background-Review-Write)."""
-    path = SKILLS_MD_DIR / f"{name}.md"
+    path = _safe_skill_path(name)
     if path.exists():
         entry = _load_one(path)
         if entry:
@@ -161,8 +161,20 @@ def get_skill(name: str) -> Optional[dict]:
     return _INDEX.get(name)
 
 
+_SAFE_NAME_RE = re.compile(r'^[\w\-]+$')
+
+def _safe_skill_path(name: str) -> Path:
+    """Return path only if name is safe (no path traversal)."""
+    if not _SAFE_NAME_RE.match(name):
+        raise ValueError(f"Invalid skill name: {name!r}")
+    path = (SKILLS_MD_DIR / f"{name}.md").resolve()
+    if not str(path).startswith(str(SKILLS_MD_DIR.resolve())):
+        raise ValueError(f"Path traversal detected for skill name: {name!r}")
+    return path
+
+
 def delete_skill(name: str) -> bool:
-    path = SKILLS_MD_DIR / f"{name}.md"
+    path = _safe_skill_path(name)
     if path.exists():
         path.unlink()
         _INDEX.pop(name, None)
@@ -172,7 +184,7 @@ def delete_skill(name: str) -> bool:
 
 def update_skill(name: str, body: str) -> bool:
     """Aktualisiert den Body eines bestehenden Skills."""
-    path = SKILLS_MD_DIR / f"{name}.md"
+    path = _safe_skill_path(name)
     if not path.exists():
         return False
     content = path.read_text(encoding="utf-8")

@@ -200,24 +200,25 @@ def create_app(orch=None) -> FastAPI:
         kind, path = d.get("kind"), d.get("path")
         old_content = d.get("old_content", "")
 
-        if kind == "skill_create" or kind == "skill_delete":
+        try:
+            if kind == "skill_create" or kind == "skill_delete":
+                skill_name = Path(path).stem
+                if kind == "skill_create":
+                    result = delete_skill(skill_name)
+                else:
+                    src = old_content.split('"""\n', 2)
+                    body = src[2] if len(src) == 3 else old_content
+                    result = create_skill(skill_name, f"Revert von Löschung (Change #{change_id})", body)
+                return result
 
-            skill_name = Path(path).stem
-            if kind == "skill_create":
-                result = delete_skill(skill_name)
-            else:
-                # War gelöscht → Quellcode (ohne den Auto-Header) wieder anlegen
-                src = old_content.split('"""\n', 2)
-                body = src[2] if len(src) == 3 else old_content
-                result = create_skill(skill_name, f"Revert von Löschung (Change #{change_id})", body)
-            return result
+            if kind == "code_write":
+                result = write_file(path, old_content, f"Revert von Change #{change_id}")
+                return result
 
-        if kind == "code_write":
-
-            result = write_file(path, old_content, f"Revert von Change #{change_id}")
-            return result
-
-        return {"ok": False, "message": f"Unbekannte Änderungsart '{kind}', kann nicht automatisch rückgängig gemacht werden."}
+            return {"ok": False, "message": "Unbekannte Änderungsart, kann nicht automatisch rückgängig gemacht werden."}
+        except Exception:
+            log.exception("Fehler beim Revert von Change #%s", change_id)
+            return JSONResponse({"ok": False, "message": "Revert fehlgeschlagen."}, 500)
 
     @app.get("/api/weather")
     async def api_weather():
@@ -295,16 +296,16 @@ def create_app(orch=None) -> FastAPI:
     @app.patch("/api/habits/{hid}")
     async def update_habit(hid: int, req: Request):
         d = await req.json()
+        # Allowlist: only known column names — never interpolate user-controlled keys
+        _ALLOWED = {"category": "category = %s", "name": "name = %s", "emoji": "emoji = %s"}
         fields, vals = [], []
-        if "category" in d:
-            fields.append("category = %s"); vals.append(d["category"])
-        if "name" in d:
-            fields.append("name = %s"); vals.append(d["name"])
-        if "emoji" in d:
-            fields.append("emoji = %s"); vals.append(d["emoji"])
+        for key, sql_fragment in _ALLOWED.items():
+            if key in d:
+                fields.append(sql_fragment)
+                vals.append(d[key])
         if fields:
             vals.append(hid)
-            db.execute(f"UPDATE habits SET {', '.join(fields)} WHERE id = %s", vals)
+            db.execute("UPDATE habits SET " + ", ".join(fields) + " WHERE id = %s", tuple(vals))
         return {"ok": True}
 
     @app.post("/api/habits/{hid}/log")
@@ -511,8 +512,9 @@ def create_app(orch=None) -> FastAPI:
             try:
                 res = await asyncio.to_thread(fitness.import_workout_csv, dump)
                 return {"ok": True, **res}
-            except Exception as e:
-                return JSONResponse({"error": f"CSV-Parsing fehlgeschlagen: {e}"}, 422)
+            except Exception:
+                log.exception("CSV-Parsing fehlgeschlagen")
+                return JSONResponse({"error": "CSV-Parsing fehlgeschlagen."}, 422)
 
         if not orch:
             return JSONResponse({"error": "kein Kern"}, 503)
