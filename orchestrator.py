@@ -68,8 +68,8 @@ class Orchestrator:
     def __init__(self, channel: CommunicationChannel, lzg: LZG, thermal: ThermalMonitor,
                  chat_llm: LLMProvider, bg_llm: LLMProvider, embed_llm: LLMProvider,
                  agent_backend: AgentBackend):
-        self.llm       = chat_llm   # Alias für Kompatibilität
         self.chat_llm  = chat_llm
+        self.llm       = chat_llm   # TODO: api.py noch auf chat_llm umstellen, dann entfernen
         self.bg_llm    = bg_llm
         self.embed_llm = embed_llm
         self.channel   = channel
@@ -150,23 +150,42 @@ class Orchestrator:
         return await self.msg_handler.dashboard_respond(text, stream_cb)
 
     def lzg_embed(self, text: str) -> list[float]:
-        """Synchroner Embedding-Wrapper für API-Endpoints."""
+        """Synchroner Embedding-Wrapper für API-Endpoints (läuft in asyncio.to_thread)."""
+        import concurrent.futures
         try:
             loop = asyncio.get_event_loop()
             if loop.is_running():
-                import concurrent.futures
                 future = asyncio.run_coroutine_threadsafe(
                     self.embed_llm.embed(text), loop
                 )
                 return future.result(timeout=10)
+            # Loop existiert aber läuft nicht (z.B. Sync-Testkontext)
+            log.warning("lzg_embed: kein laufender Event-Loop — Embedding übersprungen")
         except Exception as e:
             log.warning(f"lzg_embed fehlgeschlagen: {e}")
         return []
 
     # ── Lifecycle ─────────────────────────────────────────────────────────────
 
+    # Hält Referenzen auf Background-Tasks damit der GC sie nicht abräumt
+    _bg_tasks: list[asyncio.Task]
+
     async def start(self) -> None:
         log.info("Orchestrator startet...")
+        self._bg_tasks = []
+        await self._init_db()
+        await self._init_skills()
+        await self._restore_memory()
+        await self._warmup()
+        self.channel.on_message(self.handle_message)
+        self.idle_loop.resume()
+        self._bg_tasks.append(asyncio.create_task(self.idle_loop.monitoring_loop()))
+        await self.channel.start()
+        log_event("system", "Alfred gestartet")
+        log.info("Alfred bereit ✅")
+
+    async def _init_db(self) -> None:
+        """DB-Setup — Fehler bricht Start ab (kein Alfred ohne persistente Memory)."""
         try:
             self.lzg.setup()
             self._reminders.setup()
@@ -174,7 +193,10 @@ class Orchestrator:
             log.info("Datenbank bereit")
         except Exception as e:
             log.error(f"DB-Fehler: {e}")
+            raise  # Alfred ohne DB sinnlos
 
+    async def _init_skills(self) -> None:
+        """Skills binden + dynamische Skills aus vorherigen Sessions laden."""
         try:
             self._dashboard.refresh_health()
         except Exception as e:
@@ -185,12 +207,13 @@ class Orchestrator:
             reminders=self._reminders, dashboard=self._dashboard,
             channel=self.channel,
         ))
-
         try:
             load_all_on_startup()
         except Exception as e:
             log.error(f"Dynamische Skills konnten nicht geladen werden: {e}")
 
+    async def _restore_memory(self) -> None:
+        """KZG aus letzter Session wiederherstellen + Memory-Übersicht loggen."""
         try:
             past = self.lzg.load_recent_kzg(max_turns=config.KZG_MAX_TURNS)
             for t in past:
@@ -200,7 +223,6 @@ class Orchestrator:
                 self.lzg.clear_kzg_sessions(keep_last=config.KZG_MAX_TURNS * 2)
         except Exception as e:
             log.warning(f"KZG-Wiederherstellung: {e}")
-
         try:
             mems = self.lzg.get_all(limit=20)
             if mems:
@@ -208,33 +230,27 @@ class Orchestrator:
         except Exception:
             pass
 
-        if isinstance(self.llm, OllamaProvider):
-            await self.llm.pull_if_missing()
-
-        asyncio.create_task(self.agent.warmup())
-        asyncio.create_task(fast.warmup())
-
-        self.channel.on_message(self.handle_message)
-        self.idle_loop.resume()
-        asyncio.create_task(self.idle_loop.monitoring_loop())
-
-        await self.channel.start()
-        log_event("system", "Alfred gestartet")
-        log.info("Alfred bereit ✅")
+    async def _warmup(self) -> None:
+        """LLM-Modelle aufwärmen — Tasks mit Referenz speichern (kein GC-Risiko)."""
+        if isinstance(self.chat_llm, OllamaProvider):
+            await self.chat_llm.pull_if_missing()
+        self._bg_tasks += [
+            asyncio.create_task(self.agent.warmup()),
+            asyncio.create_task(fast.warmup()),
+        ]
 
     async def stop(self) -> None:
         self.idle_loop.pause()
-        try:
-            self.lzg.close()
-        except Exception:
-            pass
-        try:
-            self._dashboard.close()
-        except Exception:
-            pass
-        try:
-            db.close_pool()
-        except Exception:
-            pass
+        for t in getattr(self, "_bg_tasks", []):
+            t.cancel()
+        for closer, label in [
+            (self.lzg.close, "LZG"),
+            (self._dashboard.close, "Dashboard"),
+            (db.close_pool, "DB-Pool"),
+        ]:
+            try:
+                closer()
+            except Exception as e:
+                log.debug(f"Stop/{label}: {e}")
         log_event("system", "Alfred gestoppt")
         log.info("Orchestrator gestoppt")

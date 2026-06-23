@@ -78,7 +78,7 @@ def create_app(orch=None) -> FastAPI:
         active_model = config.OLLAMA_MODEL
         if orch is not None:
             try:
-                active_model = orch.llm.model_name
+                active_model = orch.chat_llm.model_name
             except Exception:
                 pass
         return {"running": running or orch is not None, "pid": pid,
@@ -345,7 +345,7 @@ def create_app(orch=None) -> FastAPI:
         elif orch:
             try:
 
-                assignee = await classify(d["title"], d.get("notes"), orch.llm)
+                assignee = await classify(d["title"], d.get("notes"), orch.chat_llm)
                 db.execute("UPDATE tasks SET assigned_to=%s WHERE id=%s", (assignee, tid))
             except Exception:
                 pass
@@ -523,7 +523,7 @@ def create_app(orch=None) -> FastAPI:
             '"distance_km":null,"exercises":[{"name":"...","sets":[{"reps":10,"weight_kg":60}]}]}\n'
             "Nur JSON, kein Text drumherum.\n\nDump:\n" + dump + "\n\nJSON:"
         )
-        raw = await orch.llm.chat(messages=[{"role": "user", "content": prompt}],
+        raw = await orch.chat_llm.chat(messages=[{"role": "user", "content": prompt}],
                                   temperature=0.2, max_tokens=900, format="json")
         data = extract_json(raw, default=None)
         if not isinstance(data, dict):
@@ -704,7 +704,7 @@ def create_app(orch=None) -> FastAPI:
             f"Kontext:\n{ctx}\n\n"
             f"Antworte NUR mit den 3 Fragen, eine pro Zeile, ohne Nummerierung oder Formatierung."
         )
-        resp = await orch.llm.chat(
+        resp = await orch.chat_llm.chat(
             messages=[{"role": "user", "content": prompt}],
             temperature=0.9, max_tokens=200,
         )
