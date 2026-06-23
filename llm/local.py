@@ -105,7 +105,6 @@ class OllamaProvider(LLMProvider):
                 input=text,
             )
         emb = response.embeddings[0]
-        # LRU: ältesten Eintrag entfernen wenn voll
         if key in self._embed_cache:
             self._embed_cache.move_to_end(key)
         else:
@@ -113,6 +112,38 @@ class OllamaProvider(LLMProvider):
                 self._embed_cache.popitem(last=False)
             self._embed_cache[key] = emb
         return emb
+
+    async def embed_batch(self, texts: list[str]) -> list[list[float]]:
+        """Batch-Embedding: mehrere Texte in einem Ollama-Call (spart Round-Trips)."""
+        # Prüfe Cache zuerst
+        results: list[list[float] | None] = [None] * len(texts)
+        uncached_indices: list[int] = []
+        uncached_texts:   list[str]  = []
+
+        for i, text in enumerate(texts):
+            key = text.strip()[:512]
+            if key in self._embed_cache:
+                self._embed_cache.move_to_end(key)
+                results[i] = self._embed_cache[key]
+            else:
+                uncached_indices.append(i)
+                uncached_texts.append(text)
+
+        if uncached_texts:
+            async with GATE:
+                response = await self._client.embed(
+                    model=self._embed_model,
+                    input=uncached_texts,
+                )
+            for idx, (orig_i, text) in enumerate(zip(uncached_indices, uncached_texts)):
+                emb = response.embeddings[idx]
+                key = text.strip()[:512]
+                if len(self._embed_cache) >= self._embed_cache_max:
+                    self._embed_cache.popitem(last=False)
+                self._embed_cache[key] = emb
+                results[orig_i] = emb
+
+        return [r for r in results if r is not None]
 
     async def check_model(self) -> bool:
         """Prüft ob das Modell verfügbar ist."""

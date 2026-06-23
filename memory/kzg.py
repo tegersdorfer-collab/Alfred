@@ -87,6 +87,10 @@ class KZG:
     def get_turns(self) -> list[Turn]:
         return list(self._turns)
 
+    def get_recent_turns(self, n: int = 6) -> list[Turn]:
+        """Gibt die n jüngsten Turns zurück — für Recall Gate."""
+        return self._turns[-n:]
+
     def clear(self) -> None:
         self._turns = []
         self._session_start = datetime.now()

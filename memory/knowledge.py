@@ -234,6 +234,8 @@ class KnowledgeGraph:
             return ""
         lines = ["## Wissens-Graph"]
         for ent in entities:
+            if ent.type == "directive":
+                continue  # Directives kommen separat
             rels = self.get_relations(ent.id, direction="out")
             if rels:
                 for r in rels[:3]:
@@ -243,6 +245,69 @@ class KnowledgeGraph:
             else:
                 lines.append(f"- {ent.name} ({ent.type})")
         return "\n".join(lines)
+
+    def get_directives(self) -> list[str]:
+        """Gibt alle stehenden Anweisungen (Directives) als Textliste zurück."""
+        rows = _db.query(
+            "SELECT name, description FROM kg_entities WHERE type='directive' ORDER BY created_at ASC"
+        )
+        return [f"- {r['name']}: {r['description']}" if r.get("description") else f"- {r['name']}"
+                for r in rows]
+
+    def add_directive(self, name: str, description: str) -> int:
+        """Speichert eine stehende Anweisung von Timo."""
+        return self.upsert_entity(name=name, type_="directive", description=description)
+
+    def format_directives(self) -> str:
+        """Gibt Directives formatiert für den System-Prompt zurück."""
+        items = self.get_directives()
+        if not items:
+            return ""
+        return "## Stehende Anweisungen von Timo\n" + "\n".join(items)
+
+    # ── Warm Profile ───────────────────────────────────────────────────────────
+    _profile_cache: str = ""
+    _profile_ts: float = 0.0
+
+    def warm_profile(self) -> str:
+        """
+        Kompaktes Nutzerprofil aus KG-Entitäten (person/goal/habit/concept).
+        90s gecacht — kein LLM-Call, nur DB-Lesezugriff.
+        """
+        import time
+        if time.time() - self._profile_ts < 90 and self._profile_cache:
+            return self._profile_cache
+
+        rows = _db.query(
+            """
+            SELECT e.name, e.type, e.description,
+                   array_agg(DISTINCT r.predicate || ' ' || o.name) FILTER (WHERE o.name IS NOT NULL) AS facts
+            FROM kg_entities e
+            LEFT JOIN kg_relations r ON r.subject_id = e.id
+            LEFT JOIN kg_entities o ON r.object_id = o.id
+            WHERE e.type IN ('person','goal','habit','concept')
+              AND e.name ILIKE 'timo%'
+            GROUP BY e.id
+            ORDER BY e.updated_at DESC
+            LIMIT 20
+            """
+        )
+        if not rows:
+            self._profile_cache = ""
+            self._profile_ts = time.time()
+            return ""
+
+        lines = ["## Timos Profil (Warm Cache)"]
+        for r in rows:
+            facts = [f for f in (r.get("facts") or []) if f][:4]
+            if facts:
+                lines.append(f"- {r['name']} ({r['type']}): {'; '.join(facts)}")
+            elif r.get("description"):
+                lines.append(f"- {r['name']} ({r['type']}): {r['description']}")
+        result = "\n".join(lines) if len(lines) > 1 else ""
+        self._profile_cache = result
+        self._profile_ts = time.time()
+        return result
 
 
 # ── Helfer ─────────────────────────────────────────────────────────────────────

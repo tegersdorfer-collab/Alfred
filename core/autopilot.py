@@ -124,6 +124,64 @@ class Autopilot:
             except Exception as e:
                 log.warning(f"Review fehlgeschlagen: {e}")
 
+        # 3b. Tägliche KI-Reflexion (22-23 Uhr, nach Abend-Review)
+        if 22 <= hour < 23 and self._needs("ai_reflection"):
+            try:
+                async with self._guard():
+                    await self._ai_daily_reflection()
+                self._mark("ai_reflection")
+            except Exception as e:
+                log.warning(f"KI-Reflexion fehlgeschlagen: {e}")
+
+        # 3g. Wetterbasiertes Coaching (morgens, 1x/Tag)
+        if 7 <= hour < 10 and self._needs("weather_coaching"):
+            try:
+                async with self._guard():
+                    msg = await self._weather_coaching()
+                if msg:
+                    await self._send(msg, kind="weather")
+                self._mark("weather_coaching")
+            except Exception as e:
+                log.debug(f"Weather-Coaching: {e}")
+
+        # 3f. Personal Newsletter (Freitag 17-18 Uhr, 1x/Woche)
+        if now_dt.weekday() == 4 and 17 <= hour < 18 and self._needs("weekly_newsletter"):
+            try:
+                async with self._guard():
+                    await self._personal_newsletter()
+                self._mark("weekly_newsletter")
+            except Exception as e:
+                log.debug(f"Newsletter: {e}")
+
+        # 3e. Periodische Themen-Recherche (Montag 8-9 Uhr, 1x/Woche)
+        if now_dt.weekday() == 0 and 8 <= hour < 9 and self._needs("weekly_research"):
+            try:
+                async with self._guard():
+                    await self._weekly_research()
+                self._mark("weekly_research")
+            except Exception as e:
+                log.debug(f"Weekly-Research: {e}")
+
+        # 3d. Proaktive Smart-Notifications (mittags, 1x/Tag)
+        if 12 <= hour < 14 and self._needs("smart_notify"):
+            try:
+                async with self._guard():
+                    await self._smart_notifications()
+                self._mark("smart_notify")
+            except Exception as e:
+                log.debug(f"Smart-Notify: {e}")
+
+        # 3c. Workout-Empfehlung basierend auf HRV + Schlaf (morgens 7-10 Uhr)
+        if 7 <= hour < 10 and self._needs("workout_rec"):
+            try:
+                async with self._guard():
+                    msg = await self._workout_recommendation()
+                if msg:
+                    await self._send(msg, kind="workout_rec")
+                self._mark("workout_rec")
+            except Exception as e:
+                log.debug(f"Workout-Empfehlung: {e}")
+
         # 4. Health-Anomalie (tagsüber, einmal/Tag)
         if 8 <= hour < 21 and self._needs("health_alert"):
             try:
@@ -468,3 +526,321 @@ class Autopilot:
             return
         await self._send("📅 " + summary, kind="calendar_check")
         log.info("📅 Kalender-Check gesendet")
+
+    async def _weather_coaching(self) -> str | None:
+        """Wetter-basiertes Coaching: passt Outdoor-Empfehlungen ans Wetter an."""
+        try:
+            from domains import weather as _weather
+            w = await _weather.get_weather()
+        except Exception:
+            return None
+        if not w:
+            return None
+
+        temp  = w.get("temp_c") or w.get("temperature")
+        desc  = (w.get("description") or w.get("condition") or "").lower()
+        rain  = any(k in desc for k in ["rain", "regen", "shower", "drizzle", "storm"])
+        hot   = temp and float(temp) > 30
+        cold  = temp and float(temp) < 5
+
+        if rain:
+            tip = "☔ Heute Regen → perfekter Tag für Indoor-Training oder Skill-Building statt Outdoor."
+        elif hot:
+            tip = f"🌡️ {temp}°C heute → früh morgens oder abends trainieren, viel Wasser trinken."
+        elif cold:
+            tip = f"🧊 {temp}°C → gut aufwärmen vor dem Training, Layering beim Sport draußen."
+        else:
+            tip = None
+
+        if not tip:
+            return None
+
+        prompt = (
+            f"{self.identity}\n\nWetter heute: {temp}°C, {desc}.\n"
+            f"Gib Timo einen kurzen, konkreten Tagesplan-Hinweis (1-2 Sätze) basierend auf dem Wetter. "
+            f"Bezug: {tip}\nDirekt, praktisch."
+        )
+        text = await self.llm.chat(messages=[{"role": "user", "content": prompt}],
+                                   temperature=0.5, max_tokens=100)
+        return "🌤️ " + text.strip()
+
+    async def _personal_newsletter(self) -> None:
+        """
+        Freitags: Wochenzusammenfassung als Digest via Telegram.
+        Enthält: erledigte Tasks, Health-Highlights, Habit-Streak, Brain-Notizen der Woche.
+        """
+        import asyncio
+        lines = ["📰 **Wochenzusammenfassung**\n"]
+
+        # Tasks diese Woche erledigt
+        try:
+            done = await asyncio.to_thread(db.query,
+                """SELECT title FROM tasks WHERE status='done'
+                   AND updated_at >= NOW() - INTERVAL '7 days'
+                   ORDER BY updated_at DESC LIMIT 8"""
+            )
+            if done:
+                lines.append("✅ **Erledigte Tasks:**")
+                lines.extend(f"  · {t['title']}" for t in done)
+        except Exception:
+            pass
+
+        # Health-Highlights
+        try:
+            health = self.dashboard.get_recent_health(days=7)
+            if health:
+                avg_sleep = sum(h.sleep_duration for h in health if h.sleep_duration) / max(1, sum(1 for h in health if h.sleep_duration))
+                avg_hrv   = sum(h.hrv for h in health if h.hrv) / max(1, sum(1 for h in health if h.hrv))
+                avg_steps = sum(h.steps for h in health if h.steps) / max(1, sum(1 for h in health if h.steps))
+                lines.append(f"\n💪 **Health-Schnitt:** Schlaf {avg_sleep:.1f}h | HRV {avg_hrv:.0f} | Schritte {avg_steps:.0f}")
+        except Exception:
+            pass
+
+        # Habit-Streaks
+        try:
+            habits = await asyncio.to_thread(db.query,
+                """SELECT h.name, COUNT(l.id) as count FROM habits h
+                   LEFT JOIN habit_logs l ON l.habit_id=h.id AND l.done_on >= CURRENT_DATE-7
+                   WHERE h.active=TRUE GROUP BY h.name ORDER BY count DESC LIMIT 5"""
+            )
+            if habits:
+                lines.append("\n🔁 **Habits (letzte 7 Tage):**")
+                lines.extend(f"  · {h['name']}: {h['count']}/7" for h in habits)
+        except Exception:
+            pass
+
+        # Neue Brain-Notizen
+        try:
+            from domains.second_brain import get_all
+            new_notes = [n for n in get_all(limit=50)
+                         if hasattr(n, 'created_at') and
+                         (datetime.now() - n.created_at.replace(tzinfo=None)).days <= 7][:5]
+            if new_notes:
+                lines.append("\n🧠 **Neue Notizen:**")
+                lines.extend(f"  · {n.title}" for n in new_notes)
+        except Exception:
+            pass
+
+        msg = "\n".join(lines)
+        await self._send(msg, kind="newsletter")
+        log.info("📰 Personal Newsletter gesendet")
+
+    async def _weekly_research(self) -> None:
+        """
+        Montags: durchsucht gespeicherte Recherche-Queries (brain_notes Kategorie 'resource'
+        mit Tag 'research_query'), führt Web-Suche durch, speichert Zusammenfassung.
+        """
+        import asyncio
+        from domains.second_brain import get_by_category, add_note
+
+        queries = [
+            n for n in get_by_category("resource", limit=50)
+            if "research_query" in (n.tags or [])
+        ]
+        if not queries:
+            log.debug("Weekly-Research: keine Queries gespeichert")
+            return
+
+        from core.skills import CTX
+        results = []
+        for note in queries[:3]:
+            query = note.title
+            prompt = (
+                f"{self.identity}\n\n"
+                f"Führe eine kurze Recherche zu folgendem Thema durch: '{query}'\n"
+                "Fasse in 3-5 Sätzen zusammen was aktuell relevant/neu ist. "
+                "Nutze dein Wissen bis August 2025. Antworte auf Deutsch."
+            )
+            try:
+                summary = await self.llm.chat(
+                    messages=[{"role": "user", "content": prompt}],
+                    temperature=0.4, max_tokens=200,
+                )
+                results.append(f"**{query}**\n{summary.strip()}")
+            except Exception:
+                pass
+
+        if results:
+            from datetime import date
+            title = f"Wöchentliche Recherche {date.today().isoformat()}"
+            content = "# Wöchentliche Themen-Recherche\n\n" + "\n\n---\n\n".join(results)
+            add_note(title=title, content=content, category="resource",
+                     tags=["weekly", "research", "auto"])
+            await self._send(
+                f"🔍 Wöchentliche Recherche: {len(results)} Themen zusammengefasst → Brain",
+                kind="research"
+            )
+
+    async def _smart_notifications(self) -> None:
+        """
+        Proaktive Smart-Notifications: prüft Bedingungen die Timo vielleicht vergessen hat.
+        - Tasks die diese Woche fällig sind aber noch nicht gestartet
+        - Habits die seit 3+ Tagen nicht gemacht wurden
+        - Offene Arzt-/Termin-Todos aus Memories
+        """
+        import asyncio
+        msgs = []
+
+        # Tasks die heute/morgen fällig sind und noch offen
+        try:
+            overdue = await asyncio.to_thread(db.query,
+                """SELECT title, due_date FROM tasks
+                   WHERE status NOT IN ('done','archived')
+                   AND due_date <= CURRENT_DATE + 2
+                   AND (assigned_to IS NULL OR assigned_to != 'alfred')
+                   ORDER BY due_date ASC LIMIT 5"""
+            )
+            if overdue:
+                items = "; ".join(f"{t['title']} ({t['due_date']})" for t in overdue[:3])
+                msgs.append(f"⚡ Bald fällig: {items}")
+        except Exception:
+            pass
+
+        # Habits 3+ Tage nicht gemacht
+        try:
+            stale_habits = await asyncio.to_thread(db.query,
+                """SELECT name FROM habits h
+                   WHERE active = TRUE
+                   AND NOT EXISTS (
+                       SELECT 1 FROM habit_logs l
+                       WHERE l.habit_id = h.id AND l.done_on >= CURRENT_DATE - 3
+                   )
+                   LIMIT 3"""
+            )
+            if stale_habits:
+                names = ", ".join(h["name"] for h in stale_habits)
+                msgs.append(f"🔁 Habits seit 3+ Tagen nicht gemacht: {names}")
+        except Exception:
+            pass
+
+        for msg in msgs:
+            await self._send(msg, kind="smart_notify")
+
+    async def _workout_recommendation(self) -> str | None:
+        """Morgens: HRV + Schlaf → Trainingsempfehlung (intensiv / moderat / Pause)."""
+        health = self.dashboard.get_recent_health(days=7)
+        if len(health) < 2:
+            return None
+        latest = health[0]
+        if not latest.hrv and not latest.sleep_duration:
+            return None
+
+        hrvs   = [h.hrv for h in health if h.hrv]
+        sleeps = [h.sleep_duration for h in health if h.sleep_duration]
+        avg_hrv   = sum(hrvs[1:]) / max(1, len(hrvs[1:])) if len(hrvs) > 1 else None
+        avg_sleep = sum(sleeps[1:]) / max(1, len(sleeps[1:])) if len(sleeps) > 1 else None
+
+        hrv_ratio   = latest.hrv / avg_hrv if avg_hrv and latest.hrv else 1.0
+        sleep_ok    = latest.sleep_duration >= 7.0 if latest.sleep_duration else True
+
+        if hrv_ratio >= 1.05 and sleep_ok:
+            intensity = "intensiv"
+        elif hrv_ratio >= 0.9 and sleep_ok:
+            intensity = "moderat"
+        else:
+            intensity = "Pause/Regeneration"
+
+        facts = []
+        if latest.hrv:
+            facts.append(f"HRV heute: {latest.hrv:.0f}" + (f" (Schnitt {avg_hrv:.0f})" if avg_hrv else ""))
+        if latest.sleep_duration:
+            facts.append(f"Schlaf: {latest.sleep_duration:.1f}h" + (f" (Schnitt {avg_sleep:.1f}h)" if avg_sleep else ""))
+        facts.append(f"Empfohlene Intensität: {intensity}")
+
+        prompt = (
+            f"{self.identity}\n\n"
+            "Formuliere eine kurze Trainingsempfehlung für Timo (2-3 Sätze). "
+            "Begründe sie mit den Daten. Schlage konkret vor was er heute machen könnte. "
+            "Direkt, motivierend, kein Bla-Bla.\n\n"
+            f"Daten:\n" + "\n".join(facts) + "\n\nEmpfehlung:"
+        )
+        text = await self.llm.chat(messages=[{"role": "user", "content": prompt}],
+                                   temperature=0.5, max_tokens=150)
+        return "🏋️ " + text.strip()
+
+    async def _ai_daily_reflection(self) -> None:
+        """
+        Tägliche KI-Reflexion (22 Uhr): Analysiert Wins, Risiken und Muster
+        über Habits, Health, Tasks und Memories. Speichert Ergebnis in brain_notes.
+        """
+        import asyncio
+        ctx = await self._gather()
+
+        # Daten zusammenstellen
+        lines: list[str] = []
+
+        # Habits
+        done_h = [h["name"] for h in ctx.get("habits", []) if h.get("today_done")]
+        open_h = [h["name"] for h in ctx.get("habits", []) if not h.get("today_done")]
+        if done_h:
+            lines.append(f"Erledigte Habits: {', '.join(done_h)}")
+        if open_h:
+            lines.append(f"Offene Habits: {', '.join(open_h)}")
+
+        # Health
+        try:
+            health = self.dashboard.get_recent_health(days=7)
+            if health:
+                h = health[0]
+                if h.hrv:
+                    lines.append(f"HRV heute: {h.hrv:.0f}")
+                if h.sleep_duration:
+                    lines.append(f"Schlaf heute: {h.sleep_duration:.1f}h")
+                if h.steps:
+                    lines.append(f"Schritte: {h.steps}")
+        except Exception:
+            pass
+
+        # Tasks (erledigt heute)
+        try:
+            done_tasks = await asyncio.to_thread(
+                db.query,
+                "SELECT title FROM tasks WHERE status='done' AND updated_at::date=CURRENT_DATE LIMIT 10",
+            )
+            if done_tasks:
+                lines.append(f"Heute erledigte Tasks: {', '.join(t['title'] for t in done_tasks)}")
+        except Exception:
+            pass
+
+        # Letzte Memories (Muster-Input)
+        try:
+            from memory import lzg as _lzg
+            recent_mems = await asyncio.to_thread(lambda: _lzg.LZG().get_all(limit=15))
+            if recent_mems:
+                lines.append("Letzte Erkenntnisse: " + "; ".join(m.content[:60] for m in recent_mems[:5]))
+        except Exception:
+            pass
+
+        if not lines:
+            log.debug("KI-Reflexion: zu wenig Daten")
+            return
+
+        facts = "\n".join(lines)
+        prompt = (
+            f"{self.identity}\n\n"
+            "Du bist Alfreds End-of-Day-Reflexions-Engine. Analysiere Timos heutigen Tag. "
+            "Identifiziere: 1) Klare Wins, 2) Wiederkehrende Muster (positiv/negativ), "
+            "3) Ein konkretes Risiko für morgen, 4) Eine messbare Verbesserungsidee. "
+            "Schreibe präzise, direkt, max. 5-6 Sätze. Keine Floskeln.\n\n"
+            f"Tagesdaten:\n{facts}\n\nReflexion:"
+        )
+        reflection = await self.llm.chat(
+            messages=[{"role": "user", "content": prompt}],
+            temperature=0.4, max_tokens=250,
+        )
+        reflection = reflection.strip()
+
+        # In brain_notes als Daily-Eintrag speichern
+        try:
+            from domains import second_brain as _brain
+            today_note = await asyncio.to_thread(_brain.ensure_today_daily)
+            await asyncio.to_thread(
+                _brain.update_note,
+                today_note["id"],
+                content=today_note["content"] + f"\n\n### 🤖 KI-Reflexion\n{reflection}",
+            )
+        except Exception as e:
+            log.debug(f"brain_notes-Speicherung: {e}")
+
+        log.info("🔍 Tägliche KI-Reflexion gespeichert")
+        # Kein Telegram-Push — Reflexion ist intern, sichtbar im Brain-Dashboard

@@ -121,7 +121,9 @@ _CATEGORY_KEYWORDS = {
     "journal":      ["tagebuch", "journal", "stimmung", "mood", "gefühlt", "fühle", "notier"],
     "goals":        ["ziel", "goal", "fortschritt", "vorhaben", "meilenstein"],
     "knowledge":    ["wetter", "news", "nachricht", "suche", "google", "aktuell",
-                     "wer ist", "was ist", "preis", "kostet", "wie viel"],
+                     "wer ist", "was ist", "preis", "kostet", "wie viel",
+                     "brain", "second brain", "notiz", "notiere", "speichere", "inbox",
+                     "wissen", "ressource", "daily note", "tageslog"],
     "memory":       ["merk dir", "merke", "behalte", "vergiss nicht", "erinnere dich"],
     "health":       ["schlaf", "schritte", "hrv", "puls", "gewicht", "gesundheit"],
 }
@@ -171,7 +173,14 @@ def select_tools(text: str) -> list[str]:
             if n not in names:
                 names.append(n)
 
-    names = names[:12]   # Prefill begrenzen
+    # Embedding-basierter Fallback: wenn wenige Keyword-Treffer → semantisch ranken
+    if len(names) < 4 and len(t) > 10:
+        semantic = _semantic_rank(text, top_k=8)
+        for n in semantic:
+            if n not in names:
+                names.append(n)
+
+    names = names[:14]   # Prefill begrenzen
 
     # create_skill MUSS immer verfügbar sein, sobald überhaupt Tools im Spiel sind –
     # sonst fehlt es genau dann, wenn kein passendes Tool zur Kategorie passt.
@@ -180,3 +189,35 @@ def select_tools(text: str) -> list[str]:
             names.append(n)
 
     return names
+
+
+# ── Embedding-basiertes Tool-Routing ──────────────────────────────────────────
+import re as _re
+
+_tool_desc_cache: dict[str, list[float]] | None = None
+_tool_desc_ts: float = 0.0
+
+
+def _semantic_rank(query: str, top_k: int = 6) -> list[str]:
+    """
+    Rankt Tools semantisch per TF-IDF-ähnlichem Keyword-Overlap gegen Tool-Descriptions.
+    Kein LLM-Call nötig — reine Wort-Überlappung zwischen Query und Tool-Descriptions.
+    Schnell genug für jeden Request.
+    """
+    query_words = set(_re.findall(r'\w+', query.lower())) - {
+        "ich", "der", "die", "das", "ein", "eine", "und", "oder", "mit", "für",
+        "von", "ist", "war", "hat", "wie", "was", "wann", "wo", "bitte", "kann",
+        "du", "mir", "mich", "mein", "meine", "nicht", "auch", "noch", "schon",
+    }
+    if not query_words:
+        return []
+
+    scores: list[tuple[str, float]] = []
+    for name, tool in REGISTRY.items():
+        desc_words = set(_re.findall(r'\w+', tool.description.lower()))
+        overlap = len(query_words & desc_words)
+        if overlap > 0:
+            scores.append((name, overlap / max(len(desc_words), 1) * overlap))
+
+    scores.sort(key=lambda x: x[1], reverse=True)
+    return [n for n, _ in scores[:top_k]]

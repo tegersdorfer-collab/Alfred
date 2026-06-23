@@ -298,3 +298,76 @@ def save_training_plan(name: str, goal: str, weeks: int, plan: dict) -> int:
 
 def active_plan() -> dict | None:
     return db.query_one("SELECT * FROM training_plans WHERE active=TRUE ORDER BY id DESC LIMIT 1")
+
+
+# ── AlphaProgression: smarte Gewichtsprogression ─────────────────────────────
+
+def suggest_next_weight(exercise_name: str, sets_target: int = 3, reps_target: int = 8) -> dict:
+    """
+    Schlägt das nächste Trainingsgewicht vor basierend auf den letzten 4 Sessions.
+    Logik: Wenn alle Sätze der letzten Session vollständig (≥ reps_target) → +2.5kg (Oberkörper) / +5kg (Unterkörper).
+    Wenn <70% der Sätze vollständig → gleiches Gewicht. Wenn <50% → -5%.
+    """
+    rows = db.query(
+        """SELECT ws.weight_kg, ws.reps, ws.set_index, w.date
+           FROM workout_sets ws
+           JOIN exercises e ON ws.exercise_id = e.id
+           JOIN workouts w ON ws.workout_id = w.id
+           WHERE e.name ILIKE %s AND ws.weight_kg IS NOT NULL
+           ORDER BY w.date DESC, ws.set_index ASC
+           LIMIT 20""",
+        (f"%{exercise_name}%",),
+    )
+    if not rows:
+        return {"exercise": exercise_name, "suggestion": None, "reason": "Keine Daten vorhanden."}
+
+    # Letzte Session isolieren
+    last_date = rows[0]["date"]
+    last_sets  = [r for r in rows if r["date"] == last_date]
+    if not last_sets:
+        return {"exercise": exercise_name, "suggestion": None, "reason": "Keine Sätze gefunden."}
+
+    last_weight  = last_sets[0]["weight_kg"]
+    full_sets    = sum(1 for s in last_sets if (s["reps"] or 0) >= reps_target)
+    ratio        = full_sets / max(len(last_sets), 1)
+
+    lower_body   = any(kw in exercise_name.lower() for kw in
+                       ["squat", "deadlift", "leg", "lunge", "press down", "romanian"])
+    increment    = 5.0 if lower_body else 2.5
+
+    if ratio >= 0.9:
+        next_weight = last_weight + increment
+        reason = f"Alle Sätze vollständig ({full_sets}/{len(last_sets)}) → +{increment}kg"
+    elif ratio >= 0.5:
+        next_weight = last_weight
+        reason = f"Teilweise vollständig ({full_sets}/{len(last_sets)}) → gleich bleiben"
+    else:
+        next_weight = round(last_weight * 0.95 / 2.5) * 2.5
+        reason = f"Zu viele unvollständige Sätze ({full_sets}/{len(last_sets)}) → -5%"
+
+    return {
+        "exercise": exercise_name,
+        "last_weight_kg": last_weight,
+        "suggestion_kg": next_weight,
+        "ratio": round(ratio, 2),
+        "reason": reason,
+        "last_date": str(last_date),
+    }
+
+
+def progression_report(days: int = 30) -> list[dict]:
+    """Fortschrittsbericht: Für alle Übungen der letzten N Tage → Progression berechnen."""
+    exercises = db.query(
+        """SELECT DISTINCT e.name FROM exercises e
+           JOIN workout_sets ws ON ws.exercise_id = e.id
+           JOIN workouts w ON ws.workout_id = w.id
+           WHERE w.date >= CURRENT_DATE - %s AND ws.weight_kg IS NOT NULL
+           ORDER BY e.name""",
+        (days,),
+    )
+    results = []
+    for ex in exercises:
+        s = suggest_next_weight(ex["name"])
+        if s.get("suggestion_kg"):
+            results.append(s)
+    return results

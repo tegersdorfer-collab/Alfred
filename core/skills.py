@@ -623,3 +623,490 @@ async def _list_dynamic_skills():
     from core.skill_factory import list_dynamic_skills
     names = list_dynamic_skills()
     return "\n".join(names) if names else "Noch keine selbst erstellten Skills."
+
+
+# ── Second Brain ──────────────────────────────────────────────────────────────
+
+@T.register("brain_save",
+    "Speichert eine Notiz, Erkenntnis, Entscheidung oder Information im Second Brain. "
+    "Kategorien: context (über Timo), inbox (unsortiert), project (aktives Projekt), "
+    "area (laufende Verantwortlichkeit), resource (Wissen/Recherche), daily (Tageslog), archive.",
+    {
+        "title":    {"type": "string",  "description": "Kurzer Titel der Notiz"},
+        "content":  {"type": "string",  "description": "Inhalt der Notiz (Markdown, [[Wiki-Links]] unterstützt)"},
+        "category": {"type": "string",  "description": "Kategorie: inbox | context | project | area | resource | daily | archive"},
+        "tags":     {"type": "array",   "items": {"type": "string"}, "description": "Optionale Tags"},
+    },
+    ["title", "content"], "knowledge")
+async def _brain_save(title: str, content: str, category: str = "inbox", tags: list = None):
+    from domains.second_brain import brain_tool_save
+    return brain_tool_save(title, content, category, tags)
+
+
+@T.register("brain_search",
+    "Durchsucht das Second Brain nach gespeichertem Wissen, Notizen, Projekten oder Entscheidungen.",
+    {"query": {"type": "string", "description": "Suchbegriff oder Thema"}},
+    ["query"], "knowledge")
+async def _brain_search(query: str):
+    from domains.second_brain import brain_tool_search
+    return brain_tool_search(query)
+
+
+@T.register("brain_inbox",
+    "Wirft schnell einen Gedanken, eine Idee oder einen Brain-Dump in die Inbox des Second Brains. "
+    "Alfred sortiert die Inbox regelmäßig automatisch ein.",
+    {"content": {"type": "string", "description": "Der Gedanke oder die Idee die gespeichert werden soll"}},
+    ["content"], "knowledge")
+async def _brain_inbox(content: str):
+    from domains.second_brain import brain_tool_inbox_add
+    return brain_tool_inbox_add(content)
+
+
+@T.register("brain_daily_log",
+    "Schreibt einen Eintrag in die heutige Daily Note des Second Brains. "
+    "Ideal für Tagesrückblicke, Entscheidungen, erledigte Dinge.",
+    {"entry": {"type": "string", "description": "Was heute passiert ist oder entschieden wurde"}},
+    ["entry"], "knowledge")
+async def _brain_daily_log(entry: str):
+    from domains.second_brain import brain_tool_daily_log
+    return brain_tool_daily_log(entry)
+
+
+@T.register("suggest_next_weight",
+    "Schlägt das optimale Trainingsgewicht für eine Übung vor basierend auf den letzten Sessions (AlphaProgression).",
+    {"exercise": {"type": "string", "description": "Name der Übung (z.B. 'Bench Press', 'Squat')"},
+     "reps_target": {"type": "integer", "description": "Ziel-Wiederholungen pro Satz (default 8)"}},
+    ["exercise"], "fitness")
+def _suggest_next_weight(exercise: str, reps_target: int = 8):
+    from domains.fitness import suggest_next_weight
+    r = suggest_next_weight(exercise, reps_target=reps_target)
+    if not r.get("suggestion_kg"):
+        return r.get("reason", "Keine Daten.")
+    return (f"{exercise}: zuletzt {r['last_weight_kg']}kg ({r['last_date']}) → "
+            f"empfohlen **{r['suggestion_kg']}kg**\nGrund: {r['reason']}")
+
+
+@T.register("progression_report",
+    "Zeigt Progressionsbericht für alle Übungen der letzten N Tage.",
+    {"days": {"type": "integer", "description": "Zeitraum in Tagen (default 30)"}},
+    [], "fitness")
+def _progression_report(days: int = 30):
+    from domains.fitness import progression_report
+    items = progression_report(days)
+    if not items:
+        return "Keine Progressionsdaten gefunden."
+    lines = [f"**{r['exercise']}**: {r.get('last_weight_kg')}kg → {r.get('suggestion_kg')}kg ({r.get('reason','')})"
+             for r in items]
+    return f"Progressionsbericht ({days} Tage):\n" + "\n".join(lines)
+
+
+@T.register("import_kindle_highlights",
+    "Importiert Kindle-Highlights aus dem 'My Clippings.txt'-Format ins Second Brain als Quotes. "
+    "Pfad zur Clippings-Datei oder Text direkt einfügen.",
+    {
+        "file_path": {"type": "string", "description": "Pfad zur My Clippings.txt"},
+        "raw_text":  {"type": "string", "description": "Inhalt direkt als Text (Alternative zu file_path)"},
+        "limit":     {"type": "integer","description": "Max. Highlights importieren (default 50)"},
+    },
+    [], "knowledge")
+def _import_kindle_highlights(file_path: str = "", raw_text: str = "", limit: int = 50):
+    import re
+    from domains.second_brain import add_quote
+
+    if file_path:
+        try:
+            text = open(file_path, encoding="utf-8-sig", errors="replace").read()
+        except Exception as e:
+            return f"Datei nicht lesbar: {e}"
+    elif raw_text:
+        text = raw_text
+    else:
+        # Suche Standard-Kindle-Pfade
+        from pathlib import Path
+        candidates = [
+            Path.home() / "Documents" / "My Clippings.txt",
+            Path("/Volumes/Kindle/documents/My Clippings.txt"),
+        ]
+        found = next((p for p in candidates if p.exists()), None)
+        if not found:
+            return "Keine Clippings.txt gefunden. Pfad angeben oder Text direkt einfügen."
+        text = found.read_text(encoding="utf-8-sig", errors="replace")
+
+    # Kindle-Format: ========== \n Titel (Autor)\n Deine Markierung | ...\n\n Text\n=====
+    blocks = [b.strip() for b in text.split("==========") if b.strip()]
+    imported = 0
+    for block in blocks[:limit]:
+        lines = [l.strip() for l in block.split("\n") if l.strip()]
+        if len(lines) < 3:
+            continue
+        book = lines[0]
+        # Highlight-Text ist alles ab Zeile 3
+        highlight = " ".join(lines[2:]).strip()
+        if len(highlight) < 15:
+            continue
+        author_match = re.search(r'\(([^)]+)\)\s*$', book)
+        author = author_match.group(1) if author_match else ""
+        title  = re.sub(r'\s*\([^)]+\)\s*$', '', book).strip()
+        source = f"{title} — {author}" if author else title
+        add_quote(text=highlight, source=source, tags=["kindle", "highlight"])
+        imported += 1
+
+    return f"✅ {imported} Kindle-Highlights als Quotes importiert."
+
+
+@T.register("speak",
+    "Liest Text laut vor via macOS Text-to-Speech (Stimme: Lucía/Anna). "
+    "Ideal für Voice-Antworten wenn Timo das Dashboard offen hat.",
+    {
+        "text":  {"type": "string",  "description": "Vorzulesender Text (max. 500 Zeichen)"},
+        "voice": {"type": "string",  "description": "Stimme: 'anna' (DE) oder 'alex' (EN), default 'anna'"},
+    },
+    ["text"], "system")
+def _speak(text: str, voice: str = "anna"):
+    import subprocess, re
+    clean = re.sub(r'[*_`#\[\]()]', '', text)[:500]
+    voice_map = {"anna": "Anna", "alex": "Alex", "lucía": "Lucía", "lucia": "Lucía"}
+    v = voice_map.get(voice.lower(), "Anna")
+    try:
+        subprocess.Popen(["say", "-v", v, clean])
+        return f"🔊 Spreche: \"{clean[:60]}…\"" if len(clean) > 60 else f"🔊 Spreche: \"{clean}\""
+    except Exception as e:
+        return f"TTS fehlgeschlagen: {e}"
+
+
+@T.register("add_research_query",
+    "Speichert ein Thema für die wöchentliche Recherche (jeden Montag automatisch). "
+    "Beispiel: 'KI-News', 'Roblox-Entwicklung', 'Fitness-Wissenschaft'.",
+    {"topic": {"type": "string", "description": "Thema das wöchentlich recherchiert werden soll"}},
+    ["topic"], "knowledge")
+def _add_research_query(topic: str):
+    from domains.second_brain import add_note
+    add_note(title=topic, content=f"Wöchentliche Recherche-Query: {topic}",
+             category="resource", tags=["research_query"])
+    return f"Recherche-Query gespeichert: '{topic}'. Jeden Montag wird dazu automatisch recherchiert."
+
+
+@T.register("fetch_and_summarize_url",
+    "Lädt eine URL (Artikel, YouTube-Seite, Blogpost), extrahiert den Text, "
+    "bewertet Kernaussagen und speichert Insights ins Second Brain.",
+    {
+        "url":      {"type": "string",  "description": "URL des Artikels oder der YouTube-Seite"},
+        "save":     {"type": "boolean", "description": "In Second Brain speichern (default true)"},
+        "category": {"type": "string",  "description": "brain_notes Kategorie (default 'resource')"},
+    },
+    ["url"], "knowledge")
+async def _fetch_and_summarize_url(url: str, save: bool = True, category: str = "resource"):
+    import httpx, re
+    from llm import fast as _fast
+
+    # Fetch
+    try:
+        async with httpx.AsyncClient(timeout=15, follow_redirects=True,
+                                      headers={"User-Agent": "Mozilla/5.0 Alfred/1.0"}) as c:
+            r = await c.get(url)
+        html = r.text
+    except Exception as e:
+        return f"Fetch fehlgeschlagen: {e}"
+
+    # Einfache Text-Extraktion (kein BeautifulSoup nötig)
+    text = re.sub(r'<style[^>]*>.*?</style>', '', html, flags=re.DOTALL)
+    text = re.sub(r'<script[^>]*>.*?</script>', '', text, flags=re.DOTALL)
+    text = re.sub(r'<[^>]+>', ' ', text)
+    text = re.sub(r'\s+', ' ', text).strip()
+    excerpt = text[:6000]
+
+    if len(excerpt) < 200:
+        return "Zu wenig Text extrahiert – Seite könnte JavaScript-only sein."
+
+    prompt = (
+        "Analysiere diesen Web-Inhalt. Antworte auf Deutsch.\n"
+        "1. KERNAUSSAGEN: 3-5 Bullet Points (was ist wichtig/neu/interessant)\n"
+        "2. BEWERTUNG: Was ist gut, was ist fragwürdig oder oberflächlich?\n"
+        "3. RELEVANZ FÜR TIMO: Konkrete Anwendung oder nächster Schritt.\n\n"
+        f"URL: {url}\nInhalt:\n{excerpt}"
+    )
+    summary = await _fast.ask(prompt, max_tokens=400)
+
+    if save:
+        from domains.second_brain import add_note
+        # Titel aus URL ableiten
+        title = url.split("/")[-1][:60].replace("-", " ").replace("_", " ") or url[:60]
+        content = f"**Quelle:** {url}\n\n{summary}"
+        add_note(title=title, content=content, category=category, tags=["web", "import"])
+        return f"✅ Zusammenfassung gespeichert:\n\n{summary[:600]}"
+    return summary
+
+
+@T.register("log_body_measurement",
+    "Speichert Körpermessungen (Umfänge, Gewicht, Körperfett). Alle Werte optional.",
+    {
+        "weight_kg": {"type": "number", "description": "Gewicht in kg"},
+        "waist_cm":  {"type": "number", "description": "Taillenumfang in cm"},
+        "chest_cm":  {"type": "number", "description": "Brustumfang in cm"},
+        "hips_cm":   {"type": "number", "description": "Hüftumfang in cm"},
+        "bicep_cm":  {"type": "number", "description": "Bizepsumfang in cm"},
+        "thigh_cm":  {"type": "number", "description": "Oberschenkelumfang in cm"},
+        "neck_cm":   {"type": "number", "description": "Halsumfang in cm"},
+        "body_fat":  {"type": "number", "description": "Körperfett in %"},
+        "notes":     {"type": "string", "description": "Notizen"},
+    },
+    [], "fitness")
+def _log_body_measurement(weight_kg=None, waist_cm=None, chest_cm=None, hips_cm=None,
+                           bicep_cm=None, thigh_cm=None, neck_cm=None, body_fat=None, notes=None):
+    from domains.body import log_measurement
+    mid = log_measurement(weight_kg=weight_kg, waist_cm=waist_cm, chest_cm=chest_cm,
+                          hips_cm=hips_cm, bicep_cm=bicep_cm, thigh_cm=thigh_cm,
+                          neck_cm=neck_cm, body_fat=body_fat, notes=notes)
+    return f"Körpermessung gespeichert (ID {mid})."
+
+
+@T.register("body_progress",
+    "Zeigt Fortschritt der Körpermessungen über die letzten Wochen.",
+    {"weeks": {"type": "integer", "description": "Anzahl Wochen (default 8)"}},
+    [], "fitness")
+def _body_progress(weeks: int = 8):
+    from domains.body import progress_summary
+    return progress_summary(weeks)
+
+
+@T.register("save_quote",
+    "Speichert ein Zitat ins Second Brain. Gedanken dazu können später mit add_thought_to_quote ergänzt werden.",
+    {
+        "text":   {"type": "string", "description": "Das Zitat"},
+        "source": {"type": "string", "description": "Autor oder Quelle"},
+        "tags":   {"type": "array",  "items": {"type": "string"}, "description": "Themen-Tags"},
+    },
+    ["text"], "knowledge")
+def _save_quote(text: str, source: str = "", tags: list = None):
+    from domains.second_brain import add_quote
+    q = add_quote(text, source, tags)
+    return f"Zitat gespeichert (ID {q.get('id', '?')}): \"{text[:60]}\""
+
+
+@T.register("add_thought_to_quote",
+    "Fügt einen neuen Gedanken zu einem gespeicherten Zitat hinzu.",
+    {
+        "note_id": {"type": "integer", "description": "ID des Zitat-Eintrags im Second Brain"},
+        "thought": {"type": "string",  "description": "Dein aktueller Gedanke dazu"},
+    },
+    ["note_id", "thought"], "knowledge")
+def _add_thought_to_quote(note_id: int, thought: str):
+    from domains.second_brain import add_thought_to_quote
+    ok = add_thought_to_quote(note_id, thought)
+    return "Gedanke hinzugefügt." if ok else "Zitat nicht gefunden."
+
+
+@T.register("add_directive",
+    "Speichert eine stehende Anweisung von Timo die Alfred ab sofort IMMER beachten soll. "
+    "Beispiel: 'Antworte immer auf Englisch wenn ich Englisch schreibe', "
+    "'Erinnere mich immer an X wenn ich Y erwähne', 'Nutze nie Gedankenstriche'. "
+    "Diese Anweisung wird bei jeder Antwort automatisch injiziert.",
+    {
+        "name":        {"type": "string", "description": "Kurzer Name der Anweisung"},
+        "description": {"type": "string", "description": "Was Alfred immer tun/lassen soll"},
+    },
+    ["name", "description"], "memory")
+async def _add_directive(name: str, description: str):
+    from memory.knowledge import KnowledgeGraph
+    kg = KnowledgeGraph()
+    kg.add_directive(name, description)
+    return f"Stehende Anweisung gespeichert: '{name}' — gilt ab sofort bei jeder Antwort."
+
+
+@T.register("nutrition_advice",
+    "Gibt kontextuellen Ernährungs-Rat basierend auf aktuellem Tagesstand (Kalorien, Protein, "
+    "Mahlzeiten) + heutige Health-Daten (Schritte, HRV, Schlaf). Ideal für Fragen wie "
+    "'Soll ich Pizza essen?', 'Wie viel Kalorien habe ich noch?', 'Reicht mein Protein?'.",
+    {"question": {"type": "string", "description": "Die Frage zu Ernährung oder Essen"}},
+    ["question"], "nutrition")
+async def _nutrition_advice(question: str):
+    from domains import nutrition, health as health_d
+    from core import db as _db
+    from datetime import date
+
+    totals = nutrition.day_totals()
+    meals = nutrition.meals_for()
+
+    goal_cal = _db.get_setting("calorie_goal", 2200)
+    goal_prot = _db.get_setting("protein_goal", 150)
+
+    remaining_cal = goal_cal - (totals.get("calories") or 0)
+    remaining_prot = goal_prot - (totals.get("protein_g") or 0)
+
+    health_row = _db.query_one(
+        "SELECT steps, hrv, sleep_total_h, resting_hr FROM health_data ORDER BY date DESC LIMIT 1"
+    )
+
+    lines = [
+        f"Frage: {question}",
+        f"\nHeutiger Ernährungs-Stand:",
+        f"  Kalorien: {int(totals.get('calories') or 0)} / {goal_cal} kcal (noch {int(remaining_cal)} übrig)",
+        f"  Protein: {int(totals.get('protein_g') or 0)} / {goal_prot}g (noch {int(remaining_prot)}g übrig)",
+    ]
+    if meals:
+        lines.append(f"  Mahlzeiten heute: {', '.join(m['description'] for m in meals[:4])}")
+    if health_row:
+        lines.append(f"\nHeutige Health-Daten:")
+        if health_row.get("steps"):
+            lines.append(f"  Schritte: {health_row['steps']}")
+        if health_row.get("hrv"):
+            lines.append(f"  HRV: {health_row['hrv']} ms")
+        if health_row.get("sleep_total_h"):
+            lines.append(f"  Schlaf: {health_row['sleep_total_h']:.1f}h")
+
+    return "\n".join(lines)
+
+
+@T.register("claude_code_run",
+    "Startet eine Claude Code Aufgabe im Hintergrund (z.B. 'Baue Feature X', "
+    "'Schreibe Tests für Y', 'Refactor Z'). Alfred spawnt einen claude-Subprocess, "
+    "du bekommst eine Push-Notification wenn er fertig ist.",
+    {
+        "task":    {"type": "string",  "description": "Was Claude Code tun soll"},
+        "workdir": {"type": "string",  "description": "Arbeitsverzeichnis (Standard: ~/Alfred)"},
+    },
+    ["task"], "system")
+async def _claude_code_run(task: str, workdir: str = "/Users/timoegersdorfer/Alfred"):
+    import asyncio, subprocess, time
+    from core import push as _push, db as _db
+
+    start = time.time()
+
+    async def _run():
+        try:
+            proc = await asyncio.create_subprocess_exec(
+                "claude", "--print", task,
+                cwd=workdir,
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE,
+            )
+            stdout, stderr = await asyncio.wait_for(proc.communicate(), timeout=300)
+            elapsed = int(time.time() - start)
+            result = stdout.decode()[:500] if stdout else ""
+            err = stderr.decode()[:200] if stderr else ""
+            summary = f"claude --print fertig nach {elapsed}s"
+            if result:
+                summary += f"\n{result}"
+            if err and proc.returncode != 0:
+                summary += f"\nFehler: {err}"
+            try:
+                _push.send_push("🤖 Claude Code fertig", summary[:120], "/")
+            except Exception:
+                pass
+            if CTX.channel:
+                try:
+                    await CTX.channel.send(f"✅ Claude Code Aufgabe fertig ({elapsed}s):\n_{task[:80]}_")
+                except Exception:
+                    pass
+        except asyncio.TimeoutError:
+            if CTX.channel:
+                try:
+                    await CTX.channel.send(f"⏱ Claude Code Timeout nach 5 Minuten: _{task[:60]}_")
+                except Exception:
+                    pass
+        except FileNotFoundError:
+            if CTX.channel:
+                try:
+                    await CTX.channel.send("❌ `claude` CLI nicht gefunden. Ist Claude Code installiert?")
+                except Exception:
+                    pass
+
+    asyncio.create_task(_run())
+    return f"Claude Code gestartet für: '{task[:80]}'\nArbeitsverzeichnis: {workdir}\nDu bekommst eine Notification wenn er fertig ist."
+
+
+# ── Git-History als Gedächtnis ─────────────────────────────────────────────────
+
+@T.register(
+    "git_history_import",
+    "Importiert Git-Commit-History eines Repos als Wissens-Notizen ins Second Brain.",
+    [
+        {"name": "repos", "type": "string",
+         "description": "Kommagetrennte Pfade oder 'auto' für automatische Suche in ~/Documents, ~/Developer etc."},
+        {"name": "limit", "type": "integer",
+         "description": "Max. Commits pro Repo (default 100)"},
+    ],
+)
+def _git_history_import(repos: str = "auto", limit: int = 100) -> str:
+    import subprocess, os
+    from pathlib import Path
+    from domains import second_brain as _brain
+
+    search_roots = [Path.home() / d for d in ["Documents", "Developer", "Projects", "repos", "code", "Alfred"]]
+
+    if repos.strip().lower() == "auto":
+        found = []
+        for root in search_roots:
+            if not root.exists():
+                continue
+            for p in root.iterdir():
+                if p.is_dir() and (p / ".git").exists():
+                    found.append(str(p))
+        repo_paths = found[:10]
+    else:
+        repo_paths = [r.strip() for r in repos.split(",") if r.strip()]
+
+    if not repo_paths:
+        return "Keine Git-Repos gefunden."
+
+    total_imported = 0
+    summaries = []
+
+    for repo in repo_paths:
+        if not os.path.exists(os.path.join(repo, ".git")):
+            continue
+        try:
+            result = subprocess.run(
+                ["git", "-C", repo, "log",
+                 f"--max-count={limit}",
+                 "--pretty=format:%ad|%s",
+                 "--date=short"],
+                capture_output=True, text=True, timeout=10,
+            )
+            lines = [l for l in result.stdout.strip().split("\n") if "|" in l]
+            if not lines:
+                continue
+
+            repo_name = os.path.basename(repo)
+            entries_by_month: dict[str, list[str]] = {}
+            for line in lines:
+                parts = line.split("|", 1)
+                if len(parts) < 2:
+                    continue
+                date_str, subject = parts[0], parts[1]
+                month = date_str[:7]
+                entries_by_month.setdefault(month, []).append(f"- {date_str}: {subject}")
+
+            for month, commits in sorted(entries_by_month.items(), reverse=True):
+                title = f"Git-Log {repo_name} {month}"
+                existing = _brain.search_notes(title, limit=1)
+                if not existing:
+                    content = f"# Git-History: {repo_name} — {month}\n\n" + "\n".join(commits[:50])
+                    _brain.add_note(title=title, content=content, category="resource",
+                                    tags=["git", repo_name, "history"])
+                    total_imported += 1
+
+            summaries.append(f"{repo_name}: {len(lines)} Commits → {len(entries_by_month)} Monatskarten")
+        except Exception as e:
+            summaries.append(f"{repo_name}: Fehler ({e})")
+
+    if total_imported:
+        return f"✅ Git-History importiert: {total_imported} Monatskarten.\n" + "\n".join(summaries)
+    return "Nichts Neues importiert (bereits vorhanden).\n" + "\n".join(summaries)
+
+
+# ── Tool Discovery Escape Hatch ────────────────────────────────────────────────
+
+@T.register(
+    "refresh_tools",
+    "Scannt ob neue Skill-Dateien verfügbar sind und zeigt aktuelle Tool-Anzahl. Aufrufen wenn eine Fähigkeit zu fehlen scheint.",
+    [],
+)
+def _refresh_tools() -> str:
+    tools = T.all_tools() if hasattr(T, "all_tools") else []
+    n = len(tools)
+    return (
+        f"{n} Tools aktuell verfügbar. "
+        "Falls ein benötigtes Tool fehlt: create_skill nutzen um es selbst zu bauen."
+    )
+

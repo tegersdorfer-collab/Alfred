@@ -37,7 +37,35 @@ class ForgettingCurve:
         """
         forgotten   = await self._decay_memories()
         chat_pruned = await self._prune_chat()
+        await self._importance_triage()
         return {"forgotten": forgotten, "chat_pruned": chat_pruned}
+
+    async def _importance_triage(self) -> None:
+        """
+        Importance Triage: oft-abgerufene Memories steigen auf (max 1.0),
+        nie-abgerufene sinken ab (min 0.1). Läuft im Vergessens-Durchlauf.
+        """
+        import asyncio
+        # Hochstufen: recall_count >= 3 → importance += 0.1 (max 1.0)
+        await asyncio.to_thread(
+            _db.execute,
+            """
+            UPDATE memories
+            SET importance = LEAST(importance + 0.1, 1.0)
+            WHERE recall_count >= 3 AND importance < 1.0
+            """,
+        )
+        # Abstufen: nie abgerufen und älter als 14 Tage → importance -= 0.05 (min 0.1)
+        await asyncio.to_thread(
+            _db.execute,
+            """
+            UPDATE memories
+            SET importance = GREATEST(importance - 0.05, 0.1)
+            WHERE recall_count = 0
+              AND created_at < NOW() - INTERVAL '14 days'
+              AND importance > 0.1
+            """,
+        )
 
     async def _decay_memories(self) -> int:
         """Löscht Memories mit zu niedriger Retention (außer kg_linked)."""

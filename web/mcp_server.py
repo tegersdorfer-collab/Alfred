@@ -1,0 +1,156 @@
+"""
+web/mcp_server.py
+
+Alfred als MCP-Server für Claude Code.
+Exponiert Alfreds Kernfunktionen als MCP-Tools über SSE oder stdio.
+
+Einbinden in Claude Code: ~/.claude/claude_desktop_config.json
+{
+  "mcpServers": {
+    "alfred": {
+      "command": "python3",
+      "args": ["/Users/timoegersdorfer/Alfred/web/mcp_server.py"],
+      "env": {}
+    }
+  }
+}
+
+Oder via HTTP (wenn Alfred läuft): GET /mcp/tools, POST /mcp/call
+"""
+import json
+import sys
+import logging
+
+log = logging.getLogger(__name__)
+
+MCP_TOOLS = [
+    {
+        "name": "alfred_chat",
+        "description": "Schick Alfred eine Nachricht und erhalte seine Antwort. Nutze ihn für Kontext über Timos Leben, Gesundheit, Tasks, Kalender, Erinnerungen.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "message": {"type": "string", "description": "Deine Frage oder Anweisung an Alfred"}
+            },
+            "required": ["message"]
+        }
+    },
+    {
+        "name": "alfred_memory_search",
+        "description": "Durchsucht Alfreds Langzeit-Gedächtnis semantisch nach relevanten Fakten über Timo.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "query": {"type": "string", "description": "Suchbegriff oder Frage"}
+            },
+            "required": ["query"]
+        }
+    },
+    {
+        "name": "alfred_brain_search",
+        "description": "Durchsucht Alfreds Second Brain (Notizen, Projekte, Ressourcen).",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "query": {"type": "string", "description": "Suchbegriff"}
+            },
+            "required": ["query"]
+        }
+    },
+    {
+        "name": "alfred_get_tasks",
+        "description": "Gibt Timos offene Tasks zurück.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "status": {"type": "string", "description": "Filter: open, in_progress, done"}
+            }
+        }
+    },
+    {
+        "name": "alfred_get_health",
+        "description": "Gibt aktuelle Gesundheitsdaten zurück (HRV, Schlaf, Schritte etc.).",
+        "inputSchema": {"type": "object", "properties": {}}
+    },
+]
+
+
+def _handle_mcp_call(tool: str, args: dict) -> str:
+    """Führt einen MCP-Tool-Call aus. Synchron, für stdio-Modus."""
+    import httpx, config
+    port = getattr(config, "DASHBOARD_PORT", 7779)
+    base = f"http://127.0.0.1:{port}"
+
+    try:
+        if tool == "alfred_chat":
+            r = httpx.post(f"{base}/api/chat", json={"message": args["message"]}, timeout=30)
+            return r.json().get("response", r.text)
+
+        elif tool == "alfred_memory_search":
+            r = httpx.get(f"{base}/api/memory/search",
+                          params={"q": args["query"]}, timeout=10)
+            items = r.json() if r.status_code == 200 else []
+            return "\n".join(f"- {m.get('content','')}" for m in items[:5]) or "Nichts gefunden."
+
+        elif tool == "alfred_brain_search":
+            r = httpx.get(f"{base}/api/brain/search",
+                          params={"q": args["query"], "limit": 5}, timeout=10)
+            items = r.json() if r.status_code == 200 else []
+            return "\n".join(f"- [{n.get('title')}] {n.get('content','')[:120]}" for n in items) or "Nichts gefunden."
+
+        elif tool == "alfred_get_tasks":
+            status = args.get("status", "open")
+            r = httpx.get(f"{base}/api/tasks", params={"status": status}, timeout=10)
+            tasks = r.json() if r.status_code == 200 else []
+            if isinstance(tasks, list):
+                return "\n".join(f"- [{t.get('priority','?')}] {t.get('title')}" for t in tasks[:10])
+            return str(tasks)
+
+        elif tool == "alfred_get_health":
+            r = httpx.get(f"{base}/api/health-data", timeout=10)
+            d = r.json() if r.status_code == 200 else {}
+            if isinstance(d, list) and d:
+                d = d[0]
+            return json.dumps({k: v for k, v in d.items() if v is not None}, ensure_ascii=False)
+
+        else:
+            return f"Unbekanntes Tool: {tool}"
+    except Exception as e:
+        return f"Fehler: {e}"
+
+
+def run_stdio() -> None:
+    """MCP stdio-Modus: liest JSON-RPC von stdin, schreibt Antworten auf stdout."""
+    for line in sys.stdin:
+        line = line.strip()
+        if not line:
+            continue
+        try:
+            req = json.loads(line)
+            method = req.get("method", "")
+            rid = req.get("id")
+
+            if method == "tools/list":
+                resp = {"jsonrpc": "2.0", "id": rid, "result": {"tools": MCP_TOOLS}}
+            elif method == "tools/call":
+                params = req.get("params", {})
+                tool = params.get("name", "")
+                args = params.get("arguments", {})
+                result = _handle_mcp_call(tool, args)
+                resp = {"jsonrpc": "2.0", "id": rid, "result": {"content": [{"type": "text", "text": result}]}}
+            elif method == "initialize":
+                resp = {"jsonrpc": "2.0", "id": rid, "result": {
+                    "protocolVersion": "2024-11-05",
+                    "capabilities": {"tools": {}},
+                    "serverInfo": {"name": "alfred-mcp", "version": "1.0.0"},
+                }}
+            else:
+                resp = {"jsonrpc": "2.0", "id": rid, "error": {"code": -32601, "message": "Method not found"}}
+
+            print(json.dumps(resp), flush=True)
+        except Exception as e:
+            print(json.dumps({"jsonrpc": "2.0", "id": None, "error": {"code": -32700, "message": str(e)}}), flush=True)
+
+
+if __name__ == "__main__":
+    run_stdio()

@@ -73,7 +73,17 @@ class LZG:
         confidence: float = 0.8,
         metadata: dict | None = None,
     ) -> int:
-        """Speichert eine neue Erinnerung. Gibt ID zurück."""
+        """
+        ADD-only: Speichert eine neue Erinnerung, niemals Update.
+        Wenn ein sehr ähnlicher Eintrag existiert (distance < 0.05), wird
+        die neue Variante trotzdem gespeichert — kein stale-update-Bug möglich.
+        Gibt ID zurück.
+        """
+        emb = np.array(embedding)
+        # Warnung bei fast-identischem Duplikat (kein Block, nur Log)
+        similars = self.find_similar(emb, threshold=0.05, top_k=1)
+        if similars:
+            log.debug(f"ADD-only: ähnliche Memory existiert (dist={similars[0][1]:.3f}), speichere trotzdem")
         with _db.cursor(vector=True) as cur:
             cur.execute(
                 """
@@ -81,7 +91,7 @@ class LZG:
                 VALUES (%s, %s, %s, %s, %s)
                 RETURNING id
                 """,
-                (content, np.array(embedding), category, confidence,
+                (content, emb, category, confidence,
                  json.dumps(metadata or {})),
             )
             return cur.fetchone()["id"]
@@ -180,6 +190,83 @@ class LZG:
             if dist <= threshold:
                 result.append((_row_to_memory(r), dist))
         return result
+
+    @staticmethod
+    def _is_temporal_recent(query: str) -> bool:
+        """Erkennt ob die Anfrage nach aktuellem Zustand fragt (vs. historisch)."""
+        recent_kw = {"heute", "jetzt", "aktuell", "gerade", "momentan", "diese woche",
+                     "current", "today", "now", "currently", "this week"}
+        hist_kw   = {"letzten", "letzte", "letzter", "damals", "früher", "januar",
+                     "februar", "märz", "april", "mai", "juni", "juli", "august",
+                     "september", "oktober", "november", "dezember", "last", "ago",
+                     "before", "previously"}
+        q = query.lower()
+        is_recent  = any(w in q for w in recent_kw)
+        is_history = any(w in q for w in hist_kw)
+        if is_recent and not is_history:
+            return True
+        if is_history and not is_recent:
+            return False
+        return True  # default: bevorzuge Aktuelles
+
+    def search_hybrid(
+        self,
+        query_text: str,
+        query_embedding: list[float] | np.ndarray,
+        top_k: int | None = None,
+    ) -> list[Memory]:
+        """
+        Fusionierte Suche: pgvector-Cosine + Keyword-ILIKE.
+        Deduplication per ID, semantic hits kommen zuerst.
+        """
+        k = top_k or config.LZG_TOP_K
+        prefer_recent = self._is_temporal_recent(query_text)
+
+        # pgvector — bei "aktuell"-Anfragen neuere Memories bevorzugen
+        if prefer_recent:
+            with _db.cursor(vector=True) as cur:
+                cur.execute(
+                    """
+                    SELECT id, content, category, confidence,
+                           created_at, last_verified, metadata,
+                           embedding <=> %s AS vec_dist
+                    FROM memories
+                    WHERE confidence >= 0.3
+                    ORDER BY (embedding <=> %s) * 0.7 + (EXTRACT(EPOCH FROM (NOW()-created_at))/86400/30) * 0.3
+                    LIMIT %s
+                    """,
+                    (np.array(query_embedding), np.array(query_embedding), k),
+                )
+                semantic = [_row_to_memory(r) for r in cur.fetchall()]
+        else:
+            semantic = self.search(query_embedding, top_k=k)
+        seen_ids = {m.id for m in semantic}
+
+        # Keyword-Suche: einfaches ILIKE auf content für jedes Wort >3 Zeichen
+        words = [w for w in query_text.lower().split() if len(w) > 3]
+        keyword_hits: list[Memory] = []
+        if words:
+            # OR-Pattern auf content
+            conditions = " OR ".join(["content ILIKE %s"] * len(words))
+            params = [f"%{w}%" for w in words] + [k]
+            with _db.cursor(vector=True) as cur:
+                cur.execute(
+                    f"""
+                    SELECT id, content, category, confidence,
+                           created_at, last_verified, metadata
+                    FROM memories
+                    WHERE ({conditions}) AND confidence >= 0.3
+                    ORDER BY confidence DESC, created_at DESC
+                    LIMIT %s
+                    """,
+                    params,
+                )
+                for r in cur.fetchall():
+                    if r["id"] not in seen_ids:
+                        keyword_hits.append(_row_to_memory(r))
+                        seen_ids.add(r["id"])
+
+        return semantic + keyword_hits
 
     def update_confidence(self, memory_id: int, confidence: float) -> None:
         _db.execute(

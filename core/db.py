@@ -441,6 +441,47 @@ MIGRATIONS = [
         created_at  TIMESTAMPTZ DEFAULT NOW()
     );
     """,
+
+    # Second Brain – Notizen & Verlinkungen
+    """
+    CREATE TABLE IF NOT EXISTS brain_notes (
+        id          SERIAL PRIMARY KEY,
+        title       TEXT NOT NULL,
+        content     TEXT NOT NULL DEFAULT '',
+        category    TEXT NOT NULL DEFAULT 'inbox',
+        tags        TEXT[] DEFAULT '{}',
+        status      TEXT NOT NULL DEFAULT 'active',
+        pinned      BOOLEAN DEFAULT FALSE,
+        embedding   vector(768),
+        created_at  TIMESTAMPTZ DEFAULT NOW(),
+        updated_at  TIMESTAMPTZ DEFAULT NOW()
+    );
+    """,
+    """
+    CREATE TABLE IF NOT EXISTS brain_links (
+        from_id  INTEGER NOT NULL REFERENCES brain_notes(id) ON DELETE CASCADE,
+        to_id    INTEGER NOT NULL REFERENCES brain_notes(id) ON DELETE CASCADE,
+        PRIMARY KEY (from_id, to_id)
+    );
+    """,
+    "CREATE INDEX IF NOT EXISTS brain_notes_category_idx ON brain_notes (category);",
+    "CREATE INDEX IF NOT EXISTS brain_notes_embedding_idx ON brain_notes USING hnsw (embedding vector_cosine_ops) WHERE embedding IS NOT NULL;",
+    "ALTER TABLE tasks ADD COLUMN IF NOT EXISTS today_focus BOOLEAN DEFAULT FALSE;",
+    """CREATE TABLE IF NOT EXISTS body_measurements (
+        id          SERIAL PRIMARY KEY,
+        date        DATE NOT NULL DEFAULT CURRENT_DATE,
+        weight_kg   FLOAT,
+        waist_cm    FLOAT,
+        chest_cm    FLOAT,
+        hips_cm     FLOAT,
+        bicep_cm    FLOAT,
+        thigh_cm    FLOAT,
+        neck_cm     FLOAT,
+        body_fat    FLOAT,
+        notes       TEXT,
+        created_at  TIMESTAMPTZ DEFAULT NOW()
+    );""",
+    "CREATE UNIQUE INDEX IF NOT EXISTS body_measurements_date_idx ON body_measurements (date);",
 ]
 
 

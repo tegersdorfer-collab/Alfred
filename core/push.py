@@ -32,6 +32,64 @@ def remove_subscription(endpoint: str) -> None:
     db.execute("DELETE FROM push_subscriptions WHERE endpoint = %s", (endpoint,))
 
 
+# ── Push-Notification-Templates ───────────────────────────────────────────────
+
+class PushTemplates:
+    """Strukturierte Templates für wiederkehrende Notification-Typen."""
+
+    @staticmethod
+    def briefing(preview: str) -> tuple[str, str]:
+        return "☀️ Guten Morgen", preview[:160]
+
+    @staticmethod
+    def evening_review(preview: str) -> tuple[str, str]:
+        return "🌙 Abend-Review", preview[:160]
+
+    @staticmethod
+    def reminder(title: str, due: str = "") -> tuple[str, str]:
+        body = f"Fällig: {due}" if due else "Erinnerung"
+        return f"⏰ {title}", body
+
+    @staticmethod
+    def health_alert(flags: list[str]) -> tuple[str, str]:
+        return "🩺 Gesundheits-Hinweis", "; ".join(flags)[:160]
+
+    @staticmethod
+    def workout_rec(intensity: str) -> tuple[str, str]:
+        icons = {"intensiv": "🔥", "moderat": "💪", "Pause/Regeneration": "😴"}
+        return f"{icons.get(intensity,'🏋️')} Training heute", intensity
+
+    @staticmethod
+    def task_done(title: str) -> tuple[str, str]:
+        return "✅ Aufgabe erledigt", title[:120]
+
+    @staticmethod
+    def anomaly(what: str) -> tuple[str, str]:
+        return "⚠️ Anomalie erkannt", what[:160]
+
+
+T = PushTemplates()
+
+
+# ── Smarte Filterung: Dedup + Rate-Limit ──────────────────────────────────────
+
+_recent_push_hashes: list[tuple[float, int]] = []  # (timestamp, hash)
+
+def _should_send(title: str, body: str, min_interval_s: int = 300) -> bool:
+    """Verhindert doppelte / zu schnell gesendete Notifications."""
+    import time, hashlib
+    key = hashlib.md5(f"{title}{body[:60]}".encode()).hexdigest()[:8]
+    h = int(key, 16)
+    now = time.time()
+    global _recent_push_hashes
+    _recent_push_hashes = [(ts, v) for ts, v in _recent_push_hashes if now - ts < 3600]
+    if any(v == h for _, v in _recent_push_hashes):
+        log.debug(f"Push-Duplikat unterdrückt: {title}")
+        return False
+    _recent_push_hashes.append((now, h))
+    return True
+
+
 def send_push(title: str, body: str, url: str = "/") -> int:
     """Schickt eine Push-Notification an alle registrierten Geräte.
     Gibt die Anzahl erfolgreich erreichter Geräte zurück. Synchron (für asyncio.to_thread)."""
@@ -47,6 +105,8 @@ def send_push(title: str, body: str, url: str = "/") -> int:
     if not subs:
         return 0
 
+    if not _should_send(title, body):
+        return 0
     payload = json.dumps({"title": title, "body": body[:200], "url": url})
     sent = 0
     for s in subs:

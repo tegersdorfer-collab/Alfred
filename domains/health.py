@@ -81,9 +81,50 @@ def process_health_data(data: dict) -> int:
     if in_bed is not None and total is not None:
         s("sleep_awake", _R2((in_bed - total) / 60))
 
+    # Workouts aus HealthKit importieren (Swift liefert 'workouts'-Array)
+    workouts_raw = data.get("workouts") or []
+    if workouts_raw:
+        try:
+            from domains import fitness as _fitness
+            imported = 0
+            for w in workouts_raw:
+                # Normalisierung der HealthKit-Workout-Activity-Typen
+                hk_type = str(w.get("type") or w.get("workoutActivityType") or "other").lower()
+                type_map = {
+                    "running": "run", "cycling": "bike", "swimming": "swim",
+                    "walking": "walk", "functionalstrengthtraining": "strength",
+                    "traditionalstrengthtraining": "strength", "crosstraining": "strength",
+                    "hiking": "hike", "yoga": "yoga", "pilates": "pilates",
+                    "rowing": "row", "elliptical": "cardio", "stairstepping": "cardio",
+                }
+                workout_type = type_map.get(hk_type, "other")
+                duration_min = None
+                dur = w.get("durationMinutes") or w.get("duration")
+                if dur is not None:
+                    duration_min = round(float(dur))
+                kcal = w.get("activeEnergyKcal") or w.get("activeEnergy")
+                start = w.get("startDate") or w.get("date") or day
+                try:
+                    from datetime import date as _date
+                    workout_date = _date.fromisoformat(str(start)[:10])
+                except Exception:
+                    workout_date = None
+                title = w.get("title") or hk_type.capitalize()
+                notes = f"HealthKit-Import: {round(float(kcal))} kcal" if kcal else "HealthKit-Import"
+                _fitness.log_workout(
+                    title=title, type_=workout_type,
+                    duration_min=duration_min, notes=notes,
+                    on_date=workout_date,
+                )
+                imported += 1
+            if imported:
+                log.info(f"🏋️ {imported} Workouts aus HealthKit importiert")
+        except Exception as e:
+            log.warning(f"Workout-Import fehlgeschlagen: {e}")
+
     if not fields:
         log.warning("Health-JSON: keine bekannten Felder gefunden")
-        return 0
+        return 0 if not workouts_raw else 1
 
     cols = list(fields.keys())
     updates = ", ".join(f"{c}=EXCLUDED.{c}" for c in cols)

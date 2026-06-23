@@ -125,12 +125,74 @@ class Orchestrator:
 
     # ── System-Prompt (parallel aufgebaut) ────────────────────────────────────
 
-    def _memory_context(self, embedding) -> str:
+    def _recall_gate(self, query: str) -> bool:
+        """
+        Jaccard-Heuristik: überspringt pgvector-Lookup wenn der KZG-Kontext
+        die Query-Wörter bereits zu ≥50% abdeckt.
+        Nur aktiv wenn ≥3 Turns im KZG vorhanden (frische Konversation).
+        """
+        try:
+            turns = self.kzg.get_recent_turns(n=6)
+            if len(turns) < 3:
+                return False
+            kzg_words = set(
+                w.lower() for t in turns for w in t.content.split()
+                if len(w) > 3
+            )
+            query_words = {w.lower() for w in query.split() if len(w) > 3}
+            if not query_words:
+                return False
+            overlap = len(query_words & kzg_words) / len(query_words)
+            if overlap >= 0.5:
+                log.debug(f"Recall Gate: übersprungen (Jaccard={overlap:.2f})")
+                return True
+        except Exception:
+            pass
+        return False
+
+    def lzg_embed(self, text: str) -> list[float]:
+        """Synchroner Embedding-Wrapper für API-Endpoints (läuft in asyncio.to_thread)."""
+        import asyncio
+        try:
+            loop = asyncio.get_event_loop()
+            if loop.is_running():
+                import concurrent.futures
+                future = asyncio.run_coroutine_threadsafe(
+                    self.embed_llm.embed(text), loop
+                )
+                return future.result(timeout=10)
+        except Exception as e:
+            log.warning(f"lzg_embed fehlgeschlagen: {e}")
+        return []
+
+    # IDs der zuletzt geladenen Memories — für Verification-Bump
+    _last_mem_ids: list[int] = []
+
+    _CONFIRM_WORDS = {
+        "ja", "jo", "jap", "jop", "genau", "exakt", "stimmt", "richtig", "korrekt",
+        "ja genau", "ja stimmt", "ja richtig", "ja korrekt", "ja exakt",
+        "yep", "yes", "correct", "right", "exactly", "true", "confirmed",
+    }
+
+    def _check_verification_bump(self, text: str) -> None:
+        """Wenn Timo eine Erinnerung bestätigt → Ebbinghaus-Stabilität erhöhen."""
+        lower = text.strip().lower()
+        if any(lower == w or lower.startswith(w + " ") or lower.startswith(w + ",") for w in self._CONFIRM_WORDS):
+            for mid in self._last_mem_ids:
+                try:
+                    self.forgetting.bump_recall(mid)
+                except Exception:
+                    pass
+            if self._last_mem_ids:
+                log.debug(f"Verification-Bump: {len(self._last_mem_ids)} Memories gestärkt")
+
+    def _memory_context(self, query_text: str, embedding) -> str:
         try:
             if embedding is not None:
-                mems = self.lzg.search(embedding, top_k=config.LZG_TOP_K)
+                mems = self.lzg.search_hybrid(query_text, embedding, top_k=config.LZG_TOP_K)
             else:
                 mems = self.lzg.get_all(limit=10)
+            self._last_mem_ids = [m.id for m in mems]
             # recall_count erhöhen für genutzte Memories (Ebbinghaus: Wiederholung stärkt)
             for m in mems:
                 try:
@@ -152,18 +214,23 @@ class Orchestrator:
     async def _build_system_prompt(self, user_text: str) -> str:
         # embed → mem_ctx (Kette) läuft parallel zu dash_ctx + task_ctx
         async def _embed_and_mem():
+            # Recall Gate: Jaccard-Check ob KZG bereits ausreichend Kontext hat
+            if self._recall_gate(user_text):
+                return "—"
             try:
                 embedding = await self.embed_llm.embed(user_text)
             except Exception as e:
                 log.debug(f"Embed fehlgeschlagen: {e}", exc_info=True)
                 embedding = None
-            return await asyncio.to_thread(self._memory_context, embedding)
+            return await asyncio.to_thread(self._memory_context, user_text, embedding)
 
-        mem_ctx, dash_ctx, task_ctx, kg_ctx = await asyncio.gather(
+        mem_ctx, dash_ctx, task_ctx, kg_ctx, dir_ctx, warm_profile = await asyncio.gather(
             _embed_and_mem(),
             asyncio.to_thread(self._safe_dashboard_ctx),
             asyncio.to_thread(self._safe_task_ctx),
             asyncio.to_thread(self._kg_context),
+            asyncio.to_thread(lambda: self.kg.format_directives()),
+            asyncio.to_thread(lambda: self.kg.warm_profile()),
         )
         behavior = self.reflection.behavior_notes()
         now = datetime.now()
@@ -196,6 +263,10 @@ class Orchestrator:
             "Formate wie 'morgen 14:00', 'heute 18:30' oder 'TT.MM.JJJJ HH:MM' – immer LOKALE Zeit, "
             "niemals UTC.\n"
         )
+        if warm_profile:
+            prompt += f"\n{warm_profile}\n"
+        if dir_ctx:
+            prompt += f"\n{dir_ctx}\n"
         if behavior:
             prompt += f"\n{behavior}\n"
         prompt += f"\n## Was du über Timo weißt:\n{mem_ctx}\n"
@@ -234,6 +305,14 @@ class Orchestrator:
 
         self.kzg.add("user", msg.text)
         self._persist_msg("user", msg.text, channel="telegram")
+        self._check_verification_bump(msg.text)
+        # Engagement Decay: wenn letzter Turn Alfred-proaktiv war → Response tracken
+        try:
+            last_turns = self.kzg.get_recent_turns(n=2)
+            if last_turns and last_turns[-1].role == "assistant":
+                self._proactive_tracker.record_user_response()
+        except Exception:
+            pass
 
         # ── Task-Klärungsantwort erkennen ──────────────────────────────────────
         waiting = db.query(
@@ -651,9 +730,38 @@ class Orchestrator:
         self.channel.on_message(self.handle_message)
 
         self._idle_task = asyncio.create_task(self._autopilot_loop())
+        asyncio.create_task(self._monitoring_loop())
         await self.channel.start()
         log_event("system", "Alfred gestartet")
         log.info("Alfred bereit ✅")
+
+    async def _monitoring_loop(self) -> None:
+        """Prüft alle 5 Minuten DB + Ollama. Bei Fehler → Push-Notification."""
+        import httpx as _httpx
+        _consecutive_failures = 0
+        await asyncio.sleep(60)  # Startup-Grace
+        while True:
+            try:
+                async with _httpx.AsyncClient(timeout=5) as c:
+                    port = getattr(config, "DASHBOARD_PORT", 7779)
+                    r = await c.get(f"http://127.0.0.1:{port}/health")
+                checks = r.json() if r.status_code == 200 else {}
+                unhealthy = [k for k, v in checks.items() if str(v).startswith("error")]
+                if unhealthy:
+                    _consecutive_failures += 1
+                    if _consecutive_failures >= 2:
+                        msg = f"⚠️ Alfred Health-Check: {', '.join(unhealthy)} fehlerhaft"
+                        try:
+                            from core.push import send_push
+                            await asyncio.to_thread(send_push, "Alfred Health Alert", msg)
+                        except Exception:
+                            pass
+                        log.warning(msg)
+                else:
+                    _consecutive_failures = 0
+            except Exception as e:
+                log.debug(f"Monitoring: {e}")
+            await asyncio.sleep(300)
 
     async def stop(self) -> None:
         self._state = "stopping"

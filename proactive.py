@@ -130,6 +130,53 @@ class ProactiveTracker:
         self._last_sent = datetime.now()
         log.info(f"📤 Proaktive Nachricht gesendet ({self._count} heute)")
 
+    def record_user_response(self) -> None:
+        """Aufrufen wenn Timo auf eine proaktive Nachricht antwortet → Decay zurücksetzen."""
+        try:
+            from core import db
+            db.execute(
+                """
+                INSERT INTO settings (key, value) VALUES ('proactive_response_streak', '0')
+                ON CONFLICT (key) DO UPDATE SET value = (
+                    CASE WHEN CAST(settings.value AS INT) > 0
+                         THEN CAST(settings.value AS INT) - 1
+                         ELSE 0 END
+                )::text
+                """
+            )
+        except Exception:
+            pass
+
+    def record_ignored(self) -> None:
+        """Aufrufen wenn eine proaktive Nachricht ohne Reaktion blieb → Decay erhöhen."""
+        try:
+            from core import db
+            row = db.get_setting("proactive_ignore_streak") or 0
+            streak = int(row) + 1
+            db.execute(
+                "INSERT INTO settings (key, value) VALUES ('proactive_ignore_streak', %s) "
+                "ON CONFLICT (key) DO UPDATE SET value = %s",
+                (str(streak), str(streak)),
+            )
+            # Bei 3+ Ignores: Interval verlängern (max 2× normal)
+            if streak >= 3:
+                from config import PROACTIVE_INTERVAL
+                new_interval = min(PROACTIVE_INTERVAL * (1 + streak * 0.3), PROACTIVE_INTERVAL * 2)
+                db.execute(
+                    "INSERT INTO settings (key, value) VALUES ('proactive_interval_override', %s) "
+                    "ON CONFLICT (key) DO UPDATE SET value = %s",
+                    (str(int(new_interval)), str(int(new_interval))),
+                )
+                log.info(f"📉 Engagement Decay: Intervall auf {int(new_interval)}s erhöht (streak={streak})")
+            elif streak == 0:
+                # Streak gebrochen → Interval zurücksetzen
+                db.execute(
+                    "INSERT INTO settings (key, value) VALUES ('proactive_interval_override', NULL) "
+                    "ON CONFLICT (key) DO UPDATE SET value = NULL"
+                )
+        except Exception:
+            pass
+
     @property
     def count_today(self) -> int:
         self._reset_if_new_day()

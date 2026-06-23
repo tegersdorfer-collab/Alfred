@@ -53,8 +53,44 @@ class Reflection:
 
     # ── Interaktions-Reflexion (leichtgewichtig, nach jedem Turn) ─────────────
 
+    _NEGATIVE_SIGNALS = {
+        "zu lang", "kürzer", "zu viel", "stop", "hör auf", "nervt", "blöd",
+        "falsch", "quatsch", "unsinn", "nein nicht", "nicht so", "anders",
+        "lass das", "aufhören", "überflüssig", "redundant",
+    }
+    _POSITIVE_SIGNALS = {
+        "genau so", "perfekt", "super", "klasse", "gut gemacht", "weiter so",
+        "das ist gut", "gefällt mir", "richtig so", "exakt so",
+    }
+
     async def reflect_on_interaction(self, user_msg: str, assistant_msg: str) -> None:
         """Schnelle Analyse via Schnellmodell: Korrektur? Vorliebe? Unmut?"""
+        lower = user_msg.lower()
+
+        # Proaktivität anpassen bei explizitem Unmut / Lob
+        if any(s in lower for s in self._NEGATIVE_SIGNALS):
+            try:
+                current = db.get_setting("proactive_interval_override") or 0
+                new_val = min(int(current) + 600, 7200)
+                db.set_setting("proactive_interval_override", new_val)
+                log.debug(f"Lernrate: negativer Ton → proaktives Interval auf {new_val}s")
+            except Exception:
+                pass
+        elif any(s in lower for s in self._POSITIVE_SIGNALS):
+            try:
+                current = db.get_setting("proactive_interval_override") or 0
+                if int(current) > 0:
+                    new_val = max(int(current) - 300, 0)
+                    db.set_setting("proactive_interval_override", new_val if new_val > 0 else None)
+                    log.debug(f"Lernrate: positiver Ton → proaktives Interval auf {new_val}s")
+            except Exception:
+                pass
+
+        # Längen-Heuristik: kurze Antwort-Replies → "Fasse dich kürzer" lernen
+        if len(user_msg) < 20 and len(assistant_msg) > 600:
+            self._add_note("Antworte kürzer wenn Timo kurze Nachrichten schickt")
+            return
+
         prompt = (
             "Analysiere diesen Austausch zwischen Timo (User) und Alfred (Assistant). "
             "Gibt es eine KORREKTUR, eine VORLIEBE, oder ein Zeichen von Unmut/Zufriedenheit, "
