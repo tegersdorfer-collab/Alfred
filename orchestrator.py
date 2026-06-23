@@ -39,6 +39,8 @@ from tools.reminders import ReminderStore
 from core import backup
 from core.skill_factory import load_all_on_startup
 from core.status import BUS
+from core import skill_md
+from core.background_review import run_background_review
 import config
 
 log = logging.getLogger(__name__)
@@ -224,13 +226,14 @@ class Orchestrator:
                 embedding = None
             return await asyncio.to_thread(self._memory_context, user_text, embedding)
 
-        mem_ctx, dash_ctx, task_ctx, kg_ctx, dir_ctx, warm_profile = await asyncio.gather(
+        mem_ctx, dash_ctx, task_ctx, kg_ctx, dir_ctx, warm_profile, skill_ctx = await asyncio.gather(
             _embed_and_mem(),
             asyncio.to_thread(self._safe_dashboard_ctx),
             asyncio.to_thread(self._safe_task_ctx),
             asyncio.to_thread(self._kg_context),
             asyncio.to_thread(lambda: self.kg.format_directives()),
             asyncio.to_thread(lambda: self.kg.warm_profile()),
+            asyncio.to_thread(lambda: skill_md.build_skill_context(user_text)),
         )
         behavior = self.reflection.behavior_notes()
         now = datetime.now()
@@ -267,6 +270,8 @@ class Orchestrator:
             prompt += f"\n{warm_profile}\n"
         if dir_ctx:
             prompt += f"\n{dir_ctx}\n"
+        if skill_ctx:
+            prompt += f"\n{skill_ctx}\n"
         if behavior:
             prompt += f"\n{behavior}\n"
         prompt += f"\n## Was du über Timo weißt:\n{mem_ctx}\n"
@@ -392,7 +397,7 @@ class Orchestrator:
 
         # Hintergrund: Lernen
         tools_used = [t["tool"] for t in trace]
-        _safe_task(self._post_turn(msg.text, response), "post_turn")
+        _safe_task(self._post_turn(msg.text, response, tools_used), "post_turn")
         # Trigger für Task-Vorschlag bei relevanten Tool-Nutzungen
         trigger_tools = {"create_habit", "create_task", "create_goal", "add_event", "log_workout"}
         if any(t in trigger_tools for t in tools_used):
@@ -442,21 +447,32 @@ class Orchestrator:
         self.kzg.add("assistant", response)
         self._persist_msg("assistant", response, channel="dashboard",
                           meta={"tools": [t["tool"] for t in trace], "model": model})
-        _safe_task(self._post_turn(text, response), "post_turn")
+        _safe_task(self._post_turn(text, response, [t["tool"] for t in trace]), "post_turn")
         return response, trace
 
-    async def _post_turn(self, user_text: str, response: str) -> None:
+    async def _post_turn(self, user_text: str, response: str, tools_used: list[str] | None = None) -> None:
         # Per-Turn: gezielte Fakten-Extraktion aus dem letzten Austausch (Fast-Modell)
         BUS.emit("learning", "Analysiere Gespräch…")
         n = await self.extractor.extract_from_exchange(user_text, response)
         if n > 0:
             BUS.emit("memory", f"🧠 {n} neue{'r' if n == 1 else ''} Fakt{'' if n == 1 else 'en'} gespeichert")
-            # Neue Fakten/Ziele → Task-Vorschlag
             _safe_task(self._suggest_from_event(
                 f"Neue Information über Timo: {user_text[:100]}"
             ), "suggest_from_memory")
         else:
             BUS.emit("idle", "Bereit")
+
+        # Background Review Loop (Hermes-Pattern): Skill/Memory-Lernen im Hintergrund
+        _safe_task(
+            run_background_review(
+                user_text=user_text,
+                assistant_response=response,
+                tools_used=tools_used or [],
+                bg_llm=self.bg_llm,
+                lzg=self.lzg,
+            ),
+            "background_review"
+        )
 
     async def _suggest_from_event(self, trigger: str) -> None:
         """Generiert einen Task-Vorschlag aus einem Datenereignis (fire & forget)."""

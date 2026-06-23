@@ -1110,3 +1110,60 @@ def _refresh_tools() -> str:
         "Falls ein benötigtes Tool fehlt: create_skill nutzen um es selbst zu bauen."
     )
 
+
+# ── Subagent Delegation (Hermes-Pattern) ──────────────────────────────────────
+
+@T.register(
+    "delegate_task",
+    "Delegiert eine komplexe Teilaufgabe an einen isolierten Unteragenten. Ideal für umfangreiche Analysen, Reports oder mehrstufige Operationen die den Hauptkontext nicht aufblähen sollen.",
+    {
+        "goal": {"type": "string", "description": "Was der Unteragent erreichen soll (natürlichsprachlich, konkret)"},
+        "context": {"type": "string", "description": "Zusätzlicher Kontext aus dem aktuellen Gespräch (optional)"},
+        "tools": {"type": "array", "items": {"type": "string"}, "description": "Explizite Tool-Liste (optional, leer = alle erlaubten)"},
+    },
+    ["goal"],
+    category="productivity",
+)
+async def _delegate_task(goal: str, context: str = "", tools: list | None = None) -> str:
+    from tools.delegate import run_subagent
+    return await run_subagent(
+        goal=goal,
+        context=context,
+        allowed_tools=tools or None,
+    )
+
+
+# ── SKILL.md Management (Hermes-Pattern) ──────────────────────────────────────
+
+@T.register(
+    "list_skill_procedures",
+    "Zeigt alle gespeicherten SKILL.md Prozeduren die Alfred über die Zeit gelernt hat.",
+    [],
+    category="general",
+)
+def _list_skill_procedures() -> str:
+    from core.skill_md import list_all
+    skills = list_all()
+    if not skills:
+        return "Noch keine Skill-Prozeduren gespeichert."
+    lines = [f"**{s['name']}**: {s['description']} (Trigger: {', '.join(s['triggers'][:3])})"
+             for s in skills]
+    return f"{len(skills)} Prozedur-Skills:\n" + "\n".join(lines)
+
+
+@T.register(
+    "update_skill_procedure",
+    "Aktualisiert eine bestehende SKILL.md Prozedur. Nutzen wenn Alfred eine bessere Vorgehensweise für eine bekannte Aufgabe gelernt hat.",
+    {
+        "name": {"type": "string", "description": "Skill-Name (snake_case)"},
+        "new_body": {"type": "string", "description": "Neue Prozedur-Beschreibung"},
+    },
+    ["name", "new_body"],
+    category="general",
+)
+def _update_skill_procedure(name: str, new_body: str) -> str:
+    from core.skill_md import update_skill
+    if update_skill(name, new_body):
+        return f"✅ Skill-Prozedur '{name}' aktualisiert."
+    return f"❌ Skill '{name}' nicht gefunden. Mit list_skill_procedures prüfen."
+

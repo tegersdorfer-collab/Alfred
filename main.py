@@ -118,6 +118,12 @@ async def main():
         log.warning(f"⚠️  Tailscale-IP {dashboard_host} nicht aktiv – Dashboard bindet auf localhost (nur diese Maschine).")
         dashboard_host = "127.0.0.1"
 
+    # SKILL.md Index beim Start laden
+    from core import skill_md as _skill_md
+    n_skills = _skill_md.scan_all()
+    if n_skills:
+        log.info(f"📘 {n_skills} Skill-Prozedur(en) geladen")
+
     api_app = create_app(orchestrator)
     api_conf = uvicorn.Config(api_app, host=dashboard_host, port=7779, log_level="warning")
     api_server = uvicorn.Server(api_conf)

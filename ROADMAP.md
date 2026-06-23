@@ -122,6 +122,9 @@
 - [x] **Claude Code Subprocess**: "Alfred, bau X" → spawnt `claude`-Subprocess im Hintergrund, Push-Notification wenn fertig
 - [x] **Tool Discovery Escape Hatch**: Alfred bekommt ein `refresh_tools`-Tool das es mid-Reply aufrufen kann wenn es eine fehlende Fähigkeit vermutet — erweitert sich selbst
 - [x] **Embedding-basiertes Tool-Routing**: Alle Tools registrieren, per Query semantisch ranken, nur Top-N in Context injizieren → beliebig viele Tools ohne Context-Overhead
+- [x] **Background Review Loop (Hermes-Pattern)**: Nach jedem Turn läuft Fork-Agent der entscheidet ob Skill/Memory gespeichert wird — "BE ACTIVE"-Direktive, non-blocking
+- [x] **SKILL.md Prozedur-System**: Skills als Markdown-Dateien mit Frontmatter (Trigger, Platform-Gates), automatisch in System-Prompt injiziert wenn relevant
+- [x] **Subagent Delegation**: `delegate_task`-Tool spawnt isolierten Kind-Agenten mit eigenem Context, eingeschränktem Toolset, Timeout — kein Rekursionsrisiko
 
 ### Infrastruktur
 - [x] Automatischer Start nach System-Neustart (launchd + KeepAlive Crash-Recovery)

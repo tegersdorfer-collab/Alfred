@@ -1286,6 +1286,33 @@ def create_app(orch=None) -> FastAPI:
         ok = _brain.add_thought_to_quote(note_id, body.get("thought", ""))
         return {"ok": ok}
 
+    # ── SKILL.md Endpoints ────────────────────────────────────────────────────
+    @app.get("/api/skills/procedures")
+    def list_skill_procedures():
+        from core.skill_md import list_all
+        return list_all()
+
+    @app.get("/api/skills/procedures/{name}")
+    def get_skill_procedure(name: str):
+        from core.skill_md import get_skill
+        s = get_skill(name)
+        if not s:
+            return JSONResponse({"error": "nicht gefunden"}, status_code=404)
+        return s
+
+    @app.delete("/api/skills/procedures/{name}")
+    def delete_skill_procedure(name: str):
+        from core.skill_md import delete_skill
+        if delete_skill(name):
+            return {"ok": True}
+        return JSONResponse({"error": "nicht gefunden"}, status_code=404)
+
+    # ── Subagent Observability ────────────────────────────────────────────────
+    @app.get("/api/subagents")
+    def list_subagents():
+        from tools.delegate import get_active_subagents
+        return get_active_subagents()
+
     @app.get("/sw.js")
     def service_worker():
         from fastapi.responses import Response
