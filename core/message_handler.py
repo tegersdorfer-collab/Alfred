@@ -1,0 +1,270 @@
+"""
+MessageHandler — verarbeitet eingehende Nachrichten aus Telegram und Dashboard.
+Zuständig für: ReAct-Loop, Streaming, Post-Turn-Learning, Persistenz.
+"""
+import asyncio
+import json
+import logging
+import time
+
+from communication.base import IncomingMessage
+from core.background_review import run_background_review
+from core.status import BUS
+from core import skills, db
+
+log = logging.getLogger(__name__)
+
+_CONFIRM_WORDS = {
+    "ja", "jo", "jap", "jop", "genau", "exakt", "stimmt", "richtig", "korrekt",
+    "ja genau", "ja stimmt", "ja richtig", "ja korrekt", "ja exakt",
+    "yep", "yes", "correct", "right", "exactly", "true", "confirmed",
+}
+
+_TRIGGER_TOOLS = {"create_habit", "create_task", "create_goal", "add_event", "log_workout"}
+
+
+def _safe_task(coro, label: str):
+    async def _wrapper():
+        try:
+            await coro
+        except Exception as e:
+            log.warning(f"Background-Task '{label}' fehlgeschlagen: {e}", exc_info=True)
+            db.log_error(label, e)
+    return asyncio.create_task(_wrapper())
+
+
+class MessageHandler:
+    def __init__(self, kzg, lzg, agent, prompt_builder, channel,
+                 proactive_tracker, forgetting, extractor, bg_llm,
+                 alphaprogression, suggest_one, on_user_active):
+        self.kzg               = kzg
+        self.lzg               = lzg
+        self.agent             = agent
+        self.prompt_builder    = prompt_builder
+        self.channel           = channel
+        self.proactive_tracker = proactive_tracker
+        self.forgetting        = forgetting
+        self.extractor         = extractor
+        self.bg_llm            = bg_llm
+        self.alphaprogression  = alphaprogression
+        self.suggest_one       = suggest_one
+        self.on_user_active    = on_user_active   # callback: () → None
+
+    # ── Verification Bump ─────────────────────────────────────────────────────
+
+    def _check_verification_bump(self, text: str) -> None:
+        lower = text.strip().lower()
+        if any(lower == w or lower.startswith(w + " ") or lower.startswith(w + ",")
+               for w in _CONFIRM_WORDS):
+            for mid in self.prompt_builder._last_mem_ids:
+                try:
+                    self.forgetting.bump_recall(mid)
+                except Exception:
+                    pass
+
+    # ── Alpha Progression Link ────────────────────────────────────────────────
+
+    async def _handle_alpha_progression(self, text: str, channel_name: str) -> str | None:
+        url = self.alphaprogression.extract_link(text)
+        if not url:
+            return None
+        BUS.emit("thinking", "Alpha Progression wird importiert…")
+        try:
+            loop = asyncio.get_running_loop()
+            response = await loop.run_in_executor(None, self.alphaprogression.fetch_and_log, url)
+        except Exception as e:
+            log.error(f"AP import error: {e}")
+            response = f"❌ Fehler beim Importieren: {e}"
+        self.kzg.add("assistant", response)
+        self._persist_msg("assistant", response, channel=channel_name)
+        BUS.emit("response", response)
+        if "✅" in response:
+            _safe_task(
+                self._suggest_from_event(f"Neues Workout eingetragen: {response[:120]}"),
+                "suggest_from_event"
+            )
+        return response
+
+    # ── Telegram ──────────────────────────────────────────────────────────────
+
+    async def handle(self, msg: IncomingMessage, resume_idle_cb) -> None:
+        t0 = time.time()
+        BUS.emit("thinking", "Nachricht empfangen…", detail=msg.text[:60])
+        log.info(f"Eingehend: {msg.text[:60]}")
+
+        self.kzg.add("user", msg.text)
+        self._persist_msg("user", msg.text, channel="telegram")
+        self._check_verification_bump(msg.text)
+        self.on_user_active()
+
+        # Engagement Decay
+        try:
+            last_turns = self.kzg.get_recent_turns(n=2)
+            if last_turns and last_turns[-1].role == "assistant":
+                self.proactive_tracker.record_user_response()
+        except Exception:
+            pass
+
+        # Task-Klärungsantwort
+        waiting = db.query(
+            "SELECT id FROM tasks WHERE execution_phase='waiting_clarification' "
+            "AND clarification_answer IS NULL ORDER BY created_at DESC LIMIT 1"
+        )
+        if waiting:
+            db.execute(
+                "UPDATE tasks SET clarification_answer=%s, execution_phase='executing', "
+                "hold_until=NULL WHERE id=%s",
+                (msg.text, waiting[0]["id"])
+            )
+            response = "Danke! Ich mache mit deiner Antwort weiter an der Aufgabe. 👍"
+            self.kzg.add("assistant", response)
+            self._persist_msg("assistant", response)
+            BUS.emit("response", response)
+            resume_idle_cb()
+            return
+
+        # Alpha Progression
+        if await self._handle_alpha_progression(msg.text, "telegram"):
+            resume_idle_cb()
+            return
+
+        # Agent-Loop
+        system = await self.prompt_builder.build(msg.text)
+        stream_cb, finalize = await self._make_stream()
+        allowed = skills.T.select_tools(msg.text)
+        model = self.agent.model_name
+        force_tools = bool(allowed) and skills.T.is_action(msg.text)
+
+        try:
+            response, trace = await self.agent.run(
+                messages=self.kzg.recent_messages(max_tokens=3000),
+                system=system, stream_cb=stream_cb,
+                allowed_tools=allowed, force_tools=force_tools,
+                temperature=0.75, max_tokens=1500,
+            )
+        except Exception as e:
+            log.error(f"Agent-Fehler: {e}")
+            response, trace = "⚠️ Technisches Problem, versuch es nochmal.", []
+
+        if not response:
+            response = "…"
+        await finalize(response)
+
+        self.kzg.add("assistant", response)
+        tools_used = [t["tool"] for t in trace]
+        self._persist_msg("assistant", response, channel="telegram",
+                          meta={"tools": tools_used, "model": model})
+        elapsed = time.time() - t0
+        log.info(f"Antwort in {elapsed:.1f}s ({len(trace)} Tools, {model})")
+        BUS.emit("idle", "Bereit", detail=f"{elapsed:.1f}s · {model}")
+
+        _safe_task(self._post_turn(msg.text, response, tools_used), "post_turn")
+        if any(t in _TRIGGER_TOOLS for t in tools_used):
+            _safe_task(self._suggest_from_event(
+                f"Alfred hat '{', '.join(t for t in tools_used if t in _TRIGGER_TOOLS)}' ausgeführt: {msg.text[:120]}"
+            ), "suggest_from_event")
+        resume_idle_cb()
+
+    # ── Dashboard ─────────────────────────────────────────────────────────────
+
+    async def dashboard_respond(self, text: str, stream_cb=None) -> tuple[str, list]:
+        self.on_user_active()
+        self.kzg.add("user", text)
+        self._persist_msg("user", text, channel="dashboard")
+
+        if await self._handle_alpha_progression(text, "dashboard"):
+            return "", []
+
+        system = await self.prompt_builder.build(text)
+        allowed = skills.T.select_tools(text)
+        model = self.agent.model_name
+        force_tools = bool(allowed) and skills.T.is_action(text)
+
+        try:
+            response, trace = await self.agent.run(
+                messages=self.kzg.recent_messages(max_tokens=3000),
+                system=system, stream_cb=stream_cb,
+                allowed_tools=allowed, force_tools=force_tools,
+                temperature=0.75, max_tokens=1500,
+            )
+        except Exception as e:
+            log.error(f"Dashboard-Agent-Fehler: {e}")
+            response, trace = "⚠️ Technisches Problem.", []
+
+        self.kzg.add("assistant", response)
+        tools_used = [t["tool"] for t in trace]
+        self._persist_msg("assistant", response, channel="dashboard",
+                          meta={"tools": tools_used, "model": model})
+        _safe_task(self._post_turn(text, response, tools_used), "post_turn")
+        return response, trace
+
+    # ── Post-Turn Learning ────────────────────────────────────────────────────
+
+    async def _post_turn(self, user_text: str, response: str,
+                         tools_used: list[str] | None = None) -> None:
+        BUS.emit("learning", "Analysiere Gespräch…")
+        n = await self.extractor.extract_from_exchange(user_text, response)
+        if n > 0:
+            BUS.emit("memory", f"🧠 {n} neue{'r' if n==1 else ''} Fakt{'' if n==1 else 'en'} gespeichert")
+            _safe_task(self._suggest_from_event(
+                f"Neue Information über Timo: {user_text[:100]}"
+            ), "suggest_from_memory")
+        else:
+            BUS.emit("idle", "Bereit")
+
+        _safe_task(
+            run_background_review(
+                user_text=user_text,
+                assistant_response=response,
+                tools_used=tools_used or [],
+                bg_llm=self.bg_llm,
+                lzg=self.lzg,
+            ),
+            "background_review"
+        )
+
+    async def _suggest_from_event(self, trigger: str) -> None:
+        try:
+            await self.suggest_one(trigger, self.bg_llm, self.lzg)
+        except Exception as e:
+            log.debug(f"suggest_from_event: {e}")
+
+    # ── Streaming ─────────────────────────────────────────────────────────────
+
+    async def _make_stream(self):
+        if not getattr(self.channel, "supports_streaming", False):
+            await self.channel.send_typing()
+            async def finalize_plain(text):
+                await self.channel.send(text)
+            return None, finalize_plain
+
+        msg_id = await self.channel.start_message("💭 …")
+        last_edit = [0.0]
+
+        async def stream_cb(full: str):
+            now = time.time()
+            if now - last_edit[0] < 0.8:
+                return
+            last_edit[0] = now
+            await self.channel.edit_message(msg_id, full)
+
+        async def finalize(text: str):
+            await self.channel.edit_message(msg_id, text, markdown=True)
+
+        return stream_cb, finalize
+
+    # ── Persistenz ────────────────────────────────────────────────────────────
+
+    def _persist_msg(self, role: str, content: str, channel: str = "telegram",
+                     meta: dict | None = None) -> None:
+        try:
+            self.lzg.save_kzg_turn(role, content)
+        except Exception:
+            pass
+        try:
+            db.execute(
+                "INSERT INTO chat_messages (role, content, channel, meta) VALUES (%s,%s,%s,%s)",
+                (role, content, channel, json.dumps(meta or {})),
+            )
+        except Exception:
+            pass
