@@ -116,7 +116,11 @@ GENUTZTE TOOLS: {', '.join(tools_used) if tools_used else 'keine'}
             fact = mem_match.group(1).strip()
             if fact and len(fact) > 5:
                 try:
-                    await asyncio.to_thread(lzg.add, fact, source="background_review", importance=0.6)
+                    emb = await bg_llm.embed(fact)
+                    await asyncio.to_thread(
+                        lzg.save, fact, emb, "fact", 0.6,
+                        {"source": "background_review"},
+                    )
                     log.info(f"[BgReview] Memory gespeichert: {fact[:80]}")
                 except Exception as e:
                     log.debug(f"[BgReview] Memory-Save fehlgeschlagen: {e}")

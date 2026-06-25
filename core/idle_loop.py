@@ -12,6 +12,10 @@ from core.status import BUS
 log = logging.getLogger(__name__)
 
 
+def _elapsed_since(last: "datetime | None", now: datetime, default: float = float("inf")) -> float:
+    return (now - last).total_seconds() if last else default
+
+
 def _safe_task(coro, label: str):
     async def _wrapper():
         try:
@@ -151,8 +155,7 @@ class IdleLoop:
 
     async def _tick_health(self) -> None:
         now = datetime.now()
-        since = (now - self._last_health_refresh).total_seconds() if self._last_health_refresh else 1801
-        if since < 1800:
+        if _elapsed_since(self._last_health_refresh, now) < 1800:
             return
         self._last_health_refresh = now
         try:
@@ -163,8 +166,7 @@ class IdleLoop:
             if thought and await self.proactive_engine.evaluate(thought):
                 await self.autopilot._send(thought, kind="health_update")
                 self.proactive_tracker.record_sent()
-            since_sug = (now - self._last_health_suggestion).total_seconds() if self._last_health_suggestion else 86401
-            if since_sug > 86400:
+            if _elapsed_since(self._last_health_suggestion, now) > 86400:
                 ok = await self.suggest_one(
                     f"Neue Gesundheitsdaten für {new_days} Tag(e) importiert",
                     self.bg_llm, self.lzg
@@ -177,7 +179,7 @@ class IdleLoop:
 
     async def _tick_patterns(self) -> None:
         now = datetime.now()
-        if self._last_pattern_run and (now - self._last_pattern_run).total_seconds() < 86400:
+        if _elapsed_since(self._last_pattern_run, now) < 86400:
             return
         self._last_pattern_run = now
         try:
@@ -190,8 +192,7 @@ class IdleLoop:
 
     async def _tick_insights(self) -> None:
         now = datetime.now()
-        since = (now - self._last_insight_run).total_seconds() if self._last_insight_run else 14401
-        if since < 14400:
+        if _elapsed_since(self._last_insight_run, now) < 14400:
             return
         has_active = db.query(
             "SELECT 1 FROM tasks WHERE assigned_to='alfred' AND status NOT IN ('done','archived') "

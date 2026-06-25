@@ -3,6 +3,7 @@ Ollama Provider – lokale LLM-Inference.
 Modell über OLLAMA_MODEL in .env konfigurierbar.
 """
 import asyncio
+import logging
 from collections import OrderedDict
 from typing import AsyncIterator
 import ollama as _ollama
@@ -10,6 +11,12 @@ import ollama as _ollama
 from .base import LLMProvider, Message
 from core.llm_gate import GATE
 import config
+
+log = logging.getLogger(__name__)
+
+
+def _embed_cache_key(text: str) -> str:
+    return text.strip()[:512]
 
 
 class OllamaProvider(LLMProvider):
@@ -50,7 +57,7 @@ class OllamaProvider(LLMProvider):
                         options={"num_predict": 1},
                         keep_alive=0,
                     )
-                    import logging; logging.getLogger(__name__).info(f"🗑️  Entlade {name} für {self._model}")
+                    log.info(f"🗑️  Entlade {name} für {self._model}")
         except Exception:
             pass
 
@@ -96,7 +103,7 @@ class OllamaProvider(LLMProvider):
                 yield chunk.message.content
 
     async def embed(self, text: str) -> list[float]:
-        key = text.strip()[:512]
+        key = _embed_cache_key(text)
         if key in self._embed_cache:
             return self._embed_cache[key]
         async with GATE:
@@ -121,7 +128,7 @@ class OllamaProvider(LLMProvider):
         uncached_texts:   list[str]  = []
 
         for i, text in enumerate(texts):
-            key = text.strip()[:512]
+            key = _embed_cache_key(text)
             if key in self._embed_cache:
                 self._embed_cache.move_to_end(key)
                 results[i] = self._embed_cache[key]
@@ -137,7 +144,7 @@ class OllamaProvider(LLMProvider):
                 )
             for idx, (orig_i, text) in enumerate(zip(uncached_indices, uncached_texts)):
                 emb = response.embeddings[idx]
-                key = text.strip()[:512]
+                key = _embed_cache_key(text)
                 if len(self._embed_cache) >= self._embed_cache_max:
                     self._embed_cache.popitem(last=False)
                 self._embed_cache[key] = emb
