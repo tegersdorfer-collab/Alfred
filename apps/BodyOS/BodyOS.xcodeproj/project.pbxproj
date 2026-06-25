@@ -1,0 +1,294 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 56;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		BA01 /* BodyOSApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = BF01 /* BodyOSApp.swift */; };
+		BA02 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BF02 /* ContentView.swift */; };
+		BA03 /* BodyModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = BF03 /* BodyModels.swift */; };
+		BA04 /* AlfredClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = BF04 /* AlfredClient.swift */; };
+		BA05 /* FitnessAPI.swift in Sources */ = {isa = PBXBuildFile; fileRef = BF05 /* FitnessAPI.swift */; };
+		BA06 /* NutritionAPI.swift in Sources */ = {isa = PBXBuildFile; fileRef = BF06 /* NutritionAPI.swift */; };
+		BA07 /* HealthAPI.swift in Sources */ = {isa = PBXBuildFile; fileRef = BF07 /* HealthAPI.swift */; };
+		BA08 /* RestTimer.swift in Sources */ = {isa = PBXBuildFile; fileRef = BF08 /* RestTimer.swift */; };
+		BA09 /* HealthKitManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = BF09 /* HealthKitManager.swift */; };
+		BA17 /* ChartViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = BF17 /* ChartViews.swift */; };
+		BA10 /* DashboardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BF10 /* DashboardView.swift */; };
+		BA11 /* WorkoutView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BF11 /* WorkoutView.swift */; };
+		BA12 /* ActiveSessionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BF12 /* ActiveSessionView.swift */; };
+		BA13 /* NutritionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BF13 /* NutritionView.swift */; };
+		BA14 /* AnalysisView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BF14 /* AnalysisView.swift */; };
+		BA15 /* HealthView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BF15 /* HealthView.swift */; };
+		BA16 /* BodySettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BF16 /* BodySettingsView.swift */; };
+		BA99 /* Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = BF99 /* Info.plist */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXFileReference section */
+		BF01 /* BodyOSApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BodyOSApp.swift; sourceTree = "<group>"; };
+		BF02 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
+		BF03 /* BodyModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BodyModels.swift; sourceTree = "<group>"; };
+		BF04 /* AlfredClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AlfredClient.swift; sourceTree = "<group>"; };
+		BF05 /* FitnessAPI.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FitnessAPI.swift; sourceTree = "<group>"; };
+		BF06 /* NutritionAPI.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NutritionAPI.swift; sourceTree = "<group>"; };
+		BF07 /* HealthAPI.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HealthAPI.swift; sourceTree = "<group>"; };
+		BF08 /* RestTimer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RestTimer.swift; sourceTree = "<group>"; };
+		BF09 /* HealthKitManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HealthKitManager.swift; sourceTree = "<group>"; };
+		BF17 /* ChartViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChartViews.swift; sourceTree = "<group>"; };
+		BF10 /* DashboardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DashboardView.swift; sourceTree = "<group>"; };
+		BF11 /* WorkoutView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkoutView.swift; sourceTree = "<group>"; };
+		BF12 /* ActiveSessionView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ActiveSessionView.swift; sourceTree = "<group>"; };
+		BF13 /* NutritionView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NutritionView.swift; sourceTree = "<group>"; };
+		BF14 /* AnalysisView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnalysisView.swift; sourceTree = "<group>"; };
+		BF15 /* HealthView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HealthView.swift; sourceTree = "<group>"; };
+		BF16 /* BodySettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BodySettingsView.swift; sourceTree = "<group>"; };
+		BF99 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		BFAPP /* BodyOS.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = BodyOS.app; sourceTree = BUILT_PRODUCTS_DIR; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		BBP1 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = ();
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		BGRP0 = {
+			isa = PBXGroup;
+			children = (
+				BGRP1 /* BodyOS */,
+				BGRP9 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		BGRP1 /* BodyOS */ = {
+			isa = PBXGroup;
+			children = (
+				BF99 /* Info.plist */,
+				BGRPA /* App */,
+				BGRPB /* Models */,
+				BGRPC /* API */,
+				BGRPD /* Utilities */,
+				BGRPE /* Views */,
+			);
+			path = BodyOS;
+			sourceTree = "<group>";
+		};
+		BGRP9 /* Products */ = {
+			isa = PBXGroup;
+			children = (BFAPP /* BodyOS.app */);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		BGRPA /* App */ = {
+			isa = PBXGroup;
+			children = (BF01, BF02);
+			path = App;
+			sourceTree = "<group>";
+		};
+		BGRPB /* Models */ = {
+			isa = PBXGroup;
+			children = (BF03);
+			path = Models;
+			sourceTree = "<group>";
+		};
+		BGRPC /* API */ = {
+			isa = PBXGroup;
+			children = (BF04, BF05, BF06, BF07);
+			path = API;
+			sourceTree = "<group>";
+		};
+		BGRPD /* Utilities */ = {
+			isa = PBXGroup;
+			children = (BF08, BF09, BF17);
+			path = Utilities;
+			sourceTree = "<group>";
+		};
+		BGRPE /* Views */ = {
+			isa = PBXGroup;
+			children = (BF10, BF11, BF12, BF13, BF14, BF15, BF16);
+			path = Views;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		BTGT1 /* BodyOS */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = BBCL1 /* Build configuration list for PBXNativeTarget "BodyOS" */;
+			buildPhases = (
+				BBP0 /* Sources */,
+				BBP1 /* Frameworks */,
+				BBP2 /* Resources */,
+			);
+			buildRules = ();
+			dependencies = ();
+			name = BodyOS;
+			productName = BodyOS;
+			productReference = BFAPP /* BodyOS.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		BPRJ1 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = 1;
+				LastSwiftUpdateCheck = 2700;
+				LastUpgradeCheck = 2700;
+				TargetAttributes = {
+					BTGT1 = { CreatedOnToolsVersion = 27.0; };
+				};
+			};
+			buildConfigurationList = BBCL0 /* Build configuration list for PBXProject "BodyOS" */;
+			compatibilityVersion = "Xcode 14.0";
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (en, Base);
+			mainGroup = BGRP0;
+			productRefGroup = BGRP9 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (BTGT1 /* BodyOS */);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		BBP2 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = ();
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		BBP0 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				BA01 /* BodyOSApp.swift in Sources */,
+				BA02 /* ContentView.swift in Sources */,
+				BA03 /* BodyModels.swift in Sources */,
+				BA04 /* AlfredClient.swift in Sources */,
+				BA05 /* FitnessAPI.swift in Sources */,
+				BA06 /* NutritionAPI.swift in Sources */,
+				BA07 /* HealthAPI.swift in Sources */,
+				BA08 /* RestTimer.swift in Sources */,
+				BA09 /* HealthKitManager.swift in Sources */,
+				BA17 /* ChartViews.swift in Sources */,
+				BA10 /* DashboardView.swift in Sources */,
+				BA11 /* WorkoutView.swift in Sources */,
+				BA12 /* ActiveSessionView.swift in Sources */,
+				BA13 /* NutritionView.swift in Sources */,
+				BA14 /* AnalysisView.swift in Sources */,
+				BA15 /* HealthView.swift in Sources */,
+				BA16 /* BodySettingsView.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin XCBuildConfiguration section */
+		BBC01 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				SDKROOT = iphoneos;
+				SUPPORTED_PLATFORMS = iphoneos;
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = ("DEBUG=1", "$(inherited)");
+				ONLY_ACTIVE_ARCH = YES;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+			};
+			name = Debug;
+		};
+		BBC02 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				SDKROOT = iphoneos;
+				SUPPORTED_PLATFORMS = iphoneos;
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+			};
+			name = Release;
+		};
+		BBC03 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = CPDV724YTF;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = BodyOS/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
+				LD_RUNPATH_SEARCH_PATHS = ("$(inherited)", "@executable_path/Frameworks");
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = de.timoegersdorfer.BodyOS;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Debug;
+		};
+		BBC04 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = CPDV724YTF;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = BodyOS/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
+				LD_RUNPATH_SEARCH_PATHS = ("$(inherited)", "@executable_path/Frameworks");
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = de.timoegersdorfer.BodyOS;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		BBCL0 /* Build configuration list for PBXProject "BodyOS" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (BBC01 /* Debug */, BBC02 /* Release */);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		BBCL1 /* Build configuration list for PBXNativeTarget "BodyOS" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (BBC03 /* Debug */, BBC04 /* Release */);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+
+	};
+	rootObject = BPRJ1 /* Project object */;
+}

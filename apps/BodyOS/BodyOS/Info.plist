@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>CFBundleIdentifier</key>
+	<string>de.timoegersdorfer.BodyOS</string>
+	<key>CFBundleName</key>
+	<string>BodyOS</string>
+	<key>CFBundleDisplayName</key>
+	<string>BodyOS</string>
+	<key>CFBundleExecutable</key>
+	<string>$(EXECUTABLE_NAME)</string>
+	<key>CFBundleVersion</key>
+	<string>1</string>
+	<key>CFBundleShortVersionString</key>
+	<string>1.0</string>
+	<key>CFBundlePackageType</key>
+	<string>APPL</string>
+	<key>CFBundleInfoDictionaryVersion</key>
+	<string>6.0</string>
+	<key>NSAppTransportSecurity</key>
+	<dict>
+		<key>NSAllowsArbitraryLoads</key>
+		<true/>
+		<key>NSAllowsLocalNetworking</key>
+		<true/>
+		<key>NSExceptionDomains</key>
+		<dict>
+			<key>macbook-air-von-timo.tail7e29ff.ts.net</key>
+			<dict>
+				<key>NSExceptionAllowsInsecureHTTPLoads</key>
+				<true/>
+				<key>NSIncludesSubdomains</key>
+				<true/>
+			</dict>
+		</dict>
+	</dict>
+	<key>NSCameraUsageDescription</key>
+	<string>Für die Echtzeit-Analyse deiner Mahlzeiten</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Zum Hochladen von Essensfotos</string>
+	<key>NSHealthShareUsageDescription</key>
+	<string>BodyOS liest deine Gesundheitsdaten (Schritte, HRV, Schlaf, Gewicht) um sie mit Alfred zu synchronisieren</string>
+	<key>NSHealthUpdateUsageDescription</key>
+	<string>BodyOS schreibt Workouts in Gesundheit</string>
+	<key>UILaunchScreen</key>
+	<dict/>
+	<key>UISupportedInterfaceOrientations</key>
+	<array>
+		<string>UIInterfaceOrientationPortrait</string>
+	</array>
+</dict>
+</plist>

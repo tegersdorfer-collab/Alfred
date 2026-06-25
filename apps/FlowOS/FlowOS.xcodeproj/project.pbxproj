@@ -1,0 +1,272 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 56;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		FA01 /* FlowOSApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF01 /* FlowOSApp.swift */; };
+		FA02 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF02 /* ContentView.swift */; };
+		FA03 /* FlowModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF03 /* FlowModels.swift */; };
+		FA04 /* AlfredClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF04 /* AlfredClient.swift */; };
+		FA05 /* FlowAPI.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF05 /* FlowAPI.swift */; };
+		FA06 /* TodayView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF06 /* TodayView.swift */; };
+		FA07 /* HabitsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF07 /* HabitsView.swift */; };
+		FA08 /* TasksView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF08 /* TasksView.swift */; };
+		FA09 /* CalendarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF09 /* CalendarView.swift */; };
+		FA10 /* HabitCreateView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF10 /* HabitCreateView.swift */; };
+		FA11 /* FlowSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF11 /* FlowSettingsView.swift */; };
+		FA12 /* FocusTimerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF12 /* FocusTimerView.swift */; };
+		FA99 /* Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = FF99 /* Info.plist */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXFileReference section */
+		FF01 /* FlowOSApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FlowOSApp.swift; sourceTree = "<group>"; };
+		FF02 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
+		FF03 /* FlowModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FlowModels.swift; sourceTree = "<group>"; };
+		FF04 /* AlfredClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AlfredClient.swift; sourceTree = "<group>"; };
+		FF05 /* FlowAPI.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FlowAPI.swift; sourceTree = "<group>"; };
+		FF06 /* TodayView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TodayView.swift; sourceTree = "<group>"; };
+		FF07 /* HabitsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HabitsView.swift; sourceTree = "<group>"; };
+		FF08 /* TasksView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TasksView.swift; sourceTree = "<group>"; };
+		FF09 /* CalendarView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalendarView.swift; sourceTree = "<group>"; };
+		FF10 /* HabitCreateView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HabitCreateView.swift; sourceTree = "<group>"; };
+		FF11 /* FlowSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FlowSettingsView.swift; sourceTree = "<group>"; };
+		FF12 /* FocusTimerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FocusTimerView.swift; sourceTree = "<group>"; };
+		FF99 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		FFAPP /* FlowOS.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = FlowOS.app; sourceTree = BUILT_PRODUCTS_DIR; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		FBP1 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = ();
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		FGRP0 = {
+			isa = PBXGroup;
+			children = (
+				FGRP1 /* FlowOS */,
+				FGRP9 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		FGRP1 /* FlowOS */ = {
+			isa = PBXGroup;
+			children = (
+				FF99 /* Info.plist */,
+				FGRPA /* App */,
+				FGRPB /* Models */,
+				FGRPC /* API */,
+				FGRPE /* Views */,
+			);
+			path = FlowOS;
+			sourceTree = "<group>";
+		};
+		FGRP9 /* Products */ = {
+			isa = PBXGroup;
+			children = (FFAPP /* FlowOS.app */);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		FGRPA /* App */ = {
+			isa = PBXGroup;
+			children = (FF01, FF02);
+			path = App;
+			sourceTree = "<group>";
+		};
+		FGRPB /* Models */ = {
+			isa = PBXGroup;
+			children = (FF03);
+			path = Models;
+			sourceTree = "<group>";
+		};
+		FGRPC /* API */ = {
+			isa = PBXGroup;
+			children = (FF04, FF05);
+			path = API;
+			sourceTree = "<group>";
+		};
+		FGRPE /* Views */ = {
+			isa = PBXGroup;
+			children = (FF06, FF07, FF08, FF09, FF10, FF11, FF12);
+			path = Views;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		FTGT1 /* FlowOS */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = FBCL1 /* Build configuration list for PBXNativeTarget "FlowOS" */;
+			buildPhases = (
+				FBP0 /* Sources */,
+				FBP1 /* Frameworks */,
+				FBP2 /* Resources */,
+			);
+			buildRules = ();
+			dependencies = ();
+			name = FlowOS;
+			productName = FlowOS;
+			productReference = FFAPP /* FlowOS.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		FPRJ1 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = 1;
+				LastSwiftUpdateCheck = 2700;
+				LastUpgradeCheck = 2700;
+				TargetAttributes = {
+					FTGT1 = { CreatedOnToolsVersion = 27.0; };
+				};
+			};
+			buildConfigurationList = FBCL0 /* Build configuration list for PBXProject "FlowOS" */;
+			compatibilityVersion = "Xcode 14.0";
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (en, Base);
+			mainGroup = FGRP0;
+			productRefGroup = FGRP9 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (FTGT1 /* FlowOS */);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		FBP2 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = ();
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		FBP0 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				FA01 /* FlowOSApp.swift in Sources */,
+				FA02 /* ContentView.swift in Sources */,
+				FA03 /* FlowModels.swift in Sources */,
+				FA04 /* AlfredClient.swift in Sources */,
+				FA05 /* FlowAPI.swift in Sources */,
+				FA06 /* TodayView.swift in Sources */,
+				FA07 /* HabitsView.swift in Sources */,
+				FA08 /* TasksView.swift in Sources */,
+				FA09 /* CalendarView.swift in Sources */,
+				FA10 /* HabitCreateView.swift in Sources */,
+				FA11 /* FlowSettingsView.swift in Sources */,
+				FA12 /* FocusTimerView.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin XCBuildConfiguration section */
+		FBC01 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				SDKROOT = iphoneos;
+				SUPPORTED_PLATFORMS = iphoneos;
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = ("DEBUG=1", "$(inherited)");
+				ONLY_ACTIVE_ARCH = YES;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+			};
+			name = Debug;
+		};
+		FBC02 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				SDKROOT = iphoneos;
+				SUPPORTED_PLATFORMS = iphoneos;
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+			};
+			name = Release;
+		};
+		FBC03 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = CPDV724YTF;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = FlowOS/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
+				LD_RUNPATH_SEARCH_PATHS = ("$(inherited)", "@executable_path/Frameworks");
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = de.timoegersdorfer.FlowOS;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Debug;
+		};
+		FBC04 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = CPDV724YTF;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = FlowOS/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
+				LD_RUNPATH_SEARCH_PATHS = ("$(inherited)", "@executable_path/Frameworks");
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = de.timoegersdorfer.FlowOS;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		FBCL0 /* Build configuration list for PBXProject "FlowOS" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (FBC01 /* Debug */, FBC02 /* Release */);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		FBCL1 /* Build configuration list for PBXNativeTarget "FlowOS" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (FBC03 /* Debug */, FBC04 /* Release */);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+
+	};
+	rootObject = FPRJ1 /* Project object */;
+}

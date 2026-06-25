@@ -20,3 +20,10 @@ data/
 .idea/
 .vscode/
 .claude/
+
+# Xcode (iOS-Apps unter apps/)
+xcuserdata/
+*.xcuserstate
+DerivedData/
+build/
+*.xcscmblueprint
