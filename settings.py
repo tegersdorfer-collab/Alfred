@@ -22,7 +22,7 @@ class AlfredSettings(BaseSettings):
     )
 
     # ── Dashboard ────────────────────────────────────────────────────────────
-    DASHBOARD_HOST: str = "100.107.172.123"
+    DASHBOARD_HOST: str = "0.0.0.0"
     DASHBOARD_PORT: int = 7779
 
     # ── LLM ──────────────────────────────────────────────────────────────────
@@ -33,8 +33,6 @@ class AlfredSettings(BaseSettings):
     AGENT_MODEL_STRONG: str = "qwen3.5:9b"
     ANTHROPIC_API_KEY: str = ""
     CLAUDE_CHAT_MODEL: str = "claude-haiku-4-5-20251001"
-    MLX_BG_MODEL: str = ""
-
     # ── Background-LLM Routing ────────────────────────────────────────────────
     # Default: qwen3.5:9b für Memory, Review, Konsolidierung
     BG_DEFAULT_MODEL: str = ""          # leer = OLLAMA_MODEL
@@ -56,7 +54,7 @@ class AlfredSettings(BaseSettings):
     OWNER_TIMEZONE: str = "Europe/Berlin"
 
     # ── Datenquellen ─────────────────────────────────────────────────────────
-    HEALTH_API_URL: str = "http://100.118.250.78:8421/health_latest.json"
+    HEALTH_API_URL: str = ""
     CALENDAR_ICS_URLS: str = ""
 
     # ── Database ─────────────────────────────────────────────────────────────
@@ -89,7 +87,7 @@ class AlfredSettings(BaseSettings):
     PROACTIVE_INTERVAL: int = 5400
 
     # ── Memory ───────────────────────────────────────────────────────────────
-    LZG_EMBED_MODEL: str = "nomic-embed-text"
+    LZG_EMBED_MODEL: str = "qwen3-embedding:0.6b"
     LZG_TOP_K: int = 5
     KZG_MAX_TURNS: int = 20
 

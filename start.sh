@@ -12,8 +12,11 @@ fi
 # Kurz warten damit Telegram die Session freigibt
 sleep 2
 
+PYTHON=$(which python3.14 2>/dev/null || which python3 2>/dev/null || which python 2>/dev/null)
+if [ -z "$PYTHON" ]; then echo "❌ Kein Python gefunden"; exit 1; fi
+
 echo "🤖 Starte Alfred..."
-nohup /Library/Frameworks/Python.framework/Versions/3.14/Resources/Python.app/Contents/MacOS/Python -u main.py \
+nohup "$PYTHON" -u main.py \
     > /tmp/alfred_out.log 2>&1 &
 echo $! > /tmp/alfred_pid.txt
 

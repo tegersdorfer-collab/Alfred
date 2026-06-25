@@ -115,8 +115,8 @@ async def main():
 
     import re as _re
     dashboard_host = cfg.DASHBOARD_HOST
-    if dashboard_host not in _local_ips():
-        log.warning(f"⚠️  Tailscale-IP {dashboard_host} nicht aktiv – Dashboard bindet auf localhost (nur diese Maschine).")
+    if dashboard_host not in ("0.0.0.0", "::") and dashboard_host not in _local_ips():
+        log.warning(f"⚠️  {dashboard_host} nicht aktiv – Dashboard bindet auf localhost.")
         dashboard_host = "127.0.0.1"
 
     # SKILL.md Index beim Start laden
@@ -143,7 +143,8 @@ async def main():
 
     await orchestrator.start()
     asyncio.create_task(api_server.serve())
-    log.info(f"🖥️  Dashboard läuft auf http://{dashboard_host}:7779")
+    display_host = "macbook-air-von-timo.tail7e29ff.ts.net" if dashboard_host == "0.0.0.0" else dashboard_host
+    log.info(f"🖥️  Dashboard läuft auf http://{display_host}:7779 (bindet auf {dashboard_host})")
     await stop_event.wait()
 
 
