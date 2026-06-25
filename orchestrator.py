@@ -70,7 +70,6 @@ class Orchestrator:
                  chat_llm: LLMProvider, bg_llm: LLMProvider, embed_llm: LLMProvider,
                  agent_backend: AgentBackend):
         self.chat_llm  = chat_llm
-        self.llm       = chat_llm   # TODO: api.py noch auf chat_llm umstellen, dann entfernen
         self.bg_llm    = bg_llm
         self.embed_llm = embed_llm
         self.channel   = channel
@@ -116,7 +115,6 @@ class Orchestrator:
             proactive_tracker=self._proactive_tracker,
             forgetting=self.forgetting, extractor=self.extractor,
             bg_llm=bg_llm, alphaprogression=alphaprogression,
-            suggest_one=suggest_one,
             on_user_active=self._mark_user_active,
         )
 

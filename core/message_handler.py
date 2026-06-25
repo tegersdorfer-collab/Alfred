@@ -20,8 +20,6 @@ _CONFIRM_WORDS = {
     "yep", "yes", "correct", "right", "exactly", "true", "confirmed",
 }
 
-_TRIGGER_TOOLS = {"create_habit", "create_task", "create_goal", "add_event", "log_workout"}
-
 
 def _safe_task(coro, label: str):
     async def _wrapper():
@@ -36,7 +34,7 @@ def _safe_task(coro, label: str):
 class MessageHandler:
     def __init__(self, kzg, lzg, agent, prompt_builder, channel,
                  proactive_tracker, forgetting, extractor, bg_llm,
-                 alphaprogression, suggest_one, on_user_active):
+                 alphaprogression, on_user_active):
         self.kzg               = kzg
         self.lzg               = lzg
         self.agent             = agent
@@ -47,7 +45,6 @@ class MessageHandler:
         self.extractor         = extractor
         self.bg_llm            = bg_llm
         self.alphaprogression  = alphaprogression
-        self.suggest_one       = suggest_one
         self.on_user_active    = on_user_active   # callback: () → None
 
     # ── Verification Bump ─────────────────────────────────────────────────────
@@ -56,7 +53,7 @@ class MessageHandler:
         lower = text.strip().lower()
         if any(lower == w or lower.startswith(w + " ") or lower.startswith(w + ",")
                for w in _CONFIRM_WORDS):
-            for mid in self.prompt_builder._last_mem_ids:
+            for mid in getattr(self.prompt_builder, "_last_mem_ids", []):
                 try:
                     self.forgetting.bump_recall(mid)
                 except Exception:
@@ -78,11 +75,6 @@ class MessageHandler:
         self.kzg.add("assistant", response)
         self._persist_msg("assistant", response, channel=channel_name)
         BUS.emit("response", response)
-        if "✅" in response:
-            _safe_task(
-                self._suggest_from_event(f"Neues Workout eingetragen: {response[:120]}"),
-                "suggest_from_event"
-            )
         return response
 
     # ── Telegram ──────────────────────────────────────────────────────────────
@@ -159,10 +151,6 @@ class MessageHandler:
         BUS.emit("idle", "Bereit", detail=f"{elapsed:.1f}s · {model}")
 
         _safe_task(self._post_turn(msg.text, response, tools_used), "post_turn")
-        if any(t in _TRIGGER_TOOLS for t in tools_used):
-            _safe_task(self._suggest_from_event(
-                f"Alfred hat '{', '.join(t for t in tools_used if t in _TRIGGER_TOOLS)}' ausgeführt: {msg.text[:120]}"
-            ), "suggest_from_event")
         resume_idle_cb()
 
     # ── Dashboard ─────────────────────────────────────────────────────────────
@@ -206,9 +194,6 @@ class MessageHandler:
         n = await self.extractor.extract_from_exchange(user_text, response)
         if n > 0:
             BUS.emit("memory", f"🧠 {n} neue{'r' if n==1 else ''} Fakt{'' if n==1 else 'en'} gespeichert")
-            _safe_task(self._suggest_from_event(
-                f"Neue Information über Timo: {user_text[:100]}"
-            ), "suggest_from_memory")
         else:
             BUS.emit("idle", "Bereit")
 
@@ -222,12 +207,6 @@ class MessageHandler:
             ),
             "background_review"
         )
-
-    async def _suggest_from_event(self, trigger: str) -> None:
-        try:
-            await self.suggest_one(trigger, self.bg_llm, self.lzg)
-        except Exception as e:
-            log.debug(f"suggest_from_event: {e}")
 
     # ── Streaming ─────────────────────────────────────────────────────────────
 

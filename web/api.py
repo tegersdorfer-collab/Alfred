@@ -20,7 +20,7 @@ from core.timeparse import parse_datetime, parse_date
 from core.jsonutil import extract_json
 from domains import habits, fitness, nutrition, journal, goals, weather, tasks as tasks_d, calendar as cal_d
 from domains import second_brain as _brain
-from domains.task_executor import classify, learn_from_rejection
+from domains.task_executor import classify, learn_from_rejection, suggest_one
 from domains.self_modify import write_file
 
 log = logging.getLogger("alfred.api")
@@ -376,12 +376,12 @@ def create_app(orch=None) -> FastAPI:
         )
         # Alfred lernt daraus
         if orch and reason:
-            try:
-
-                import asyncio
-                asyncio.create_task(learn_from_rejection(tid, reason, orch.lzg, orch.embed_llm))
-            except Exception:
-                pass
+            async def _learn():
+                try:
+                    await learn_from_rejection(tid, reason, orch.lzg, orch.embed_llm)
+                except Exception as e:
+                    log.warning(f"learn_from_rejection fehlgeschlagen: {e}")
+            asyncio.create_task(_learn())
         return {"ok": True}
 
     @app.post("/api/tasks/generate")
@@ -390,7 +390,7 @@ def create_app(orch=None) -> FastAPI:
         if not orch:
             return {"ok": False, "error": "Kein Orchestrator"}
         import asyncio as _aio
-        _aio.create_task(orch._suggest_from_event("Manueller Trigger durch Timo im Hub"))
+        _aio.create_task(suggest_one("Manueller Trigger durch Timo im Hub", orch.chat_llm, orch.lzg))
         return {"ok": True}
 
     @app.post("/api/tasks/{tid}/complete")
@@ -498,6 +498,148 @@ def create_app(orch=None) -> FastAPI:
     def get_plan():
         return _jsonable(fitness.active_plan()) or {}
 
+    @app.get("/api/fitness/today-plan")
+    def today_plan():
+        """
+        Generiert Timos heutigen Trainingsplan basierend auf:
+        - 3-Tage-Zyklus (Upper / Jog / Lower)
+        - HRV + Schlaf (Intensitäts-Faktor)
+        - Letzten Sets pro Übung (Progressive Overload)
+        """
+        from datetime import date as _date, timedelta as _td
+        import math as _math
+
+        # 1. Zyklus-Tag bestimmen
+        CYCLE = ["upper", "jog", "lower"]
+        CYCLE_TITLE = {"upper": "Upper Body", "jog": "Cardio / Jog", "lower": "Lower Body"}
+        last_workouts = db.query(
+            "SELECT title, type, date FROM workouts ORDER BY date DESC, id DESC LIMIT 6"
+        )
+        # Finde letzten Zyklus-Tag
+        last_cycle_day = None
+        for w in last_workouts:
+            t = (w.get("type") or "").lower()
+            title = (w.get("title") or "").lower()
+            if t in CYCLE:
+                last_cycle_day = t
+                break
+            for c in CYCLE:
+                if c in title:
+                    last_cycle_day = c
+                    break
+            if last_cycle_day:
+                break
+
+        if last_cycle_day and last_cycle_day in CYCLE:
+            next_idx = (CYCLE.index(last_cycle_day) + 1) % 3
+        else:
+            next_idx = 0
+        day_type = CYCLE[next_idx]
+
+        # 2. HRV + Schlaf → Intensitäts-Faktor (0.85 – 1.05)
+        health = db.query_one("SELECT * FROM health_data ORDER BY date DESC LIMIT 1") or {}
+        hrv = float(health.get("hrv_avg") or 0)
+        sleep_h = float(health.get("sleep_hours") or 0)
+        hrv_score = min(hrv / 70.0, 1.2) if hrv > 0 else 1.0
+        sleep_score = min(sleep_h / 8.0, 1.1) if sleep_h > 0 else 1.0
+        intensity = round(max(0.85, min(1.05, (hrv_score + sleep_score) / 2.0)), 2)
+
+        alfred_note = ""
+        if hrv > 0 and sleep_h > 0:
+            if intensity >= 1.0:
+                alfred_note = f"HRV {hrv:.0f}, Schlaf {sleep_h:.1f}h — top Werte, Gewichte leicht erhöhen."
+            elif intensity <= 0.88:
+                alfred_note = f"HRV {hrv:.0f}, Schlaf {sleep_h:.1f}h — Erholung niedrig, Gewichte reduzieren."
+            else:
+                alfred_note = f"HRV {hrv:.0f}, Schlaf {sleep_h:.1f}h — normale Session."
+
+        def last_set(exercise_name: str) -> dict | None:
+            """Letzten Satz dieser Übung finden."""
+            row = db.query_one(
+                """SELECT ws.weight_kg, ws.reps FROM workout_sets ws
+                   JOIN exercises e ON e.id = ws.exercise_id
+                   WHERE LOWER(e.name) = LOWER(%s)
+                   ORDER BY ws.id DESC LIMIT 1""",
+                (exercise_name,),
+            )
+            return row
+
+        def build_sets(exercise_name: str, default_weight: float, default_reps: int,
+                       working_count: int = 3, rpe_target: int = 7) -> dict:
+            prev = last_set(exercise_name)
+            if prev and prev.get("weight_kg"):
+                base_w = float(prev["weight_kg"]) * intensity
+                base_r = prev.get("reps") or default_reps
+            else:
+                base_w = default_weight * intensity
+                base_r = default_reps
+            # Auf 2.5kg runden
+            w = _math.floor(base_w / 2.5) * 2.5
+            warmup = [
+                {"weight": round(w * 0.4, 1), "reps": 12},
+                {"weight": round(w * 0.6, 1), "reps": 8},
+                {"weight": round(w * 0.8, 1), "reps": 5},
+            ]
+            working = [{"weight": w, "reps": base_r, "rpe_target": rpe_target}] * working_count
+            return {
+                "name": exercise_name,
+                "warmup_sets": warmup,
+                "working_sets": working,
+            }
+
+        # 3. Plan je Zyklus-Tag
+        if day_type == "upper":
+            exercises_list = [
+                build_sets("Bench Press", 80, 6, working_count=4, rpe_target=8),
+                build_sets("Overhead Press", 50, 8, working_count=3, rpe_target=7),
+                build_sets("Barbell Row", 70, 8, working_count=4, rpe_target=7),
+                build_sets("Dumbbell Curl", 16, 10, working_count=3, rpe_target=8),
+                build_sets("Tricep Pushdown", 35, 12, working_count=3, rpe_target=8),
+                build_sets("Lateral Raise", 10, 15, working_count=3, rpe_target=9),
+            ]
+        elif day_type == "lower":
+            exercises_list = [
+                build_sets("Squat", 100, 5, working_count=4, rpe_target=8),
+                build_sets("Romanian Deadlift", 80, 8, working_count=3, rpe_target=7),
+                build_sets("Leg Press", 140, 10, working_count=3, rpe_target=8),
+                build_sets("Leg Curl", 50, 12, working_count=3, rpe_target=8),
+                build_sets("Calf Raise", 60, 15, working_count=4, rpe_target=9),
+            ]
+        else:  # jog
+            exercises_list = [{
+                "name": "Jogging",
+                "warmup_sets": [],
+                "working_sets": [{"distance_km": 5.0, "pace_target": "6:00 min/km", "rpe_target": 6}],
+            }]
+
+        return {
+            "day_type": day_type,
+            "day_label": CYCLE_TITLE[day_type],
+            "intensity_factor": intensity,
+            "alfred_message": alfred_note or f"Heute: {CYCLE_TITLE[day_type]}.",
+            "health": {
+                "hrv": hrv or None,
+                "sleep_hours": sleep_h or None,
+                "date": str(health.get("date", "")),
+            },
+            "exercises": exercises_list,
+        }
+
+    @app.post("/api/fitness/log-rpe")
+    async def log_rpe(req: Request):
+        """RPE-Feedback nach einer Übung speichern."""
+        d = await req.json()
+        workout_id = d.get("workout_id")
+        exercise_name = d.get("exercise")
+        rpe = d.get("rpe")
+        if workout_id and rpe is not None:
+            db.execute(
+                "UPDATE workout_sets SET rpe = %s WHERE workout_id = %s AND exercise_id = "
+                "(SELECT id FROM exercises WHERE LOWER(name) = LOWER(%s) LIMIT 1)",
+                (rpe, workout_id, exercise_name or ""),
+            )
+        return {"ok": True}
+
     @app.post("/api/fitness/import")
     async def import_workout(req: Request):
         """Trainings-Import. Strukturierter Gym-App-Export → deterministischer Parser;
@@ -546,6 +688,64 @@ def create_app(orch=None) -> FastAPI:
     def nutrition_day(date_str: str = None):
         d = date.fromisoformat(date_str) if date_str else date.today()
         return {"meals": _jsonable(nutrition.meals_for(d)), "totals": _jsonable(nutrition.day_totals(d))}
+
+    @app.post("/api/nutrition/analyze-photo")
+    async def analyze_food_photo(req: Request):
+        """
+        Empfängt multipart/form-data mit 'image' (JPEG) und optionalem 'text'.
+        Schickt Bild an lokales Vision-Modell → gibt Makro-Schätzung zurück.
+        """
+        import base64 as _b64
+        import re as _re
+        try:
+            form = await req.form()
+            image_file = form.get("image")
+            annotation = form.get("text") or ""
+            if not image_file:
+                return JSONResponse({"error": "kein Bild"}, 400)
+            image_bytes = await image_file.read()
+        except Exception as e:
+            return JSONResponse({"error": f"Upload-Fehler: {e}"}, 400)
+
+        try:
+            import ollama as _ollama
+            b64 = _b64.standard_b64encode(image_bytes).decode()
+            _client = _ollama.AsyncClient(host=config.OLLAMA_BASE_URL)
+            vision_model = getattr(config, "VISION_MODEL", "qwen3-vl:8b")
+            prompt = (
+                "Analysiere dieses Essen/Getränk genau. "
+                + (f"Zusatzinfo: {annotation}. " if annotation else "")
+                + "Antworte NUR mit JSON (kein Text davor/danach): "
+                '{"food_name":"...","calories":0,"protein":0,"carbs":0,"fat":0,"portion":"...","confidence":0.8}'
+                ". Einheit: kcal und Gramm. confidence = 0.0-1.0."
+            )
+            resp = await _client.chat(
+                model=vision_model,
+                messages=[{"role": "user", "content": prompt, "images": [b64]}],
+                options={"num_predict": 256},
+                keep_alive=0,
+                format="json",
+            )
+            raw = (resp.message.content or "").strip()
+            data = extract_json(raw, default={})
+            return {"ok": True, "result": data}
+        except Exception as e:
+            log.error(f"Vision-Analyse fehlgeschlagen: {e}")
+            return JSONResponse({"ok": False, "error": str(e)}, 500)
+
+    @app.post("/api/nutrition/log-meal")
+    async def log_meal_from_app(req: Request):
+        """Mahlzeit von iOS-App speichern."""
+        d = await req.json()
+        mid = nutrition.log_meal(
+            description=d.get("name", "Mahlzeit"),
+            meal_type="snack",
+            calories=d.get("calories"),
+            protein_g=d.get("protein"),
+            carbs_g=d.get("carbs"),
+            fat_g=d.get("fat"),
+        )
+        return {"ok": True, "id": mid}
 
     @app.get("/api/nutrition/history")
     def nutrition_history(days: int = 14):
@@ -1222,6 +1422,17 @@ def create_app(orch=None) -> FastAPI:
     @app.get("/api/brain/graph")
     def brain_graph():
         return _brain.get_graph_data()
+
+    @app.get("/api/brain/backlinks/{note_id}")
+    def brain_backlinks(note_id: int):
+        """Alle Notizen die auf note_id verlinken (eingehende Links)."""
+        rows = db.query(
+            """SELECT n.id, n.title, n.category FROM brain_notes n
+               JOIN brain_links l ON l.from_id = n.id
+               WHERE l.to_id = %s ORDER BY n.updated_at DESC""",
+            (note_id,),
+        )
+        return [{"id": r["id"], "title": r["title"], "category": r["category"]} for r in rows]
 
     @app.get("/api/brain/search")
     def brain_search(q: str, limit: int = 20):
