@@ -127,7 +127,9 @@ Alfred/
 │   ├── reflection.py        # Verhaltensanpassung, Stil-Kalibrierung
 │   ├── eval_suite.py        # Benannte Test-Cases für Agent-Verhalten
 │   ├── push.py              # Web Push (VAPID) + Templates + Dedup
-│   └── tools.py             # Tool-Registry + semantisches Routing
+│   ├── tools.py             # Tool-Registry + semantisches Routing
+│   ├── skill_context.py     # Geteilter Skill-CTX + bind() (mutate)
+│   └── skills/              # Agent-Tools nach Kategorie (@T.register)
 │
 ├── memory/
 │   ├── kzg.py               # Kurzzeitgedächtnis + Rolling Checkpoints

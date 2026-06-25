@@ -87,6 +87,7 @@
 ### Code-Architektur
 - Orchestrator aufgeteilt: `prompt_builder`, `message_handler`, `idle_loop`
 - `web/api.py` in Router-Module pro Domäne gesplittet (`web/routers/`)
+- `core/skills.py` in Kategorie-Pakete gesplittet (`core/skills/`); CTX in `core/skill_context.py` (mutate-bind)
 - GC-sichere Background-Tasks (`_bg_tasks` Liste mit Referenzen)
 - DB-Fehler beim Start bricht Start ab (kein stiller Datenverlust)
 - `api.py` nutzt `orch.chat_llm` direkt (toter `self.llm`-Alias entfernt)
