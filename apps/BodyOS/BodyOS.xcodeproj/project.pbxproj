@@ -25,6 +25,7 @@
 		BA15 /* HealthView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BF15 /* HealthView.swift */; };
 		BA16 /* BodySettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BF16 /* BodySettingsView.swift */; };
 		BA99 /* Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = BF99 /* Info.plist */; };
+		BAAS /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = BFAS /* Assets.xcassets */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -47,6 +48,7 @@
 		BF16 /* BodySettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BodySettingsView.swift; sourceTree = "<group>"; };
 		BF99 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		BFAPP /* BodyOS.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = BodyOS.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		BFAS /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -71,6 +73,7 @@
 			isa = PBXGroup;
 			children = (
 				BF99 /* Info.plist */,
+				BFAS /* Assets.xcassets */,
 				BGRPA /* App */,
 				BGRPB /* Models */,
 				BGRPC /* API */,
@@ -164,7 +167,9 @@
 		BBP2 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
-			files = ();
+			files = (
+				BAAS /* Assets.xcassets in Resources */,
+			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXResourcesBuildPhase section */

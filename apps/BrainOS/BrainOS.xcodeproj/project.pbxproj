@@ -22,6 +22,7 @@
 		A013 /* SearchView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F013 /* SearchView.swift */; };
 		A014 /* DailyNoteView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F014 /* DailyNoteView.swift */; };
 		A015 /* QuotesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F015 /* QuotesView.swift */; };
+		A099 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = F099 /* Assets.xcassets */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -41,6 +42,7 @@
 		F014 /* DailyNoteView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DailyNoteView.swift; sourceTree = "<group>"; };
 		F015 /* QuotesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuotesView.swift; sourceTree = "<group>"; };
 		FAPP /* BrainOS.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = BrainOS.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		F099 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -64,6 +66,7 @@
 		GRP1 /* BrainOS */ = {
 			isa = PBXGroup;
 			children = (
+				F099 /* Assets.xcassets */,
 				GRPA /* App */,
 				GRPB /* Models */,
 				GRPC /* Views */,
@@ -160,7 +163,9 @@
 		BP02 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
-			files = ();
+			files = (
+				A099 /* Assets.xcassets in Resources */,
+			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXResourcesBuildPhase section */

@@ -20,6 +20,7 @@
 		FA11 /* FlowSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF11 /* FlowSettingsView.swift */; };
 		FA12 /* FocusTimerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF12 /* FocusTimerView.swift */; };
 		FA99 /* Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = FF99 /* Info.plist */; };
+		FAAS /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = FFAS /* Assets.xcassets */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -37,6 +38,7 @@
 		FF12 /* FocusTimerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FocusTimerView.swift; sourceTree = "<group>"; };
 		FF99 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		FFAPP /* FlowOS.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = FlowOS.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		FFAS /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -61,6 +63,7 @@
 			isa = PBXGroup;
 			children = (
 				FF99 /* Info.plist */,
+				FFAS /* Assets.xcassets */,
 				FGRPA /* App */,
 				FGRPB /* Models */,
 				FGRPC /* API */,
@@ -147,7 +150,9 @@
 		FBP2 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
-			files = ();
+			files = (
+				FAAS /* Assets.xcassets in Resources */,
+			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXResourcesBuildPhase section */
