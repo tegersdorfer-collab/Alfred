@@ -70,6 +70,16 @@ erreichbar über Telegram und ein mobil-first PWA-Dashboard.
 - **Eval-Suite**: `/api/eval/run` — 6 benannte Test-Cases für Agent-Verhalten
 - **MCP-Server**: Alfred als Tool-Provider für Claude Code (`/mcp/` Endpunkte)
 
+### Native iOS-Apps
+Drei fokussierte SwiftUI-Apps gegen dieselbe FastAPI (`:7779`), erreichbar
+über Tailscale. Details + Build-/Deploy-Anleitung in [`apps/README.md`](apps/README.md).
+
+| App | Bündelt | Highlights |
+|-----|---------|-----------|
+| **BodyOS** | Training + Ernährung + Health | Alfred-generierte Sessions (HRV/Schlaf), Foto-Makros, HealthKit-Push |
+| **BrainOS** | Second Brain | Wiki-Links, Force-directed Graph (SwiftUI Canvas), Quick Capture |
+| **FlowOS** | Tasks + Kalender + Habits | Today-View, Fokus-Timer, Habit-Grid |
+
 ---
 
 ## Stack
@@ -80,7 +90,7 @@ erreichbar über Telegram und ein mobil-first PWA-Dashboard.
 | LLM | Ollama (qwen3.5:9b) · Claude API (Haiku/Sonnet) |
 | DB | PostgreSQL 16 + pgvector |
 | Backend | FastAPI + uvicorn |
-| Frontend | Vanilla JS PWA (Chart.js, vis.js, marked.js) |
+| Frontend | Vanilla JS PWA (Chart.js, vis.js, marked.js) · 3 native SwiftUI-Apps |
 | Kommunikation | python-telegram-bot · Voice (Whisper lokal) · Fotos (llava:7b) |
 | Health-Import | Swift-App → HealthKit Background Delivery → HTTP Push |
 | Prozess-Management | launchd + KeepAlive (Auto-Restart nach Crash) |
@@ -133,9 +143,15 @@ Alfred/
 ├── tools/                   # WebSearch, DashboardReader, Delegate (Subagents)
 ├── skills/                  # SKILL.md Prozedur-Dateien (auto-generiert)
 │
-└── web/
-    ├── api.py               # FastAPI REST + SSE (50+ Endpunkte)
-    ├── mcp_server.py        # Alfred als MCP-Server (stdio JSON-RPC)
-    ├── index.html           # PWA-Frontend (Single-File, ~2400 Zeilen)
-    └── sw.js                # Service Worker
+├── web/
+│   ├── api.py               # FastAPI App-Factory: bindet Router aus web/routers/
+│   ├── routers/             # REST + SSE pro Domäne (tasks, brain, fitness, …)
+│   ├── mcp_server.py        # Alfred als MCP-Server (stdio JSON-RPC)
+│   ├── index.html           # PWA-Frontend (Single-File, ~2400 Zeilen)
+│   └── sw.js                # Service Worker
+│
+└── apps/                    # Native iOS-Apps (SwiftUI) — siehe apps/README.md
+    ├── BodyOS/              # Training + Ernährung + Health
+    ├── BrainOS/             # Second Brain (Notizen, Graph)
+    └── FlowOS/              # Tasks + Kalender + Habits
 ```

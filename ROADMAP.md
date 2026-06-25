@@ -77,11 +77,21 @@
 - Automatische DB-Backups
 - Neues UI-Design (dunklere Tokens, cleaner Home, bessere Typografie)
 
+### Native iOS-Apps (SwiftUI)
+- **BodyOS** — Training (Alfred-Sessions aus HRV/Schlaf) + Ernährung (Foto-Makros) + HealthKit-Push
+- **BrainOS** — Second Brain: Wiki-Links, Force-directed Graph (SwiftUI Canvas, eigene Physik)
+- **FlowOS** — Tasks + Kalender + Habits + Fokus-Timer
+- Gemeinsamer `AlfredClient` pro App: `waitsForConnectivity` + Retry → übersteht Tailscale-Aussetzer
+- Details in `apps/README.md` (konsolidiert aus ursprünglich 5 geplanten Apps)
+
 ### Code-Architektur
 - Orchestrator aufgeteilt: `prompt_builder`, `message_handler`, `idle_loop`
+- `web/api.py` in Router-Module pro Domäne gesplittet (`web/routers/`)
 - GC-sichere Background-Tasks (`_bg_tasks` Liste mit Referenzen)
 - DB-Fehler beim Start bricht Start ab (kein stiller Datenverlust)
-- `api.py` auf `orch.chat_llm` umgestellt (kein veralteter Alias mehr)
+- `api.py` nutzt `orch.chat_llm` direkt (toter `self.llm`-Alias entfernt)
+- Dashboard bindet auf `0.0.0.0` — Tailscale-Drop kann Server nicht mehr auf localhost zwingen
+- Embedding-Modell `qwen3-embedding:0.6b`; Python-Pfad in `start.sh` dynamisch aufgelöst
 
 ---
 
