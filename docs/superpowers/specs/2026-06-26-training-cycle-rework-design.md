@@ -21,12 +21,18 @@ Der Zeiger („was ist als Nächstes dran") rückt **nur vor, wenn der aktuelle 
 erledigt ist** — nicht kalendergetrieben. Lässt Timo einen Tag aus ohne ihn zu erledigen,
 bleibt derselbe Slot dran.
 
-| Slot   | Erledigt durch                                  | Wirkung            |
-|--------|-------------------------------------------------|--------------------|
-| LOWER  | Krafttraining in BodyOS geloggt                 | Zeiger → JOGGEN    |
-| JOGGEN | Button „✓ Joggen erledigt" (manuell)            | Zeiger → UPPER     |
-| UPPER  | Krafttraining in BodyOS geloggt                 | Zeiger → LOWER     |
-| —      | Button „Restday"                                | Zeiger **bleibt**  |
+| Slot   | Erledigt durch                                          | Wirkung            |
+|--------|---------------------------------------------------------|--------------------|
+| LOWER  | Krafttraining in BodyOS geloggt                         | Zeiger → JOGGEN    |
+| JOGGEN | Auto via HealthKit (Coros-Lauf) — Button als Fallback   | Zeiger → UPPER     |
+| UPPER  | Krafttraining in BodyOS geloggt                         | Zeiger → LOWER     |
+| —      | Button „Restday"                                        | Zeiger **bleibt**  |
+
+**Joggen-Auto-Erkennung (HealthKit):** Die Coros Pace 4 schreibt Läufe via Coros-App in
+Apple Health. BodyOS liest am Jog-Tag die heutigen Lauf-Workouts (`HKWorkout`,
+Activity `.running`) und ruft bei einem gefundenen Lauf automatisch `jog-done` auf
+(mit Distanz/Dauer). Findet sich kein Lauf, bleibt der manuelle Button „✓ Joggen erledigt"
+als Fallback.
 
 **Restday = reine Pause.** Wird als bewusster Ruhetag geloggt (damit Alfred nicht nachfragt),
 der Zeiger rückt **nicht** vor — am nächsten Tag ist derselbe Slot dran. Timo verschiebt
@@ -72,7 +78,9 @@ Volumen und Heatmap bleiben dadurch frei von Lauf-Daten.
 - Neue Felder im Response: `done_today: bool`, `next_label: str`.
 
 ### Neue Endpoints
-- `POST /api/fitness/jog-done` → schreibt `jog`-Event, rückt Zeiger vor.
+- `POST /api/fitness/jog-done` → schreibt `jog`-Event, rückt Zeiger vor. Optionaler Body
+  `{distance_km, duration_min, source}` (`source ∈ {healthkit, manual}`). Idempotent pro Tag:
+  existiert heute schon ein `jog`-Event, kein zweites schreiben.
 - `POST /api/fitness/rest-day` → schreibt `rest`-Event (Zeiger bleibt).
 
 ### `POST /api/workouts` (erweitert)
@@ -88,8 +96,10 @@ Volumen und Heatmap bleiben dadurch frei von Lauf-Daten.
 ### `WorkoutView` — drei Zustände statt einem
 1. **Kraft-Tag** (LOWER/UPPER): wie bisher (Header, Alfred-Karte, Health, Übungsliste,
    „Training starten") + **Restday-Button**.
-2. **Jog-Tag**: Info-Karte „Heute: Joggen — läuft über Strava", Button **„✓ Joggen erledigt"**,
-   + **Restday-Button**. Keine Set-Logging-UI.
+2. **Jog-Tag**: Info-Karte „Heute: Joggen — läuft über Strava". Beim Öffnen fragt BodyOS
+   HealthKit nach einem heutigen Lauf; gefunden → automatisch `jog-done` (Distanz/Dauer)
+   und Wechsel in Zustand 3 mit „✓ Lauf erkannt (X km)". Kein Lauf → manueller Button
+   **„✓ Joggen erledigt"**. Plus **Restday-Button**. Keine Set-Logging-UI.
 3. **Erledigt heute**: kompakte Karte „✓ <Slot> erledigt — morgen: <next_label>".
 
 ### Model `TodayPlan`
@@ -98,8 +108,16 @@ Volumen und Heatmap bleiben dadurch frei von Lauf-Daten.
   optional später entfernen.
 
 ### Neue API-Calls (`FitnessAPI.swift`)
-- `markJogDone()` → `POST /api/fitness/jog-done`
+- `markJogDone(distanceKm:durationMin:source:)` → `POST /api/fitness/jog-done`
 - `markRestDay()` → `POST /api/fitness/rest-day`
+
+### HealthKit (`HealthKitManager.swift`)
+- `HKWorkoutType.workoutType()` zu `readTypes` hinzufügen.
+- Neue Methode `fetchTodayRun() async -> (distanceKm: Double, durationMin: Int)?` —
+  `HKSampleQuery` auf `HKWorkout` mit `HKQuery.predicateForWorkouts(with: .running)` +
+  heutigem Zeitfenster, jüngsten Lauf zurückgeben.
+- Info.plist: `NSHealthShareUsageDescription` muss vorhanden sein (für bestehende
+  Health-Reads ohnehin nötig — verifizieren).
 
 ### Dashboard (`web/index.html`)
 - Zieht denselben `today-plan` → bleibt automatisch synchron. Keine Doppel-Logik.
@@ -130,11 +148,9 @@ Diese Punkte werden jetzt **nicht** gebaut, das Datenmodell soll sie aber nicht 
    schreiben kann, ist das reine Backend-Arbeit. Aufsetzbar auf bestehendem
    `save_training_plan()` / `active_plan()`.
 
-3. **Läufe automatisch importieren** (Coros Pace 4 → Strava → Alfred). Drei Optionen,
-   alle docken an den `jog-done`-Mechanismus an (ersetzen den manuellen Button):
-   - **HealthKit-Bridge** (empfohlener Start): Coros schreibt Läufe in Apple Health,
-     BodyOS liest sie via vorhandenem `HealthKitManager`, hakt Jog-Tag auto-ab. Kein OAuth.
-   - **Strava API Polling**: Idle-Loop pollt `GET /athlete/activities`, handy-unabhängig.
-     Braucht einmal OAuth + Refresh-Token in `.env`.
-   - **Strava Webhooks**: Push, aber braucht öffentliche URL (Cloudflare Tunnel) — Overkill
-     für lokalen/Tailscale-Setup.
+3. **Lauf-Import handy-unabhängig machen** — Die HealthKit-Bridge (in diesem Scope) synct
+   nur, wenn BodyOS mal offen ist. Wenn das nicht reicht, später auf server-seitiges
+   **Strava API Polling** upgraden: Idle-Loop pollt `GET /athlete/activities`, läuft auch
+   wenn das Handy schläft. Braucht einmal OAuth + Refresh-Token in `.env`. Docked an
+   denselben `jog-done`-Endpoint. (Strava-Webhooks wären Push, brauchen aber eine
+   öffentliche URL / Cloudflare Tunnel — Overkill für den lokalen/Tailscale-Setup.)
