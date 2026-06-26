@@ -410,3 +410,27 @@ def progression_report(days: int = 30) -> list[dict]:
         if s.get("suggestion_kg"):
             results.append(s)
     return results
+
+
+# ── Trainingszyklus (LOWER → JOGGEN → UPPER) ────────────────────────────────
+
+def record_cycle_event(slot: str, kind: str, on_date: date | None = None) -> None:
+    """Schreibt ein Zyklus-Event. kind ∈ {workout, jog, rest}."""
+    db.execute(
+        "INSERT INTO training_cycle_events (date, slot, kind) VALUES (%s,%s,%s)",
+        (on_date or date.today(), slot, kind),
+    )
+
+
+def recent_cycle_events(limit: int = 12) -> list[dict]:
+    return db.query(
+        "SELECT date, slot, kind FROM training_cycle_events ORDER BY date DESC, id DESC LIMIT %s",
+        (limit,),
+    )
+
+
+def jog_done_today_exists() -> bool:
+    row = db.query_one(
+        "SELECT 1 AS x FROM training_cycle_events WHERE kind='jog' AND date=CURRENT_DATE LIMIT 1"
+    )
+    return row is not None

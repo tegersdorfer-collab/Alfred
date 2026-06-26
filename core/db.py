@@ -482,6 +482,14 @@ MIGRATIONS = [
         created_at  TIMESTAMPTZ DEFAULT NOW()
     );""",
     "CREATE UNIQUE INDEX IF NOT EXISTS body_measurements_date_idx ON body_measurements (date);",
+    """CREATE TABLE IF NOT EXISTS training_cycle_events (
+        id          SERIAL PRIMARY KEY,
+        date        DATE NOT NULL DEFAULT CURRENT_DATE,
+        slot        TEXT NOT NULL,
+        kind        TEXT NOT NULL,
+        created_at  TIMESTAMPTZ DEFAULT NOW()
+    );""",
+    "CREATE INDEX IF NOT EXISTS training_cycle_events_date_idx ON training_cycle_events (date DESC, id DESC);",
 ]
 
 
