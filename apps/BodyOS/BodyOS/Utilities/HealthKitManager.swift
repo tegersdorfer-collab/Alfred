@@ -194,8 +194,13 @@ final class HealthKitManager: ObservableObject {
         }
     }
 
+    private var lastBackgroundSync: Date?
+
     /// Wird vom Observer (auch im Hintergrund) aufgerufen: Health pushen + Lauf-Tag abhaken.
+    /// Debounced — die Observer feuern pro Typ, wir wollen aber nur einen Sync pro Minute.
     private func handleBackgroundUpdate() async {
+        if let last = lastBackgroundSync, Date().timeIntervalSince(last) < 60 { return }
+        lastBackgroundSync = Date()
         try? await syncToday()
         if let run = await fetchTodayRun(), run.distanceKm > 0.3 {
             try? await FitnessAPI.shared.markJogDone(

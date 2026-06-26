@@ -21,6 +21,31 @@ from domains import habits, fitness, nutrition, goals, journal, weather
 
 log = logging.getLogger(__name__)
 
+# Gemeinsamer Stil-Constraint für alle proaktiven Nachrichten (lokales Modell).
+# Wird als System-Message an jeden chat()-Aufruf gehängt — hebt die Qualität,
+# ohne jeden einzelnen Prompt umzuschreiben.
+STYLE = (
+    "Du schreibst eine kurze Push-Nachricht an Timo. Strikte Regeln: "
+    "Natürliches, fehlerfreies Deutsch in vollständigen Sätzen. "
+    "Kein Englisch, keine erfundenen Abkürzungen, keine Wiederholungen, keine Floskeln, "
+    "keine Entschuldigungen, kein Meta-Kommentar über dich selbst. "
+    "Schreibe konkret, freundlich und direkt. Gib NUR die Nachricht aus — "
+    "keine Anführungszeichen, keine Überschrift, kein einleitendes 'Hier ist'. "
+    "Erfinde nichts dazu; wenn Daten fehlen, lass es weg."
+)
+
+# Mindestlänge an echtem Text (ohne Emoji/Whitespace), damit eine Nachricht
+# gesendet wird — fängt kaputte Modell-Fragmente wie "Liebe Zeit" ab.
+_MIN_CONTENT_CHARS = 20
+
+
+def _content_len(text: str) -> int:
+    """Länge des eigentlichen Textinhalts ohne führende Emojis/Symbole/Whitespace."""
+    stripped = text.strip()
+    while stripped and not stripped[0].isalnum():
+        stripped = stripped[1:].lstrip()
+    return len(stripped)
+
 
 class Autopilot:
     def __init__(self, llm, lzg, dashboard, reminders, channel, proactive, tracker,
@@ -50,6 +75,9 @@ class Autopilot:
 
     async def _send(self, text: str, kind: str = "proactive") -> None:
         if not text:
+            return
+        if _content_len(text) < _MIN_CONTENT_CHARS:
+            log.warning(f"Proaktive Nachricht ({kind}) verworfen — zu kurz/kaputt: {text!r}")
             return
         await self.channel.send(text)
         try:
@@ -430,7 +458,7 @@ class Autopilot:
             f"Daten von heute:\n{facts}\n\nBriefing:"
         )
         text = await self.llm.chat(messages=[{"role": "user", "content": prompt}],
-                                   temperature=0.6, max_tokens=300)
+                                   system=STYLE, temperature=0.6, max_tokens=300)
         await self._send("☀️ " + text.strip(), kind="briefing")
         log.info("☀️ Morgen-Briefing gesendet")
 
@@ -470,7 +498,7 @@ class Autopilot:
             f"Tagesdaten:\n{facts}\n\nReview:"
         )
         text = await self.llm.chat(messages=[{"role": "user", "content": prompt}],
-                                   temperature=0.6, max_tokens=300)
+                                   system=STYLE, temperature=0.6, max_tokens=300)
         await self._send("🌙 " + text.strip(), kind="review")
         log.info("🌙 Abend-Review gesendet")
 
@@ -509,7 +537,7 @@ class Autopilot:
             f"Auffälligkeiten: {'; '.join(flags)}\n\nHinweis:"
         )
         text = await self.llm.chat(messages=[{"role": "user", "content": prompt}],
-                                   temperature=0.5, max_tokens=150)
+                                   system=STYLE, temperature=0.5, max_tokens=150)
         return "🩺 " + text.strip()
 
     async def _calendar_check(self) -> None:
@@ -561,7 +589,7 @@ class Autopilot:
             f"Bezug: {tip}\nDirekt, praktisch."
         )
         text = await self.llm.chat(messages=[{"role": "user", "content": prompt}],
-                                   temperature=0.5, max_tokens=100)
+                                   system=STYLE, temperature=0.5, max_tokens=100)
         return "🌤️ " + text.strip()
 
     async def _personal_newsletter(self) -> None:
@@ -654,7 +682,7 @@ class Autopilot:
             try:
                 summary = await self.llm.chat(
                     messages=[{"role": "user", "content": prompt}],
-                    temperature=0.4, max_tokens=200,
+                    system=STYLE, temperature=0.4, max_tokens=200,
                 )
                 results.append(f"**{query}**\n{summary.strip()}")
             except Exception:
@@ -684,14 +712,14 @@ class Autopilot:
         # Tasks die heute/morgen fällig sind und noch offen
         try:
             overdue = await asyncio.to_thread(db.query,
-                """SELECT title, due_date FROM tasks
+                """SELECT title, due FROM tasks
                    WHERE status NOT IN ('done','archived')
-                   AND due_date <= CURRENT_DATE + 2
+                   AND due <= CURRENT_DATE + 2
                    AND (assigned_to IS NULL OR assigned_to != 'alfred')
-                   ORDER BY due_date ASC LIMIT 5"""
+                   ORDER BY due ASC LIMIT 5"""
             )
             if overdue:
-                items = "; ".join(f"{t['title']} ({t['due_date']})" for t in overdue[:3])
+                items = "; ".join(f"{t['title']} ({t['due']})" for t in overdue[:3])
                 msgs.append(f"⚡ Bald fällig: {items}")
         except Exception:
             pass
@@ -755,7 +783,7 @@ class Autopilot:
             f"Daten:\n" + "\n".join(facts) + "\n\nEmpfehlung:"
         )
         text = await self.llm.chat(messages=[{"role": "user", "content": prompt}],
-                                   temperature=0.5, max_tokens=150)
+                                   system=STYLE, temperature=0.5, max_tokens=150)
         return "🏋️ " + text.strip()
 
     async def _ai_daily_reflection(self) -> None:
@@ -826,7 +854,7 @@ class Autopilot:
         )
         reflection = await self.llm.chat(
             messages=[{"role": "user", "content": prompt}],
-            temperature=0.4, max_tokens=250,
+            system=STYLE, temperature=0.4, max_tokens=250,
         )
         reflection = reflection.strip()
 

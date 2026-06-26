@@ -148,7 +148,10 @@ async def generate_insight_task(llm: LLMProvider, lzg=None) -> bool:
             temperature=0.7,
             max_tokens=150,
         )
-        line = resp.strip().splitlines()[0].strip()
+        stripped = resp.strip()
+        if not stripped:
+            return False
+        line = stripped.splitlines()[0].strip()
         parts = [p.strip() for p in line.split("|")]
         if not parts or not parts[0]:
             return False
