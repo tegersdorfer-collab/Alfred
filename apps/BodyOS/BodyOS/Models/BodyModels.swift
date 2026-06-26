@@ -10,6 +10,8 @@ struct TodayPlan: Codable {
     let alfredMessage: String
     let health: HealthSnapshot?
     let exercises: [PlannedExercise]
+    let doneToday: Bool?
+    let nextLabel: String?
 }
 
 struct HealthSnapshot: Codable {

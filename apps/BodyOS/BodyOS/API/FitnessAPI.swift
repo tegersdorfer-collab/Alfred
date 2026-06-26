@@ -23,4 +23,17 @@ final class FitnessAPI {
     func logRPE(_ request: LogRPERequest) async throws {
         let _: OkResponse = try await client.post("/api/fitness/log-rpe", body: request)
     }
+
+    func markJogDone(distanceKm: Double? = nil, durationMin: Int? = nil,
+                     source: String = "manual") async throws {
+        struct Body: Encodable { let distanceKm: Double?; let durationMin: Int?; let source: String }
+        let _: OkResponse = try await client.post(
+            "/api/fitness/jog-done",
+            body: Body(distanceKm: distanceKm, durationMin: durationMin, source: source))
+    }
+
+    func markRestDay() async throws {
+        struct Empty: Encodable {}
+        let _: OkResponse = try await client.post("/api/fitness/rest-day", body: Empty())
+    }
 }
