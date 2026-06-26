@@ -123,7 +123,8 @@ def build_router(orch=None) -> APIRouter:
     @router.get("/api/tasks/top3")
     def tasks_top3():
         rows = db.query(
-            "SELECT * FROM tasks WHERE today_focus=TRUE AND done=FALSE ORDER BY priority DESC, due_date ASC LIMIT 3"
+            "SELECT * FROM tasks WHERE today_focus=TRUE AND status NOT IN ('done','archived') "
+            "ORDER BY priority DESC, due ASC LIMIT 3"
         )
         return rows
 
@@ -132,7 +133,8 @@ def build_router(orch=None) -> APIRouter:
         d = await req.json()
         focus = bool(d.get("focus", True))
         if focus:
-            count = db.query_one("SELECT COUNT(*) as n FROM tasks WHERE today_focus=TRUE AND done=FALSE")
+            count = db.query_one("SELECT COUNT(*) as n FROM tasks WHERE today_focus=TRUE "
+                                  "AND status NOT IN ('done','archived')")
             if count and count["n"] >= 3:
                 return JSONResponse({"error": "Maximal 3 Top-Tasks erlaubt"}, status_code=400)
         db.execute("UPDATE tasks SET today_focus=%s WHERE id=%s", (focus, task_id))
@@ -169,14 +171,14 @@ def build_router(orch=None) -> APIRouter:
 
     @router.get("/api/tasks/slipping")
     def tasks_slipping(days: int = 5):
-        """Tasks die länger als `days` Tage nicht aktualisiert wurden."""
+        """Offene Tasks, die seit mehr als `days` Tagen liegen (kein updated_at → created_at)."""
         rows = db.query(
             """
-            SELECT id, title, priority, due_date, updated_at
+            SELECT id, title, priority, due, created_at
             FROM tasks
-            WHERE done=FALSE
-              AND updated_at < NOW() - INTERVAL '%s days'
-            ORDER BY updated_at ASC
+            WHERE status NOT IN ('done','archived')
+              AND created_at < NOW() - make_interval(days => %s)
+            ORDER BY created_at ASC
             LIMIT 10
             """,
             (days,),
