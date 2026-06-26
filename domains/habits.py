@@ -144,3 +144,31 @@ def find_habit(query: str) -> dict | None:
         (f"%{query}%",),
     )
     return rows[0] if rows else None
+
+
+# ── Sport-Habit Auto-Logging (Trainingseinheit erledigt → Habit abhaken) ──────
+
+SPORT_HABIT_KEYWORDS = ["gym", "jog", "sport", "training", "workout"]
+
+
+def pick_sport_habit(habits: list[dict]) -> dict | None:
+    """Wählt aus einer Habit-Liste den 'Sport'-Habit per Keyword (Prioritätsreihenfolge)."""
+    for kw in SPORT_HABIT_KEYWORDS:
+        for h in habits:
+            if kw in (h.get("name") or "").lower():
+                return h
+    return None
+
+
+def find_sport_habit() -> dict | None:
+    """Aktiver Sport-Habit aus der DB (z.B. 'Gym/Joggen')."""
+    return pick_sport_habit(list_habits())
+
+
+def log_sport_done(on_date: date | None = None) -> bool:
+    """Hakt den Sport-Habit für den Tag ab, falls vorhanden. True wenn geloggt."""
+    h = find_sport_habit()
+    if not h:
+        return False
+    log_habit(h["id"], on_date=on_date, done=True)
+    return True

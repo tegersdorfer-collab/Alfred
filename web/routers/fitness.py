@@ -46,6 +46,7 @@ def build_router(orch=None) -> APIRouter:
         t = (d.get("type") or "").lower()
         if t in ("lower", "upper"):
             fitness.record_cycle_event(t, "workout")
+            habits.log_sport_done()
         return {"id": wid}
 
     @router.get("/api/fitness/volume")
@@ -227,6 +228,7 @@ def build_router(orch=None) -> APIRouter:
         if fitness.jog_done_today_exists():
             return {"ok": True, "already": True}
         fitness.record_cycle_event("jog", "jog")
+        habits.log_sport_done()
         return {"ok": True, "source": (d or {}).get("source", "manual")}
 
     @router.post("/api/fitness/rest-day")

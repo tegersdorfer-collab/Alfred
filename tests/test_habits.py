@@ -81,3 +81,32 @@ class TestFindHabit:
         with patch("domains.habits.db") as mock_db:
             mock_db.query.return_value = []
             assert find_habit("Nichtexistent") is None
+
+
+class TestPickSportHabit:
+    """Pure Keyword-Auswahl des Sport-Habits (kein DB)."""
+
+    def test_finds_gym_joggen(self):
+        from domains.habits import pick_sport_habit
+        habits = [{"id": 1, "name": "Lesen"}, {"id": 31, "name": "Gym/Joggen"}]
+        assert pick_sport_habit(habits)["id"] == 31
+
+    def test_matches_jog_keyword(self):
+        from domains.habits import pick_sport_habit
+        assert pick_sport_habit([{"id": 9, "name": "Abend joggen"}])["id"] == 9
+
+    def test_matches_sport_keyword(self):
+        from domains.habits import pick_sport_habit
+        assert pick_sport_habit([{"id": 5, "name": "Sport machen"}])["id"] == 5
+
+    def test_no_match_returns_none(self):
+        from domains.habits import pick_sport_habit
+        assert pick_sport_habit([{"id": 1, "name": "Lesen"}, {"id": 2, "name": "Meditieren"}]) is None
+
+    def test_empty_returns_none(self):
+        from domains.habits import pick_sport_habit
+        assert pick_sport_habit([]) is None
+
+    def test_case_insensitive(self):
+        from domains.habits import pick_sport_habit
+        assert pick_sport_habit([{"id": 7, "name": "GYM"}])["id"] == 7
