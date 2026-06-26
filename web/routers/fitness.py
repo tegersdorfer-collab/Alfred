@@ -43,6 +43,9 @@ def build_router(orch=None) -> APIRouter:
             title=d["title"], type_=d.get("type", "strength"),
             duration_min=d.get("duration_min"), distance_km=d.get("distance_km"),
             notes=d.get("notes"), rpe=d.get("rpe"), sets=d.get("sets"))
+        t = (d.get("type") or "").lower()
+        if t in ("lower", "upper"):
+            fitness.record_cycle_event(t, "workout")
         return {"id": wid}
 
     @router.get("/api/fitness/volume")
@@ -67,43 +70,16 @@ def build_router(orch=None) -> APIRouter:
 
     @router.get("/api/fitness/today-plan")
     def today_plan():
-        """
-        Generiert Timos heutigen Trainingsplan basierend auf:
-        - 3-Tage-Zyklus (Upper / Jog / Lower)
-        - HRV + Schlaf (Intensitäts-Faktor)
-        - Letzten Sets pro Übung (Progressive Overload)
-        """
-        from datetime import date as _date, timedelta as _td
+        """Heutiger Trainingsplan: abschluss-basierter Zyklus LOWER → JOGGEN → UPPER,
+        moduliert über HRV+Schlaf (Intensität) und Progressive Overload."""
+        from datetime import date as _date
         import math as _math
 
-        # 1. Zyklus-Tag bestimmen
-        CYCLE = ["upper", "jog", "lower"]
-        CYCLE_TITLE = {"upper": "Upper Body", "jog": "Cardio / Jog", "lower": "Lower Body"}
-        last_workouts = db.query(
-            "SELECT title, type, date FROM workouts ORDER BY date DESC, id DESC LIMIT 6"
-        )
-        # Finde letzten Zyklus-Tag
-        last_cycle_day = None
-        for w in last_workouts:
-            t = (w.get("type") or "").lower()
-            title = (w.get("title") or "").lower()
-            if t in CYCLE:
-                last_cycle_day = t
-                break
-            for c in CYCLE:
-                if c in title:
-                    last_cycle_day = c
-                    break
-            if last_cycle_day:
-                break
+        events = fitness.recent_cycle_events(limit=12)
+        state = fitness.cycle_state(events, _date.today())
+        day_type = state["slot"]
+        done_today = state["done_today"]
 
-        if last_cycle_day and last_cycle_day in CYCLE:
-            next_idx = (CYCLE.index(last_cycle_day) + 1) % 3
-        else:
-            next_idx = 0
-        day_type = CYCLE[next_idx]
-
-        # 2. HRV + Schlaf → Intensitäts-Faktor (0.85 – 1.05)
         health = db.query_one("SELECT * FROM health_data ORDER BY date DESC LIMIT 1") or {}
         hrv = float(health.get("hrv_avg") or 0)
         sleep_h = float(health.get("sleep_hours") or 0)
@@ -112,7 +88,7 @@ def build_router(orch=None) -> APIRouter:
         intensity = round(max(0.85, min(1.05, (hrv_score + sleep_score) / 2.0)), 2)
 
         alfred_note = ""
-        if hrv > 0 and sleep_h > 0:
+        if hrv > 0 and sleep_h > 0 and day_type != "jog":
             if intensity >= 1.0:
                 alfred_note = f"HRV {hrv:.0f}, Schlaf {sleep_h:.1f}h — top Werte, Gewichte leicht erhöhen."
             elif intensity <= 0.88:
@@ -121,15 +97,13 @@ def build_router(orch=None) -> APIRouter:
                 alfred_note = f"HRV {hrv:.0f}, Schlaf {sleep_h:.1f}h — normale Session."
 
         def last_set(exercise_name: str) -> dict | None:
-            """Letzten Satz dieser Übung finden."""
-            row = db.query_one(
+            return db.query_one(
                 """SELECT ws.weight_kg, ws.reps FROM workout_sets ws
                    JOIN exercises e ON e.id = ws.exercise_id
                    WHERE LOWER(e.name) = LOWER(%s)
                    ORDER BY ws.id DESC LIMIT 1""",
                 (exercise_name,),
             )
-            return row
 
         def build_sets(exercise_name: str, default_weight: float, default_reps: int,
                        working_count: int = 3, rpe_target: int = 7) -> dict:
@@ -140,7 +114,6 @@ def build_router(orch=None) -> APIRouter:
             else:
                 base_w = default_weight * intensity
                 base_r = default_reps
-            # Auf 2.5kg runden
             w = _math.floor(base_w / 2.5) * 2.5
             warmup = [
                 {"weight": round(w * 0.4, 1), "reps": 12},
@@ -148,14 +121,17 @@ def build_router(orch=None) -> APIRouter:
                 {"weight": round(w * 0.8, 1), "reps": 5},
             ]
             working = [{"weight": w, "reps": base_r, "rpe_target": rpe_target}] * working_count
-            return {
-                "name": exercise_name,
-                "warmup_sets": warmup,
-                "working_sets": working,
-            }
+            return {"name": exercise_name, "warmup_sets": warmup, "working_sets": working}
 
-        # 3. Plan je Zyklus-Tag
-        if day_type == "upper":
+        if day_type == "lower":
+            exercises_list = [
+                build_sets("Squat", 100, 5, working_count=4, rpe_target=8),
+                build_sets("Romanian Deadlift", 80, 8, working_count=3, rpe_target=7),
+                build_sets("Leg Press", 140, 10, working_count=3, rpe_target=8),
+                build_sets("Leg Curl", 50, 12, working_count=3, rpe_target=8),
+                build_sets("Calf Raise", 60, 15, working_count=4, rpe_target=9),
+            ]
+        elif day_type == "upper":
             exercises_list = [
                 build_sets("Bench Press", 80, 6, working_count=4, rpe_target=8),
                 build_sets("Overhead Press", 50, 8, working_count=3, rpe_target=7),
@@ -164,26 +140,17 @@ def build_router(orch=None) -> APIRouter:
                 build_sets("Tricep Pushdown", 35, 12, working_count=3, rpe_target=8),
                 build_sets("Lateral Raise", 10, 15, working_count=3, rpe_target=9),
             ]
-        elif day_type == "lower":
-            exercises_list = [
-                build_sets("Squat", 100, 5, working_count=4, rpe_target=8),
-                build_sets("Romanian Deadlift", 80, 8, working_count=3, rpe_target=7),
-                build_sets("Leg Press", 140, 10, working_count=3, rpe_target=8),
-                build_sets("Leg Curl", 50, 12, working_count=3, rpe_target=8),
-                build_sets("Calf Raise", 60, 15, working_count=4, rpe_target=9),
-            ]
         else:  # jog
-            exercises_list = [{
-                "name": "Jogging",
-                "warmup_sets": [],
-                "working_sets": [{"distance_km": 5.0, "pace_target": "6:00 min/km", "rpe_target": 6}],
-            }]
+            exercises_list = []
+            alfred_note = "Heute: Joggen — läuft über Strava."
 
         return {
             "day_type": day_type,
-            "day_label": CYCLE_TITLE[day_type],
+            "day_label": fitness.CYCLE_LABEL[day_type],
             "intensity_factor": intensity,
-            "alfred_message": alfred_note or f"Heute: {CYCLE_TITLE[day_type]}.",
+            "done_today": done_today,
+            "next_label": state["next_label"],
+            "alfred_message": alfred_note or f"Heute: {fitness.CYCLE_LABEL[day_type]}.",
             "health": {
                 "hrv": hrv or None,
                 "sleep_hours": sleep_h or None,
@@ -249,5 +216,26 @@ def build_router(orch=None) -> APIRouter:
             duration_min=data.get("duration_min"), distance_km=data.get("distance_km"),
             sets=flat)
         return {"id": wid, "parsed": data}
+
+    @router.post("/api/fitness/jog-done")
+    async def jog_done(req: Request):
+        """Markiert den heutigen Jog-Tag als erledigt (idempotent pro Tag)."""
+        try:
+            d = await req.json()
+        except Exception:
+            d = {}
+        if fitness.jog_done_today_exists():
+            return {"ok": True, "already": True}
+        fitness.record_cycle_event("jog", "jog")
+        return {"ok": True, "source": (d or {}).get("source", "manual")}
+
+    @router.post("/api/fitness/rest-day")
+    async def rest_day(req: Request):
+        """Schiebt einen Ruhetag ein — Zeiger bleibt auf dem aktuellen Slot."""
+        from datetime import date as _date
+        events = fitness.recent_cycle_events(limit=12)
+        state = fitness.cycle_state(events, _date.today())
+        fitness.record_cycle_event(state["slot"], "rest")
+        return {"ok": True, "slot": state["slot"]}
 
     return router
