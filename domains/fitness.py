@@ -8,6 +8,45 @@ from datetime import date, timedelta
 from core import db
 
 
+CYCLE = ["lower", "jog", "upper"]
+CYCLE_LABEL = {"lower": "Lower Body", "jog": "Joggen", "upper": "Upper Body"}
+
+
+def _event_date(ev: dict):
+    """Normalisiert das date-Feld eines Events auf ein date-Objekt."""
+    d = ev.get("date")
+    if isinstance(d, date):
+        return d
+    if isinstance(d, str) and d:
+        return date.fromisoformat(d[:10])
+    return None
+
+
+def next_slot_from_events(events: list[dict]) -> str:
+    """events newest-first, je {slot, kind}. Nächster Slot; Rest übersprungen."""
+    for e in events:
+        if e.get("kind") == "rest":
+            continue
+        slot = e.get("slot")
+        if slot in CYCLE:
+            return CYCLE[(CYCLE.index(slot) + 1) % len(CYCLE)]
+        return CYCLE[0]
+    return CYCLE[0]
+
+
+def cycle_state(events: list[dict], today: date) -> dict:
+    """Liefert {slot, done_today, next_label}. events newest-first, je {slot, kind, date}."""
+    last = next((e for e in events if e.get("kind") != "rest"), None)
+    if last and _event_date(last) == today and last.get("slot") in CYCLE:
+        slot = last["slot"]
+        done_today = True
+    else:
+        slot = next_slot_from_events(events)
+        done_today = False
+    after = CYCLE[(CYCLE.index(slot) + 1) % len(CYCLE)]
+    return {"slot": slot, "done_today": done_today, "next_label": CYCLE_LABEL[after]}
+
+
 # ── Übungen ──────────────────────────────────────────────────────────────────
 
 def ensure_exercise(name: str, category: str = "strength",
