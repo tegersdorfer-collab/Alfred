@@ -51,7 +51,7 @@ final class ActiveSessionViewModel: ObservableObject {
             session.rpeByExercise.values.reduce(0, +) / session.rpeByExercise.count
         let req = LogWorkoutRequest(
             title: session.dayLabel,
-            type: plan.dayType == "jog" ? "run" : "strength",
+            type: plan.dayType,
             durationMin: session.elapsedSeconds / 60,
             notes: sessionNotes.isEmpty ? nil : sessionNotes,
             rpe: avgRPE, sets: sets

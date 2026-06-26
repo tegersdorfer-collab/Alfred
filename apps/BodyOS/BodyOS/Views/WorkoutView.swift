@@ -35,6 +35,25 @@ final class WorkoutViewModel: ObservableObject {
         guard let plan else { return }
         activeSession = ActiveSession(dayType: plan.dayType, dayLabel: plan.dayLabel)
     }
+
+    func markJogDone(auto: Bool, km: Double? = nil, min: Int? = nil) async {
+        try? await FitnessAPI.shared.markJogDone(
+            distanceKm: km, durationMin: min, source: auto ? "healthkit" : "manual")
+        await loadPlan()
+    }
+
+    func markRestDay() async {
+        try? await FitnessAPI.shared.markRestDay()
+        await loadPlan()
+    }
+
+    /// Beim Öffnen des Jog-Tags HealthKit nach einem Lauf fragen und ggf. auto-abhaken.
+    func autoDetectRun() async {
+        guard let plan, plan.dayType == "jog", plan.doneToday != true else { return }
+        if let run = await HealthKitManager.shared.fetchTodayRun(), run.distanceKm > 0.3 {
+            await markJogDone(auto: true, km: run.distanceKm, min: run.durationMin)
+        }
+    }
 }
 
 struct WorkoutView: View {
@@ -93,18 +112,70 @@ struct WorkoutView: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 16) {
                     dayHeaderCard(plan)
-                    if !plan.alfredMessage.isEmpty { alfredCard(plan.alfredMessage) }
-                    if let health = plan.health { healthCard(health) }
-                    exerciseList(plan)
-                    startButton
+                    if plan.doneToday == true {
+                        doneCard(plan)
+                    } else if plan.dayType == "jog" {
+                        jogCard(plan)
+                    } else {
+                        if !plan.alfredMessage.isEmpty { alfredCard(plan.alfredMessage) }
+                        if let health = plan.health { healthCard(health) }
+                        exerciseList(plan)
+                        startButton
+                        restButton
+                    }
                 }
                 .padding(.bottom, 32)
             }
+            .task { await vm.autoDetectRun() }
         } else {
             Spacer()
             errorView
             Spacer()
         }
+    }
+
+    private func doneCard(_ plan: TodayPlan) -> some View {
+        VStack(spacing: 8) {
+            Image(systemName: "checkmark.seal.fill").font(.largeTitle).foregroundStyle(.green)
+            Text("\(plan.dayLabel) erledigt").font(.headline)
+            if let next = plan.nextLabel {
+                Text("Morgen: \(next)").font(.subheadline).foregroundStyle(.secondary)
+            }
+        }
+        .frame(maxWidth: .infinity).padding(.vertical, 32)
+        .background(Color.green.opacity(0.08))
+        .clipShape(RoundedRectangle(cornerRadius: 16)).padding(.horizontal)
+    }
+
+    private func jogCard(_ plan: TodayPlan) -> some View {
+        VStack(spacing: 16) {
+            VStack(spacing: 8) {
+                Image(systemName: "figure.run").font(.largeTitle).foregroundStyle(.orange)
+                Text("Heute: Joggen").font(.headline)
+                Text("Läuft über Strava / Coros — wird automatisch erkannt.")
+                    .font(.caption).foregroundStyle(.secondary).multilineTextAlignment(.center)
+            }
+            Button { Task { await vm.markJogDone(auto: false) } } label: {
+                Label("Joggen erledigt", systemImage: "checkmark")
+                    .frame(maxWidth: .infinity).padding()
+                    .background(Color.orange).foregroundStyle(.white)
+                    .clipShape(RoundedRectangle(cornerRadius: 14))
+            }
+            restButton
+        }
+        .padding().background(Color(.secondarySystemBackground))
+        .clipShape(RoundedRectangle(cornerRadius: 16)).padding(.horizontal)
+    }
+
+    private var restButton: some View {
+        Button { Task { await vm.markRestDay() } } label: {
+            Label("Restday einlegen", systemImage: "moon.zzz")
+                .frame(maxWidth: .infinity).padding()
+                .foregroundStyle(.secondary)
+                .background(Color(.tertiarySystemBackground))
+                .clipShape(RoundedRectangle(cornerRadius: 14))
+        }
+        .padding(.horizontal)
     }
 
     private var historyContent: some View {
