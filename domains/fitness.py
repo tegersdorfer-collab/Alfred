@@ -434,3 +434,29 @@ def jog_done_today_exists() -> bool:
         "SELECT 1 AS x FROM training_cycle_events WHERE kind='jog' AND date=CURRENT_DATE LIMIT 1"
     )
     return row is not None
+
+
+# ── Trainingsprofil (Basis für adaptive Pläne) ──────────────────────────────
+
+DEFAULT_PROFILE = {"goal": "muscle", "equipment": "gym",
+                   "experience": "intermediate", "notes": ""}
+_PROFILE_KEYS = ("goal", "equipment", "experience", "notes")
+
+
+def merge_profile(cur: dict, patch: dict) -> dict:
+    """Mergt einen Profil-Patch (nur erlaubte Keys) auf das aktuelle Profil."""
+    allowed = {k: patch[k] for k in _PROFILE_KEYS if k in patch}
+    return {**cur, **allowed}
+
+
+def get_training_profile() -> dict:
+    p = db.get_setting("training_profile")
+    if not isinstance(p, dict):
+        return dict(DEFAULT_PROFILE)
+    return {**DEFAULT_PROFILE, **p}
+
+
+def save_training_profile(patch: dict) -> dict:
+    merged = merge_profile(get_training_profile(), patch)
+    db.set_setting("training_profile", merged)
+    return merged

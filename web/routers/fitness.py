@@ -240,4 +240,16 @@ def build_router(orch=None) -> APIRouter:
         fitness.record_cycle_event(state["slot"], "rest")
         return {"ok": True, "slot": state["slot"]}
 
+    @router.get("/api/fitness/profile")
+    def get_profile():
+        return fitness.get_training_profile()
+
+    @router.put("/api/fitness/profile")
+    async def put_profile(req: Request):
+        try:
+            d = await req.json()
+        except Exception:
+            d = {}
+        return fitness.save_training_profile(d if isinstance(d, dict) else {})
+
     return router
