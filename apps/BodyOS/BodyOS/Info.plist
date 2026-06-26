@@ -40,7 +40,7 @@
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>Zum Hochladen von Essensfotos</string>
 	<key>NSHealthShareUsageDescription</key>
-	<string>BodyOS liest deine Gesundheitsdaten (Schritte, HRV, Schlaf, Gewicht) um sie mit Alfred zu synchronisieren</string>
+	<string>BodyOS liest deine Gesundheitsdaten (Schritte, HRV, Schlaf, Gewicht, Läufe) um sie mit Alfred zu synchronisieren</string>
 	<key>NSHealthUpdateUsageDescription</key>
 	<string>BodyOS schreibt Workouts in Gesundheit</string>
 	<key>UILaunchScreen</key>

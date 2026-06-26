@@ -16,6 +16,7 @@ final class HealthKitManager: ObservableObject {
         HKQuantityType(.restingHeartRate),
         HKQuantityType(.bodyMass),
         HKCategoryType(.sleepAnalysis),
+        HKObjectType.workoutType(),
     ]
 
     func requestAuthorization() async {
@@ -135,6 +136,28 @@ final class HealthKitManager: ObservableObject {
                     return sum + s.endDate.timeIntervalSince(s.startDate)
                 } ?? 0
                 cont.resume(returning: totalSeconds / 3600)
+            }
+            store.execute(query)
+        }
+    }
+
+    /// Jüngster heutiger Lauf aus HealthKit (z.B. von Coros via Apple Health).
+    func fetchTodayRun() async -> (distanceKm: Double, durationMin: Int)? {
+        guard isAvailable else { return nil }
+        let today = Calendar.current.startOfDay(for: Date())
+        let tomorrow = Calendar.current.date(byAdding: .day, value: 1, to: today)!
+        let timePred = HKQuery.predicateForSamples(withStart: today, end: tomorrow)
+        let runPred = HKQuery.predicateForWorkouts(with: .running)
+        let pred = NSCompoundPredicate(andPredicateWithSubpredicates: [timePred, runPred])
+
+        return await withCheckedContinuation { cont in
+            let sort = NSSortDescriptor(key: HKSampleSortIdentifierEndDate, ascending: false)
+            let query = HKSampleQuery(sampleType: .workoutType(), predicate: pred,
+                                      limit: 1, sortDescriptors: [sort]) { _, samples, _ in
+                guard let w = samples?.first as? HKWorkout else { cont.resume(returning: nil); return }
+                let km = w.totalDistance?.doubleValue(for: .meter()) ?? 0
+                let minutes = Int(w.duration / 60.0)
+                cont.resume(returning: (distanceKm: km / 1000.0, durationMin: minutes))
             }
             store.execute(query)
         }
