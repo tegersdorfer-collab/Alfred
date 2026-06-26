@@ -20,6 +20,7 @@ from core.timeparse import parse_datetime, parse_date
 from core.jsonutil import extract_json
 from domains import habits, fitness, nutrition, journal, goals, weather, tasks as tasks_d, calendar as cal_d
 from domains import second_brain as _brain
+from domains import plan_generator
 from domains.task_executor import classify, learn_from_rejection, suggest_one
 from domains.self_modify import write_file
 
@@ -124,23 +125,29 @@ def build_router(orch=None) -> APIRouter:
             working = [{"weight": w, "reps": base_r, "rpe_target": rpe_target}] * working_count
             return {"name": exercise_name, "warmup_sets": warmup, "working_sets": working}
 
+        plan_row = fitness.active_plan()
+        plan_json = plan_row.get("plan_json") if plan_row else None
+        plan_source = "alfred" if isinstance(plan_json, dict) and plan_json.get(day_type) else "default"
+        plan_week = None
+        if plan_source == "alfred":
+            created = plan_row.get("created_at")
+            if created is not None:
+                from datetime import datetime as _dt2, date as _date2
+                cd = created.date() if isinstance(created, _dt2) else created
+                if isinstance(cd, _date2):
+                    plan_week = min(6, (_date.today() - cd).days // 7 + 1)
+
+        def _block(slot: str) -> list[dict]:
+            src = plan_json.get(slot) if isinstance(plan_json, dict) and plan_json.get(slot) \
+                else plan_generator.DEFAULT_PLAN[slot]
+            return [build_sets(ex["name"], float(ex.get("weight") or 20), int(ex.get("reps") or 8),
+                               working_count=int(ex.get("sets") or 3),
+                               rpe_target=int(ex.get("rpe") or 7)) for ex in src]
+
         if day_type == "lower":
-            exercises_list = [
-                build_sets("Squat", 100, 5, working_count=4, rpe_target=8),
-                build_sets("Romanian Deadlift", 80, 8, working_count=3, rpe_target=7),
-                build_sets("Leg Press", 140, 10, working_count=3, rpe_target=8),
-                build_sets("Leg Curl", 50, 12, working_count=3, rpe_target=8),
-                build_sets("Calf Raise", 60, 15, working_count=4, rpe_target=9),
-            ]
+            exercises_list = _block("lower")
         elif day_type == "upper":
-            exercises_list = [
-                build_sets("Bench Press", 80, 6, working_count=4, rpe_target=8),
-                build_sets("Overhead Press", 50, 8, working_count=3, rpe_target=7),
-                build_sets("Barbell Row", 70, 8, working_count=4, rpe_target=7),
-                build_sets("Dumbbell Curl", 16, 10, working_count=3, rpe_target=8),
-                build_sets("Tricep Pushdown", 35, 12, working_count=3, rpe_target=8),
-                build_sets("Lateral Raise", 10, 15, working_count=3, rpe_target=9),
-            ]
+            exercises_list = _block("upper")
         else:  # jog
             exercises_list = []
             alfred_note = "Heute: Joggen — läuft über Strava."
@@ -151,6 +158,8 @@ def build_router(orch=None) -> APIRouter:
             "intensity_factor": intensity,
             "done_today": done_today,
             "next_label": state["next_label"],
+            "plan_week": plan_week,
+            "plan_source": plan_source,
             "alfred_message": alfred_note or f"Heute: {fitness.CYCLE_LABEL[day_type]}.",
             "health": {
                 "hrv": hrv or None,
@@ -251,5 +260,14 @@ def build_router(orch=None) -> APIRouter:
         except Exception:
             d = {}
         return fitness.save_training_profile(d if isinstance(d, dict) else {})
+
+    @router.post("/api/fitness/plan/generate")
+    async def generate_plan(req: Request):
+        if not orch:
+            return JSONResponse({"error": "kein Kern"}, 503)
+        plan = await plan_generator.generate_and_save(orch.chat_llm, orch.bg_llm)
+        if not plan:
+            return JSONResponse({"ok": False, "error": "Generierung fehlgeschlagen"}, 502)
+        return {"ok": True, "plan": plan}
 
     return router
