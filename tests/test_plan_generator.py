@@ -64,3 +64,15 @@ class TestNeedsRegen:
 
     def test_missing_created_at_needs_regen(self):
         assert needs_regen({}, TODAY) is True
+
+
+class TestBuildPrompt:
+    def test_prompt_contains_profile_and_schema(self):
+        from domains.plan_generator import build_prompt
+        p = build_prompt(
+            {"goal": "muscle", "equipment": "home", "experience": "advanced", "notes": "Knie schonen"},
+            ["Squat", "Bench Press"], {"legs": 12, "chest": 8})
+        assert "muscle" in p and "home" in p and "advanced" in p
+        assert "Knie schonen" in p
+        assert "Squat" in p          # Vermeidungs-Hinweis enthält letzte Übungen
+        assert "lower" in p and "upper" in p   # Schema
