@@ -80,6 +80,7 @@ struct Habit: Codable, Identifiable {
     let streak: Int?
     let completedToday: Bool?
     let createdAt: String?
+    let doneDates: [String]?
 }
 
 struct HabitStats: Decodable {

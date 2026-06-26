@@ -33,8 +33,8 @@ def build_router(orch=None) -> APIRouter:
     router = APIRouter()
 
     @router.get("/api/habits")
-    def get_habits():
-        return habits.habit_overview()
+    def get_habits(days: int = 30):
+        return habits.habit_overview(days)
 
     @router.post("/api/habits")
     async def create_habit(req: Request):

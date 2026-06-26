@@ -50,8 +50,8 @@ final class FlowAPI {
 
     // MARK: - Habits
 
-    func fetchHabits() async throws -> [Habit] {
-        try await c.get("/api/habits")
+    func fetchHabits(days: Int = 30) async throws -> [Habit] {
+        try await c.get("/api/habits?days=\(days)")
     }
 
     func createHabit(_ req: CreateHabitRequest) async throws {
@@ -68,10 +68,6 @@ final class FlowAPI {
 
     func deleteHabit(_ id: Int) async throws {
         try await c.delete("/api/habits/\(id)")
-    }
-
-    func habitStats(_ id: Int) async throws -> HabitStats {
-        try await c.get("/api/habits/commit?days=90")
     }
 
     func commitHistory(days: Int = 90) async throws -> [[String: Int]] {

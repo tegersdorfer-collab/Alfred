@@ -14,7 +14,7 @@ final class HabitsViewModel: ObservableObject {
     func load() async {
         isLoading = true; error = nil
         do {
-            habits = try await FlowAPI.shared.fetchHabits()
+            habits = try await FlowAPI.shared.fetchHabits(days: 90)
             OfflineCache.shared.save(habits, key: "cache_habits")
         } catch {
             self.error = error.localizedDescription
@@ -163,8 +163,6 @@ struct HabitDotCard: View {
 
 struct HabitStatsCard: View {
     let habit: Habit
-    @State private var stats: HabitStats?
-    @State private var logs: [HabitLog] = []
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
@@ -187,7 +185,7 @@ struct HabitStatsCard: View {
 
     private var heatmapView: some View {
         let last90 = last90Days()
-        let logDates = Set(logs.filter { $0.completed }.map { $0.date })
+        let logDates = Set(habit.doneDates ?? [])
         return LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 3), count: 13), spacing: 3) {
             ForEach(last90, id: \.self) { day in
                 let completed = logDates.contains(day)
@@ -196,12 +194,6 @@ struct HabitStatsCard: View {
                     .aspectRatio(1, contentMode: .fit)
             }
         }
-        .task { await loadLogs() }
-    }
-
-    private func loadLogs() async {
-        guard let s = try? await FlowAPI.shared.habitStats(habit.id) else { return }
-        logs = s.logs
     }
 
     private func last90Days() -> [String] {
