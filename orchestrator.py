@@ -125,7 +125,7 @@ class Orchestrator:
             thermal=thermal, reminders=self._reminders,
             proactive_engine=self._proactive_engine,
             proactive_tracker=self._proactive_tracker,
-            bg_llm=bg_llm, suggest_one=suggest_one,
+            bg_llm=bg_llm, chat_llm=chat_llm, suggest_one=suggest_one,
             is_user_active=self._user_active,
             pattern_detector_mod=pattern_detector,
             generate_insight_task=generate_insight_task,

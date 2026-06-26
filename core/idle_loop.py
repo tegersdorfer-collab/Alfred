@@ -30,7 +30,7 @@ class IdleLoop:
     def __init__(self, autopilot, reflection, consolidator, forgetting,
                  kzg, lzg, dashboard, thermal, reminders,
                  proactive_engine, proactive_tracker,
-                 bg_llm, suggest_one,
+                 bg_llm, chat_llm, suggest_one,
                  is_user_active,
                  pattern_detector_mod, generate_insight_task):
         self.autopilot           = autopilot
@@ -45,6 +45,7 @@ class IdleLoop:
         self.proactive_engine    = proactive_engine
         self.proactive_tracker   = proactive_tracker
         self.bg_llm              = bg_llm
+        self.chat_llm            = chat_llm
         self.suggest_one         = suggest_one
         self.is_user_active      = is_user_active
         self.pattern_detector    = pattern_detector_mod
@@ -58,6 +59,7 @@ class IdleLoop:
         self._last_health_suggestion: datetime | None = None
         self._last_pattern_run: datetime | None = None
         self._last_insight_run: datetime | None = None
+        self._last_plan_check: datetime | None = None
 
     def resume(self) -> None:
         self._state = "idle"
@@ -91,6 +93,7 @@ class IdleLoop:
                 await self._tick_health()
                 await self._tick_patterns()
                 await self._tick_insights()
+                await self._tick_plan()
 
             await asyncio.sleep(self._next_delay())
 
@@ -109,6 +112,20 @@ class IdleLoop:
         except Exception as e:
             log.debug(f"Reflexion: {e}")
             db.log_error("Reflexion", e)
+
+    async def _tick_plan(self) -> None:
+        """Alle 6h prüfen, ob ein neuer Trainingsplan fällig ist (≥42 Tage / keiner)."""
+        now = datetime.now()
+        if _elapsed_since(self._last_plan_check, now) < 21600:
+            return
+        self._last_plan_check = now
+        try:
+            from datetime import date as _date
+            from domains import fitness, plan_generator
+            if plan_generator.needs_regen(fitness.active_plan(), _date.today()):
+                await plan_generator.generate_and_save(self.chat_llm, self.bg_llm)
+        except Exception:
+            log.exception("Plan-Auto-Generierung fehlgeschlagen")
 
     async def _tick_maintenance(self) -> None:
         now = datetime.now()
