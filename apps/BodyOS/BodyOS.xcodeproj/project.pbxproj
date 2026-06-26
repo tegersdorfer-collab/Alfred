@@ -243,6 +243,7 @@
 				DEVELOPMENT_TEAM = CPDV724YTF;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = NO;
+				CODE_SIGN_ENTITLEMENTS = BodyOS/BodyOS.entitlements;
 				INFOPLIST_FILE = BodyOS/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
 				LD_RUNPATH_SEARCH_PATHS = ("$(inherited)", "@executable_path/Frameworks");
@@ -265,6 +266,7 @@
 				DEVELOPMENT_TEAM = CPDV724YTF;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = NO;
+				CODE_SIGN_ENTITLEMENTS = BodyOS/BodyOS.entitlements;
 				INFOPLIST_FILE = BodyOS/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
 				LD_RUNPATH_SEARCH_PATHS = ("$(inherited)", "@executable_path/Frameworks");

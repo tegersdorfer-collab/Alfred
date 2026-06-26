@@ -162,6 +162,46 @@ final class HealthKitManager: ObservableObject {
             store.execute(query)
         }
     }
+
+    // MARK: - Hintergrund-Sync (auch wenn App geschlossen)
+
+    /// Aktiviert HealthKit Background-Delivery + Observer für die relevanten Typen.
+    /// iOS weckt die App danach „bald" nach neuen Daten kurz im Hintergrund,
+    /// die App pusht dann zu Alfred und hakt ggf. den Lauf-Tag ab.
+    func enableBackgroundSync() async {
+        guard isAvailable else { return }
+        if !isAuthorized { await requestAuthorization() }
+
+        let types: [HKSampleType] = [
+            HKObjectType.workoutType(),
+            HKQuantityType(.heartRateVariabilitySDNN),
+            HKQuantityType(.stepCount),
+            HKCategoryType(.sleepAnalysis),
+        ]
+        for type in types {
+            do {
+                try await store.enableBackgroundDelivery(for: type, frequency: .hourly)
+            } catch {
+                // Background-Delivery nicht verfügbar (z.B. Entitlement/Account) — Foreground bleibt
+            }
+            let q = HKObserverQuery(sampleType: type, predicate: nil) { [weak self] _, completion, _ in
+                Task {
+                    await self?.handleBackgroundUpdate()
+                    completion()
+                }
+            }
+            store.execute(q)
+        }
+    }
+
+    /// Wird vom Observer (auch im Hintergrund) aufgerufen: Health pushen + Lauf-Tag abhaken.
+    private func handleBackgroundUpdate() async {
+        try? await syncToday()
+        if let run = await fetchTodayRun(), run.distanceKm > 0.3 {
+            try? await FitnessAPI.shared.markJogDone(
+                distanceKm: run.distanceKm, durationMin: run.durationMin, source: "healthkit")
+        }
+    }
 }
 
 struct DailyHealthSnapshot: Identifiable {
