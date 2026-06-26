@@ -36,4 +36,19 @@ final class FitnessAPI {
         struct Empty: Encodable {}
         let _: OkResponse = try await client.post("/api/fitness/rest-day", body: Empty())
     }
+
+    func fetchProfile() async throws -> TrainingProfile {
+        try await client.get("/api/fitness/profile")
+    }
+
+    func saveProfile(_ p: TrainingProfile) async throws -> TrainingProfile {
+        try await client.put("/api/fitness/profile", body: p)
+    }
+
+    @discardableResult
+    func generatePlan() async throws -> OkResponse {
+        try await client.post("/api/fitness/plan/generate", body: EmptyReqBody())
+    }
 }
+
+private struct EmptyReqBody: Encodable {}

@@ -12,6 +12,15 @@ struct TodayPlan: Codable {
     let exercises: [PlannedExercise]
     let doneToday: Bool?
     let nextLabel: String?
+    let planWeek: Int?
+    let planSource: String?
+}
+
+struct TrainingProfile: Codable {
+    var goal: String
+    var equipment: String
+    var experience: String
+    var notes: String
 }
 
 struct HealthSnapshot: Codable {

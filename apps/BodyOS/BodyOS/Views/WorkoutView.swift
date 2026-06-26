@@ -112,6 +112,12 @@ struct WorkoutView: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 16) {
                     dayHeaderCard(plan)
+                    if let week = plan.planWeek, plan.planSource == "alfred" {
+                        Text("Plan: Woche \(week)/6 · von Alfred")
+                            .font(.caption).foregroundStyle(.secondary)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .padding(.horizontal)
+                    }
                     if plan.doneToday == true {
                         doneCard(plan)
                     } else if plan.dayType == "jog" {
@@ -123,6 +129,13 @@ struct WorkoutView: View {
                         startButton
                         restButton
                     }
+                    Button {
+                        Task { try? await FitnessAPI.shared.generatePlan(); await vm.loadPlan() }
+                    } label: {
+                        Label("Neuen Plan generieren", systemImage: "sparkles")
+                            .font(.caption).frame(maxWidth: .infinity).padding(.vertical, 8)
+                    }
+                    .padding(.horizontal)
                 }
                 .padding(.bottom, 32)
             }

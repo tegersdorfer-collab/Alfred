@@ -4,6 +4,7 @@ struct BodySettingsView: View {
     @AppStorage("alfred_base_url") private var baseURL = "http://macbook-air-von-timo.tail7e29ff.ts.net:7779"
     @State private var isConnected: Bool? = nil
     @State private var isTesting = false
+    @State private var profile: TrainingProfile?
     @StateObject private var hk = HealthKitManager.shared
 
     var body: some View {
@@ -50,6 +51,36 @@ struct BodySettingsView: View {
                     }
                 }
 
+                Section("Trainingsprofil") {
+                    if let p = Binding($profile) {
+                        Picker("Ziel", selection: p.goal) {
+                            Text("Muskelaufbau").tag("muscle")
+                            Text("Kraft").tag("strength")
+                            Text("Recomp").tag("recomp")
+                        }
+                        Picker("Equipment", selection: p.equipment) {
+                            Text("Gym").tag("gym")
+                            Text("Home").tag("home")
+                            Text("Minimal").tag("minimal")
+                        }
+                        Picker("Erfahrung", selection: p.experience) {
+                            Text("Anfänger").tag("beginner")
+                            Text("Fortgeschritten").tag("intermediate")
+                            Text("Erfahren").tag("advanced")
+                        }
+                        TextField("Hinweise (Verletzungen, Vorlieben)", text: p.notes, axis: .vertical)
+                        Button("Profil speichern") {
+                            Task {
+                                if let saved = try? await FitnessAPI.shared.saveProfile(p.wrappedValue) {
+                                    profile = saved
+                                }
+                            }
+                        }
+                    } else {
+                        ProgressView()
+                    }
+                }
+
                 Section("Info") {
                     HStack {
                         Text("Version")
@@ -69,6 +100,7 @@ struct BodySettingsView: View {
                 }
             }
             .navigationTitle("Einstellungen")
+            .task { profile = try? await FitnessAPI.shared.fetchProfile() }
         }
     }
 

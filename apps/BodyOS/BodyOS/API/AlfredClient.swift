@@ -29,6 +29,15 @@ final class AlfredClient {
         return try decode(T.self, from: data)
     }
 
+    func put<Body: Encodable, T: Decodable>(_ path: String, body: Body) async throws -> T {
+        var req = URLRequest(url: try makeURL(path))
+        req.httpMethod = "PUT"
+        req.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        req.httpBody = try JSONEncoder().encode(body)
+        let data = try await withRetry { try await self.session.data(for: req) }
+        return try decode(T.self, from: data)
+    }
+
     func postMultipart(_ path: String, imageData: Data, text: String?) async throws -> Data {
         var req = URLRequest(url: try makeURL(path))
         req.httpMethod = "POST"
