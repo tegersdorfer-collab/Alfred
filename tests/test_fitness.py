@@ -117,3 +117,23 @@ class TestMergeProfile:
     def test_empty_patch_returns_current(self):
         from domains.fitness import merge_profile, DEFAULT_PROFILE
         assert merge_profile(dict(DEFAULT_PROFILE), {}) == DEFAULT_PROFILE
+
+
+class TestNormalizeSet:
+    def test_full_set(self):
+        from domains.fitness import normalize_set
+        s = normalize_set({"exercise": "Squat", "set_index": 2, "reps": 5,
+                           "weight_kg": 100, "rpe": 8, "is_warmup": True, "is_failure": False})
+        assert s["exercise"] == "Squat" and s["reps"] == 5 and s["weight_kg"] == 100.0
+        assert s["rpe"] == 8 and s["is_warmup"] is True and s["is_failure"] is False
+
+    def test_defaults_and_clamps(self):
+        from domains.fitness import normalize_set
+        s = normalize_set({"exercise": "Bench", "reps": 999, "rpe": 50})
+        assert s["reps"] == 30 and s["rpe"] == 10
+        assert s["is_warmup"] is False and s["is_failure"] is False
+        assert s["weight_kg"] is None
+
+    def test_missing_exercise_returns_none(self):
+        from domains.fitness import normalize_set
+        assert normalize_set({"reps": 5}) is None

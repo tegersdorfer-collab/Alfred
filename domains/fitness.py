@@ -68,6 +68,36 @@ def list_exercises() -> list[dict]:
 
 # ── Workouts ─────────────────────────────────────────────────────────────────
 
+def normalize_set(raw: dict) -> dict | None:
+    """Validiert/säubert eine Satz-Payload. None wenn keine Übung."""
+    if not isinstance(raw, dict):
+        return None
+    name = (raw.get("exercise") or "").strip()
+    if not name:
+        return None
+
+    def _i(v, lo, hi):
+        try:
+            return max(lo, min(hi, int(v)))
+        except (TypeError, ValueError):
+            return None
+
+    w = raw.get("weight_kg")
+    try:
+        w = float(w) if w is not None else None
+    except (TypeError, ValueError):
+        w = None
+    return {
+        "exercise": name,
+        "set_index": raw.get("set_index"),
+        "reps": _i(raw.get("reps"), 0, 30),
+        "weight_kg": w,
+        "rpe": _i(raw.get("rpe"), 1, 10),
+        "is_warmup": bool(raw.get("is_warmup", False)),
+        "is_failure": bool(raw.get("is_failure", False)),
+    }
+
+
 def log_workout(title: str, type_: str = "strength", duration_min: int | None = None,
                 distance_km: float | None = None, notes: str | None = None,
                 rpe: int | None = None, on_date: date | None = None,
@@ -79,12 +109,16 @@ def log_workout(title: str, type_: str = "strength", duration_min: int | None = 
         (d, title, type_, duration_min, distance_km, notes, rpe),
     )
     for i, s in enumerate(sets or [], 1):
-        ex_id = ensure_exercise(s["exercise"]) if s.get("exercise") else None
+        ns = normalize_set(s)
+        if not ns:
+            continue
+        ex_id = ensure_exercise(ns["exercise"]) if ns["exercise"] else None
         db.execute(
-            """INSERT INTO workout_sets (workout_id, exercise_id, set_index, reps, weight_kg, distance_km, duration_s)
-               VALUES (%s,%s,%s,%s,%s,%s,%s)""",
-            (wid, ex_id, s.get("set_index", i), s.get("reps"), s.get("weight_kg"),
-             s.get("distance_km"), s.get("duration_s")),
+            """INSERT INTO workout_sets
+               (workout_id, exercise_id, set_index, reps, weight_kg, rpe, is_warmup, is_failure)
+               VALUES (%s,%s,%s,%s,%s,%s,%s,%s)""",
+            (wid, ex_id, ns["set_index"] or i, ns["reps"], ns["weight_kg"],
+             ns["rpe"], ns["is_warmup"], ns["is_failure"]),
         )
     return wid
 

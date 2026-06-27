@@ -490,6 +490,9 @@ MIGRATIONS = [
         created_at  TIMESTAMPTZ DEFAULT NOW()
     );""",
     "CREATE INDEX IF NOT EXISTS training_cycle_events_date_idx ON training_cycle_events (date DESC, id DESC);",
+    "ALTER TABLE workout_sets ADD COLUMN IF NOT EXISTS rpe INT;",
+    "ALTER TABLE workout_sets ADD COLUMN IF NOT EXISTS is_warmup BOOLEAN DEFAULT FALSE;",
+    "ALTER TABLE workout_sets ADD COLUMN IF NOT EXISTS is_failure BOOLEAN DEFAULT FALSE;",
 ]
 
 
