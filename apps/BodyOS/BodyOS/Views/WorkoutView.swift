@@ -216,7 +216,14 @@ struct WorkoutView: View {
                         heatmapView
                         LazyVStack(spacing: 8) {
                             ForEach(vm.history) { item in
-                                WorkoutHistoryCard(item: item)
+                                NavigationLink {
+                                    WorkoutDetailView(workoutId: item.id) {
+                                        Task { await vm.loadHistory() }
+                                    }
+                                } label: {
+                                    WorkoutHistoryCard(item: item)
+                                }
+                                .buttonStyle(.plain)
                             }
                         }
                         .padding(.horizontal)
