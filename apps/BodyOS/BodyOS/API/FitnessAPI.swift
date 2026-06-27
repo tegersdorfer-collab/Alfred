@@ -49,6 +49,23 @@ final class FitnessAPI {
     func generatePlan() async throws -> OkResponse {
         try await client.post("/api/fitness/plan/generate", body: EmptyReqBody())
     }
+
+    func fetchWorkout(_ id: Int) async throws -> WorkoutDetail {
+        try await client.get("/api/workouts/\(id)")
+    }
+
+    func updateWorkout(_ id: Int, body: UpdateWorkoutRequest) async throws {
+        let _: OkResponse = try await client.put("/api/workouts/\(id)", body: body)
+    }
+
+    func deleteWorkout(_ id: Int) async throws {
+        try await client.delete("/api/workouts/\(id)")
+    }
+
+    func lastSets(exercise: String) async throws -> [LastSet] {
+        let enc = exercise.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? exercise
+        return try await client.get("/api/fitness/last-sets?exercise=\(enc)")
+    }
 }
 
 private struct EmptyReqBody: Encodable {}

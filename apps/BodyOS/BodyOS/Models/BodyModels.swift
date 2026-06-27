@@ -50,27 +50,28 @@ struct PlannedSet: Codable, Identifiable {
     }
 }
 
-struct LoggedSet: Identifiable, Codable {
+struct SessionSet: Identifiable, Codable {
     var id = UUID()
-    var exerciseName: String
-    var weight: Double
-    var reps: Int
-    var setIndex: Int
-    var isWarmup: Bool
-    var completed: Bool = false
-    var actualRpe: Int? = nil
+    var weight: Double = 0
+    var reps: Int = 0
+    var rpe: Int? = nil
+    var isWarmup: Bool = false
+    var isFailure: Bool = false
+    var done: Bool = false
+}
+
+struct SessionExercise: Identifiable, Codable {
+    var id = UUID()
+    var name: String
+    var sets: [SessionSet] = []
 }
 
 struct ActiveSession: Codable {
-    var workoutId: Int?
     var dayType: String
     var dayLabel: String
-    var loggedSets: [LoggedSet] = []
-    var rpeByExercise: [String: Int] = [:]
+    var exercises: [SessionExercise] = []
     var startTime: Date = Date()
     var notes: String = ""
-    var currentExerciseIndex: Int = 0
-    var currentSetIndex: Int = 0
 
     var elapsedSeconds: Int { Int(Date().timeIntervalSince(startTime)) }
 }
@@ -89,8 +90,38 @@ struct LogSetPayload: Encodable {
     let setIndex: Int
     let reps: Int?
     let weightKg: Double?
-    let distanceKm: Double?
+    let rpe: Int?
+    let isWarmup: Bool
+    let isFailure: Bool
 }
+
+struct UpdateWorkoutRequest: Encodable {
+    let title: String?
+    let notes: String?
+    let rpe: Int?
+    let sets: [LogSetPayload]
+}
+
+struct WorkoutDetail: Decodable {
+    let id: Int
+    let title: String
+    let type: String
+    let notes: String?
+    let rpe: Int?
+    let sets: [WorkoutDetailSet]
+}
+
+struct WorkoutDetailSet: Identifiable, Decodable {
+    let id: Int
+    let exercise: String?
+    let reps: Int?
+    let weightKg: Double?
+    let rpe: Int?
+    let isWarmup: Bool
+    let isFailure: Bool
+}
+
+struct LastSet: Decodable { let reps: Int?; let weightKg: Double? }
 
 struct LogWorkoutResponse: Decodable {
     let id: Int
