@@ -123,6 +123,49 @@ def log_workout(title: str, type_: str = "strength", duration_min: int | None = 
     return wid
 
 
+def update_workout(workout_id: int, title: str | None = None, notes: str | None = None,
+                   rpe: int | None = None, sets: list[dict] | None = None) -> None:
+    """Ersetzt Kopf + komplette Satzliste eines Workouts (für nachträgliches Editieren)."""
+    if title is not None or notes is not None or rpe is not None:
+        db.execute("UPDATE workouts SET title=COALESCE(%s,title), notes=COALESCE(%s,notes), "
+                   "rpe=COALESCE(%s,rpe) WHERE id=%s", (title, notes, rpe, workout_id))
+    if sets is not None:
+        db.execute("DELETE FROM workout_sets WHERE workout_id=%s", (workout_id,))
+        for i, s in enumerate(sets, 1):
+            ns = normalize_set(s)
+            if not ns:
+                continue
+            ex_id = ensure_exercise(ns["exercise"]) if ns["exercise"] else None
+            db.execute(
+                """INSERT INTO workout_sets
+                   (workout_id, exercise_id, set_index, reps, weight_kg, rpe, is_warmup, is_failure)
+                   VALUES (%s,%s,%s,%s,%s,%s,%s,%s)""",
+                (workout_id, ex_id, ns["set_index"] or i, ns["reps"], ns["weight_kg"],
+                 ns["rpe"], ns["is_warmup"], ns["is_failure"]))
+
+
+def delete_workout(workout_id: int) -> None:
+    db.execute("DELETE FROM workout_sets WHERE workout_id=%s", (workout_id,))
+    db.execute("DELETE FROM workouts WHERE id=%s", (workout_id,))
+
+
+def last_sets_for(exercise_name: str) -> list[dict]:
+    """Arbeitssätze (kein Warmup) der jüngsten Session mit dieser Übung."""
+    row = db.query_one(
+        """SELECT ws.workout_id FROM workout_sets ws
+           JOIN exercises e ON e.id = ws.exercise_id
+           JOIN workouts w ON w.id = ws.workout_id
+           WHERE LOWER(e.name)=LOWER(%s) AND COALESCE(ws.is_warmup,FALSE)=FALSE
+           ORDER BY w.date DESC, w.id DESC LIMIT 1""", (exercise_name,))
+    if not row:
+        return []
+    return db.query(
+        """SELECT ws.reps, ws.weight_kg FROM workout_sets ws
+           JOIN exercises e ON e.id = ws.exercise_id
+           WHERE ws.workout_id=%s AND LOWER(e.name)=LOWER(%s) AND COALESCE(ws.is_warmup,FALSE)=FALSE
+           ORDER BY ws.set_index""", (row["workout_id"], exercise_name))
+
+
 def recent_workouts(limit: int = 20) -> list[dict]:
     workouts = db.query(
         "SELECT * FROM workouts ORDER BY date DESC, id DESC LIMIT %s", (limit,)

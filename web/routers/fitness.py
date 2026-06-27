@@ -263,6 +263,35 @@ def build_router(orch=None) -> APIRouter:
         fitness.record_cycle_event(state["slot"], "rest")
         return {"ok": True, "slot": state["slot"]}
 
+    @router.get("/api/workouts/{wid}")
+    def workout_detail(wid: int):
+        w = db.query_one("SELECT * FROM workouts WHERE id=%s", (wid,))
+        if not w:
+            return JSONResponse({"error": "not found"}, 404)
+        w["sets"] = db.query(
+            """SELECT ws.id, ws.set_index, ws.reps, ws.weight_kg, ws.rpe,
+                      COALESCE(ws.is_warmup,FALSE) AS is_warmup,
+                      COALESCE(ws.is_failure,FALSE) AS is_failure, e.name AS exercise
+               FROM workout_sets ws LEFT JOIN exercises e ON e.id=ws.exercise_id
+               WHERE ws.workout_id=%s ORDER BY ws.set_index""", (wid,))
+        return _jsonable(w)
+
+    @router.put("/api/workouts/{wid}")
+    async def workout_update(wid: int, req: Request):
+        d = await req.json()
+        fitness.update_workout(wid, title=d.get("title"), notes=d.get("notes"),
+                               rpe=d.get("rpe"), sets=d.get("sets"))
+        return {"ok": True}
+
+    @router.delete("/api/workouts/{wid}")
+    def workout_delete(wid: int):
+        fitness.delete_workout(wid)
+        return {"ok": True}
+
+    @router.get("/api/fitness/last-sets")
+    def last_sets(exercise: str = ""):
+        return _jsonable(fitness.last_sets_for(exercise)) if exercise else []
+
     @router.get("/api/fitness/profile")
     def get_profile():
         return fitness.get_training_profile()
