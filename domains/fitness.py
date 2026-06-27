@@ -436,6 +436,14 @@ def jog_done_today_exists() -> bool:
     return row is not None
 
 
+def slot_workout_count(slot: str) -> int:
+    """Wie oft slot (lower/upper) schon als Workout abgeschlossen wurde — für A/B-Wahl."""
+    row = db.query_one(
+        "SELECT COUNT(*) AS c FROM training_cycle_events WHERE slot=%s AND kind='workout'",
+        (slot,))
+    return row["c"] if row else 0
+
+
 # ── Trainingsprofil (Basis für adaptive Pläne) ──────────────────────────────
 
 DEFAULT_PROFILE = {"goal": "muscle", "equipment": "gym",

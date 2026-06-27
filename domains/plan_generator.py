@@ -97,17 +97,28 @@ def build_prompt(profile: dict, last_exercises: list[str], muscle_volume: dict) 
     avoid = ", ".join(last_exercises) if last_exercises else "—"
     vol = ", ".join(f"{k}:{v}" for k, v in (muscle_volume or {}).items() if v)
     return (
-        "Du bist ein Personal Trainer. Erstelle einen 6-Wochen-Trainingsplan für einen "
-        "Push/Pull-freien Split mit genau zwei Krafttagen: LOWER (Beine/Rumpf) und UPPER "
-        "(Oberkörper). Joggen ist separat und NICHT Teil des Plans.\n\n"
+        "Du bist ein erfahrener Strength-Coach und Personal Trainer. Erstelle einen "
+        "durchdachten, sicheren 6-Wochen-Trainingsplan für einen Split mit zwei Krafttagen: "
+        "LOWER (Beine, Hüfte, unterer Rücken, Core) und UPPER (Brust, Rücken, Schultern, Arme). "
+        "Joggen ist separat und NICHT Teil des Plans.\n\n"
         f"Profil:\n- Ziel: {profile.get('goal')}\n- Equipment: {profile.get('equipment')}\n"
-        f"- Erfahrung: {profile.get('experience')}\n- Hinweise: {profile.get('notes') or 'keine'}\n\n"
-        f"Trainiertes Volumen (letzte 30 Tage, Sätze je Muskel): {vol or 'wenig Daten'}\n"
-        f"Übungen des letzten Plans (bitte variieren, möglichst NICHT wiederholen): {avoid}\n\n"
-        "Wähle pro Tag 5–6 Übungen passend zu Ziel, Equipment und Erfahrung. "
-        "Realistische Startgewichte in kg. Antworte AUSSCHLIESSLICH mit JSON in genau diesem Schema:\n"
-        '{"lower":[{"name":"...","weight":100,"reps":5,"sets":4,"rpe":8}],'
-        '"upper":[{"name":"...","weight":80,"reps":6,"sets":4,"rpe":8}]}'
+        f"- Erfahrung: {profile.get('experience')}\n"
+        f"- Hinweise/Verletzungen: {profile.get('notes') or 'keine'}\n\n"
+        f"Bisheriges Volumen je Muskel (30 Tage): {vol or 'wenig Daten'}\n"
+        f"Übungen des letzten Blocks (VARIIERE, möglichst nicht wiederholen): {avoid}\n\n"
+        "Erstelle JE ZWEI Varianten pro Krafttag (A und B), die sich klar unterscheiden — "
+        "Timo wechselt jede Runde zwischen A und B für Abwechslung.\n"
+        "Regeln pro Tag:\n"
+        "- Reihenfolge: schwerer Haupt-Compound → zweiter Compound → Akzessorisch/Isolation → "
+        "bewusst vernachlässigte Muskeln.\n"
+        "- 5–7 Übungen pro Tag.\n"
+        "- Decke über UPPER-A und UPPER-B zusammen auch UNTERARME, NACKEN und HINTERE SCHULTER ab; "
+        "über LOWER-A und LOWER-B zusammen auch WADEN und BAUCH/CORE.\n"
+        "- Schemata passend zum Ziel (Hypertrophie: meist 3–4 Sätze × 6–12 Wdh, Hauptübung 4–6). "
+        "Realistische Startgewichte in kg, passend zu Equipment und Erfahrung.\n\n"
+        "Antworte AUSSCHLIESSLICH mit JSON in genau diesem Schema:\n"
+        '{"lowerA":[{"name":"...","weight":100,"reps":5,"sets":4,"rpe":8}],'
+        '"lowerB":[...],"upperA":[...],"upperB":[...]}'
     )
 
 
@@ -121,8 +132,9 @@ async def generate_and_save(chat_llm, bg_llm=None) -> dict | None:
     last = fitness.active_plan()
     last_ex: list[str] = []
     if last and isinstance(last.get("plan_json"), dict):
-        for slot in ("lower", "upper"):
-            last_ex += [e.get("name") for e in last["plan_json"].get(slot, []) if e.get("name")]
+        for v in last["plan_json"].values():
+            if isinstance(v, list):
+                last_ex += [e.get("name") for e in v if isinstance(e, dict) and e.get("name")]
     muscle = fitness.muscle_volume(30)
     prompt = build_prompt(profile, last_ex, muscle)
 
@@ -132,7 +144,7 @@ async def generate_and_save(chat_llm, bg_llm=None) -> dict | None:
             continue
         try:
             txt = await llm.chat(messages=[{"role": "user", "content": prompt}],
-                                 temperature=0.4, max_tokens=1200, format="json")
+                                 temperature=0.4, max_tokens=2500, format="json")
             plan = normalize_plan(extract_json(txt, default=None))
             if plan:
                 break
@@ -144,10 +156,13 @@ async def generate_and_save(chat_llm, bg_llm=None) -> dict | None:
         log.warning("Plan-Generierung lieferte keinen gültigen Plan — alter Plan bleibt aktiv")
         return None
 
-    for slot in ("lower", "upper"):
-        for ex in plan[slot]:
-            fitness.ensure_exercise(ex["name"])
+    seen = set()
+    for key in ("lowerA", "lowerB", "upperA", "upperB"):
+        for ex in plan[key]:
+            if ex["name"] not in seen:
+                seen.add(ex["name"])
+                fitness.ensure_exercise(ex["name"])
     fitness.save_training_plan(name="Alfred-Block", goal=profile.get("goal", "muscle"),
                                weeks=6, plan=plan)
-    log.info("Neuer Trainingsplan generiert und gespeichert")
+    log.info("Neuer A/B-Trainingsplan generiert und gespeichert")
     return plan
