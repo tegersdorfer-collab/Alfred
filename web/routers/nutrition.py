@@ -29,6 +29,39 @@ log = logging.getLogger("alfred.api")
 WEB_DIR = Path(__file__).parent.parent
 
 
+def _sum_food_items(data: dict) -> dict:
+    """Summiert die vom Vision-Modell geschätzten Einzelkomponenten zu Gesamt-Makros.
+    Robuster als das Modell selbst rechnen zu lassen. Fällt auf Top-Level-Werte zurück,
+    falls keine 'items' geliefert wurden (altes flaches Format)."""
+    if not isinstance(data, dict):
+        return {}
+    items = data.get("items")
+    out = {
+        "food_name": data.get("food_name") or data.get("name") or "Mahlzeit",
+        "portion": data.get("portion") or "",
+        "confidence": data.get("confidence"),
+    }
+    if isinstance(items, list) and items:
+        def _s(key: str) -> float:
+            total = 0.0
+            for it in items:
+                if isinstance(it, dict):
+                    try:
+                        total += float(it.get(key) or 0)
+                    except (TypeError, ValueError):
+                        pass
+            return round(total, 1)
+        out.update(calories=_s("calories"), protein=_s("protein"),
+                   carbs=_s("carbs"), fat=_s("fat"), items=items)
+    else:
+        for k in ("calories", "protein", "carbs", "fat"):
+            try:
+                out[k] = float(data.get(k) or 0)
+            except (TypeError, ValueError):
+                out[k] = 0
+    return out
+
+
 def build_router(orch=None) -> APIRouter:
     router = APIRouter()
 
@@ -61,22 +94,28 @@ def build_router(orch=None) -> APIRouter:
             _client = _ollama.AsyncClient(host=config.OLLAMA_BASE_URL)
             vision_model = getattr(config, "VISION_MODEL", "qwen3-vl:8b")
             prompt = (
-                "Analysiere dieses Essen/Getränk genau. "
-                + (f"Zusatzinfo: {annotation}. " if annotation else "")
-                + "Antworte NUR mit JSON (kein Text davor/danach): "
-                '{"food_name":"...","calories":0,"protein":0,"carbs":0,"fat":0,"portion":"...","confidence":0.8}'
-                ". Einheit: kcal und Gramm. confidence = 0.0-1.0."
+                "Du bist ein Ernährungsexperte. Schätze die Nährwerte dieses Essens/Getränks "
+                "so genau wie möglich.\n"
+                + (f"Zusatzinfo vom Nutzer: {annotation}.\n" if annotation else "")
+                + "Gehe so vor:\n"
+                "1. Zerlege das Gericht in seine einzelnen Komponenten (z.B. Reis, Hähnchen, Soße).\n"
+                "2. Schätze für JEDE Komponente das Gewicht in Gramm — nutze Teller, Besteck oder "
+                "Hand als Größenreferenz. Lieber realistisch großzügig als zu klein.\n"
+                "3. Berechne pro Komponente kcal/Protein/Kohlenhydrate/Fett anhand üblicher Nährwerte.\n"
+                "Antworte NUR mit JSON (kein Text davor/danach), Einheiten kcal und Gramm:\n"
+                '{"items":[{"name":"...","grams":0,"calories":0,"protein":0,"carbs":0,"fat":0}],'
+                '"food_name":"Gesamtgericht","portion":"z.B. 1 großer Teller","confidence":0.0}'
             )
             resp = await _client.chat(
                 model=vision_model,
                 messages=[{"role": "user", "content": prompt, "images": [b64]}],
-                options={"num_predict": 256},
+                options={"num_predict": 600, "temperature": 0.2},
                 keep_alive=0,
                 format="json",
             )
             raw = (resp.message.content or "").strip()
             data = extract_json(raw, default={})
-            return {"ok": True, "result": data}
+            return {"ok": True, "result": _sum_food_items(data)}
         except Exception as e:
             log.error(f"Vision-Analyse fehlgeschlagen: {e}")
             return JSONResponse({"ok": False, "error": str(e)}, 500)

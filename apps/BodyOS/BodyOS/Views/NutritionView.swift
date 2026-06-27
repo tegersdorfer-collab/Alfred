@@ -10,6 +10,7 @@ final class NutritionViewModel: ObservableObject {
     @Published var showCamera = false
     @Published var showManual = false
     @Published var capturedImage: UIImage?
+    @Published var pickerSource: UIImagePickerController.SourceType = .camera
 
     var totalCalories: Double { nutrition?.totals?.totalCalories ?? 0 }
     var totalProtein: Double { nutrition?.totals?.totalProtein ?? 0 }
@@ -44,6 +45,7 @@ final class NutritionViewModel: ObservableObject {
 struct NutritionView: View {
     @StateObject private var vm = NutritionViewModel()
     @State private var showAnalysis = false
+    @State private var showSourceDialog = false
 
     var body: some View {
         NavigationStack {
@@ -67,7 +69,14 @@ struct NutritionView: View {
             .sheet(isPresented: $vm.showCamera, onDismiss: {
                 if vm.capturedImage != nil { showAnalysis = true }
             }) {
-                ImagePicker(image: $vm.capturedImage, sourceType: .camera).ignoresSafeArea()
+                ImagePicker(image: $vm.capturedImage, sourceType: vm.pickerSource).ignoresSafeArea()
+            }
+            .confirmationDialog("Foto wählen", isPresented: $showSourceDialog, titleVisibility: .visible) {
+                if UIImagePickerController.isSourceTypeAvailable(.camera) {
+                    Button("Kamera aufnehmen") { vm.pickerSource = .camera; vm.showCamera = true }
+                }
+                Button("Aus Galerie wählen") { vm.pickerSource = .photoLibrary; vm.showCamera = true }
+                Button("Abbrechen", role: .cancel) {}
             }
             .sheet(isPresented: $vm.showManual, onDismiss: { Task { await vm.load() } }) {
                 ManualMealEntry()
@@ -154,7 +163,7 @@ struct NutritionView: View {
 
     private var actionButtons: some View {
         HStack(spacing: 12) {
-            Button { vm.showCamera = true } label: {
+            Button { showSourceDialog = true } label: {
                 HStack {
                     Image(systemName: "camera.fill")
                     Text("Foto")
