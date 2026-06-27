@@ -34,6 +34,7 @@ struct PlannedExercise: Codable, Identifiable {
     let name: String
     let warmupSets: [PlannedSet]
     let workingSets: [PlannedSet]
+    let restSec: Int?
 }
 
 struct PlannedSet: Codable, Identifiable {
@@ -49,8 +50,8 @@ struct PlannedSet: Codable, Identifiable {
     }
 }
 
-struct LoggedSet: Identifiable {
-    let id = UUID()
+struct LoggedSet: Identifiable, Codable {
+    var id = UUID()
     var exerciseName: String
     var weight: Double
     var reps: Int
@@ -60,7 +61,7 @@ struct LoggedSet: Identifiable {
     var actualRpe: Int? = nil
 }
 
-struct ActiveSession {
+struct ActiveSession: Codable {
     var workoutId: Int?
     var dayType: String
     var dayLabel: String
@@ -291,6 +292,10 @@ final class OfflineCache {
     func load<T: Decodable>(_ type: T.Type, key: String) -> T? {
         guard let data = defaults.data(forKey: key) else { return nil }
         return try? decoder.decode(T.self, from: data)
+    }
+
+    func clear(_ key: String) {
+        defaults.removeObject(forKey: key)
     }
 }
 

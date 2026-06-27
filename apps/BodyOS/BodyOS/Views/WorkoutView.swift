@@ -89,6 +89,11 @@ struct WorkoutView: View {
             .task {
                 await vm.loadPlan()
                 await vm.loadHistory()
+                if !showSession,
+                   let saved = OfflineCache.shared.load(ActiveSession.self, key: ActiveSessionViewModel.cacheKey) {
+                    vm.activeSession = saved
+                    showSession = true
+                }
             }
             .fullScreenCover(isPresented: $showSession) {
                 if let session = vm.activeSession, let plan = vm.plan {

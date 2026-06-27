@@ -123,7 +123,10 @@ def build_router(orch=None) -> APIRouter:
                 {"weight": round(w * 0.8, 1), "reps": 5},
             ]
             working = [{"weight": w, "reps": base_r, "rpe_target": rpe_target}] * working_count
-            return {"name": exercise_name, "warmup_sets": warmup, "working_sets": working}
+            # Pause je nach Wiederholungsbereich: schwere Sätze brauchen länger
+            rest_sec = 180 if base_r <= 5 else 150 if base_r <= 8 else 90 if base_r <= 12 else 60
+            return {"name": exercise_name, "warmup_sets": warmup, "working_sets": working,
+                    "rest_sec": rest_sec}
 
         plan_row = fitness.active_plan()
         plan_json = plan_row.get("plan_json") if plan_row else None

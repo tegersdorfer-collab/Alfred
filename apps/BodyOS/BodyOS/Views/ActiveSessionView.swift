@@ -13,11 +13,14 @@ final class ActiveSessionViewModel: ObservableObject {
     let plan: TodayPlan
     let restTimer = RestTimer()
     private let onComplete: () -> Void
+    static let cacheKey = "active_session"
 
     init(session: ActiveSession, plan: TodayPlan, onComplete: @escaping () -> Void) {
         self.session = session
         self.plan = plan
         self.onComplete = onComplete
+        self.currentExerciseIndex = session.currentExerciseIndex
+        self.sessionNotes = session.notes
     }
 
     var currentExercise: PlannedExercise? {
@@ -26,20 +29,40 @@ final class ActiveSessionViewModel: ObservableObject {
 
     var allExercisesComplete: Bool { currentExerciseIndex >= plan.exercises.count }
 
+    /// Sichert den aktuellen Stand, damit ein unterbrochenes Training fortgesetzt werden kann.
+    func persist() {
+        session.currentExerciseIndex = currentExerciseIndex
+        session.notes = sessionNotes
+        OfflineCache.shared.save(session, key: Self.cacheKey)
+    }
+
     func logSet(exerciseName: String, weight: Double, reps: Int, setIndex: Int, isWarmup: Bool) {
         let logged = LoggedSet(exerciseName: exerciseName, weight: weight, reps: reps, setIndex: setIndex, isWarmup: isWarmup)
         session.loggedSets.append(logged)
-        if !isWarmup { showRestTimer = true; Task { @MainActor in restTimer.start(seconds: 90) } }
+        persist()
+        if !isWarmup {
+            let rest = currentExercise?.restSec ?? 90
+            showRestTimer = true
+            Task { @MainActor in restTimer.start(seconds: rest) }
+        }
     }
 
     func recordRPE(_ rpe: Int, for exercise: String) {
         session.rpeByExercise[exercise] = rpe
         showRPE = false
         currentExerciseIndex += 1
+        persist()
     }
 
-    func skipRPE() { showRPE = false; currentExerciseIndex += 1 }
+    func skipRPE() { showRPE = false; currentExerciseIndex += 1; persist() }
     func exerciseComplete() { restTimer.stop(); showRestTimer = false; showRPE = true }
+
+    /// Bricht das Training ab und verwirft den gesicherten Stand.
+    func cancelSession() {
+        restTimer.stop()
+        OfflineCache.shared.clear(Self.cacheKey)
+        onComplete()
+    }
 
     func finishSession() async {
         isSaving = true
@@ -61,6 +84,7 @@ final class ActiveSessionViewModel: ObservableObject {
             for (exercise, rpe) in session.rpeByExercise {
                 try? await FitnessAPI.shared.logRPE(LogRPERequest(workoutId: resp.id, exercise: exercise, rpe: rpe))
             }
+            OfflineCache.shared.clear(Self.cacheKey)
             isSaving = false; onComplete()
         } catch {
             saveError = error.localizedDescription; isSaving = false
@@ -71,6 +95,7 @@ final class ActiveSessionViewModel: ObservableObject {
 struct ActiveSessionView: View {
     @StateObject private var vm: ActiveSessionViewModel
     @State private var elapsedDisplay = ""
+    @State private var showCancelConfirm = false
     let onComplete: () -> Void
 
     init(session: ActiveSession, plan: TodayPlan, onComplete: @escaping () -> Void) {
@@ -98,6 +123,10 @@ struct ActiveSessionView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
+                    Button("Abbrechen", role: .destructive) { showCancelConfirm = true }
+                        .font(.subheadline).tint(.red)
+                }
+                ToolbarItem(placement: .principal) {
                     Text(elapsedDisplay).font(.caption.monospacedDigit()).foregroundStyle(.secondary)
                 }
                 ToolbarItem(placement: .topBarTrailing) {
@@ -108,6 +137,12 @@ struct ActiveSessionView: View {
             .alert("Fehler", isPresented: .constant(vm.saveError != nil)) {
                 Button("OK") { vm.saveError = nil }
             } message: { Text(vm.saveError ?? "") }
+            .confirmationDialog("Training abbrechen?", isPresented: $showCancelConfirm, titleVisibility: .visible) {
+                Button("Training verwerfen", role: .destructive) { vm.cancelSession() }
+                Button("Weiter trainieren", role: .cancel) {}
+            } message: {
+                Text("Der bisherige Fortschritt geht verloren.")
+            }
         }
         .onAppear { startTimer() }
     }
@@ -123,6 +158,7 @@ struct ActiveSessionView: View {
                 .frame(height: 80).padding(8)
                 .background(Color(.secondarySystemBackground))
                 .clipShape(RoundedRectangle(cornerRadius: 10))
+                .onChange(of: vm.sessionNotes) { _, _ in vm.persist() }
                 .overlay(alignment: .topLeading) {
                     if vm.sessionNotes.isEmpty {
                         Text("Notiz hinzufügen…").foregroundStyle(.tertiary).padding(12)
