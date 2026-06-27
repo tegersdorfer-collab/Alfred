@@ -21,7 +21,6 @@
 		BA11 /* WorkoutView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BF11 /* WorkoutView.swift */; };
 		BA12 /* ActiveSessionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BF12 /* ActiveSessionView.swift */; };
 		BA13 /* NutritionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BF13 /* NutritionView.swift */; };
-		BA14 /* AnalysisView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BF14 /* AnalysisView.swift */; };
 		BA15 /* HealthView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BF15 /* HealthView.swift */; };
 		BA16 /* BodySettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BF16 /* BodySettingsView.swift */; };
 		BA18 /* WorkoutDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BF18 /* WorkoutDetailView.swift */; };
@@ -44,7 +43,6 @@
 		BF11 /* WorkoutView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkoutView.swift; sourceTree = "<group>"; };
 		BF12 /* ActiveSessionView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ActiveSessionView.swift; sourceTree = "<group>"; };
 		BF13 /* NutritionView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NutritionView.swift; sourceTree = "<group>"; };
-		BF14 /* AnalysisView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnalysisView.swift; sourceTree = "<group>"; };
 		BF15 /* HealthView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HealthView.swift; sourceTree = "<group>"; };
 		BF16 /* BodySettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BodySettingsView.swift; sourceTree = "<group>"; };
 		BF18 /* WorkoutDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkoutDetailView.swift; sourceTree = "<group>"; };
@@ -195,7 +193,6 @@
 				BA11 /* WorkoutView.swift in Sources */,
 				BA12 /* ActiveSessionView.swift in Sources */,
 				BA13 /* NutritionView.swift in Sources */,
-				BA14 /* AnalysisView.swift in Sources */,
 				BA15 /* HealthView.swift in Sources */,
 				BA16 /* BodySettingsView.swift in Sources */,
 				BA18 /* WorkoutDetailView.swift in Sources */,

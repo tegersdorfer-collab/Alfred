@@ -9,8 +9,12 @@ final class NutritionViewModel: ObservableObject {
     @Published var error: String?
     @Published var showCamera = false
     @Published var showManual = false
+    @Published var showDescription = false
     @Published var capturedImage: UIImage?
     @Published var pickerSource: UIImagePickerController.SourceType = .camera
+    @Published var photoNote = ""
+    @Published var editingMeal: MealItem?
+    private var isPolling = false
 
     var totalCalories: Double { nutrition?.totals?.totalCalories ?? 0 }
     var totalProtein: Double { nutrition?.totals?.totalProtein ?? 0 }
@@ -40,11 +44,40 @@ final class NutritionViewModel: ObservableObject {
         try? await AlfredClient.shared.delete("/api/nutrition/\(id)")
         await load()
     }
+
+    /// Lädt das aufgenommene Foto hoch (mit Notiz) — kehrt sofort zurück, Analyse läuft im Hintergrund.
+    func analyzeCaptured() async {
+        guard let img = capturedImage, let jpeg = img.jpegData(compressionQuality: 0.8) else { return }
+        let note = photoNote
+        capturedImage = nil; photoNote = ""
+        try? await NutritionAPI.shared.analyzePhoto(imageData: jpeg, annotation: note.isEmpty ? nil : note)
+        await load()
+        startPolling()
+    }
+
+    /// Pollt, solange eine Mahlzeit analysiert wird, und füllt die Liste selbst.
+    func startPolling() {
+        guard !isPolling else { return }
+        isPolling = true
+        Task { @MainActor in
+            while (nutrition?.meals?.contains { $0.status == "analyzing" }) == true {
+                try? await Task.sleep(nanoseconds: 3_000_000_000)
+                await load()
+            }
+            isPolling = false
+        }
+    }
+
+    func saveEdit(_ meal: MealItem, name: String, kcal: Double?, p: Double?, c: Double?, f: Double?) async {
+        try? await NutritionAPI.shared.updateMeal(meal.id,
+            UpdateMealRequest(name: name, calories: kcal, protein: p, carbs: c, fat: f))
+        editingMeal = nil
+        await load()
+    }
 }
 
 struct NutritionView: View {
     @StateObject private var vm = NutritionViewModel()
-    @State private var showAnalysis = false
     @State private var showSourceDialog = false
 
     var body: some View {
@@ -64,10 +97,10 @@ struct NutritionView: View {
                     Button { Task { await vm.load() } } label: { Image(systemName: "arrow.clockwise") }
                 }
             }
-            .task { await vm.load() }
+            .task { await vm.load(); vm.startPolling() }
             .refreshable { await vm.load() }
             .sheet(isPresented: $vm.showCamera, onDismiss: {
-                if vm.capturedImage != nil { showAnalysis = true }
+                if vm.capturedImage != nil { vm.showDescription = true }
             }) {
                 ImagePicker(image: $vm.capturedImage, sourceType: vm.pickerSource).ignoresSafeArea()
             }
@@ -78,16 +111,17 @@ struct NutritionView: View {
                 Button("Aus Galerie wählen") { vm.pickerSource = .photoLibrary; vm.showCamera = true }
                 Button("Abbrechen", role: .cancel) {}
             }
+            .sheet(isPresented: $vm.showDescription) {
+                PhotoDescriptionSheet(image: vm.capturedImage, note: $vm.photoNote,
+                    onAnalyze: { Task { await vm.analyzeCaptured() } },
+                    onCancel: { vm.capturedImage = nil; vm.photoNote = "" })
+            }
             .sheet(isPresented: $vm.showManual, onDismiss: { Task { await vm.load() } }) {
                 ManualMealEntry()
             }
-            .navigationDestination(isPresented: $showAnalysis) {
-                if let img = vm.capturedImage {
-                    AnalysisView(image: img, annotation: "") {
-                        vm.capturedImage = nil
-                        showAnalysis = false
-                        Task { await vm.load() }
-                    }
+            .sheet(item: $vm.editingMeal) { meal in
+                MealEditView(meal: meal) { name, kcal, p, c, f in
+                    Task { await vm.saveEdit(meal, name: name, kcal: kcal, p: p, c: c, f: f) }
                 }
             }
         }
@@ -197,6 +231,7 @@ struct NutritionView: View {
                     MealRowView(meal: meal) {
                         Task { await vm.deleteMeal(id: meal.id) }
                     }
+                    .onTapGesture { if meal.status != "analyzing" { vm.editingMeal = meal } }
                 }
             } else {
                 ContentUnavailableView(
@@ -219,13 +254,23 @@ struct MealRowView: View {
             RoundedRectangle(cornerRadius: 3).fill(Color.green).frame(width: 4)
             VStack(alignment: .leading, spacing: 4) {
                 Text(meal.displayName).font(.subheadline.bold())
-                HStack(spacing: 12) {
-                    if let kcal = meal.calories {
-                        Text(String(format: "%.0f kcal", kcal)).font(.caption).foregroundStyle(.secondary)
+                if meal.status == "analyzing" {
+                    HStack(spacing: 6) {
+                        ProgressView().controlSize(.small)
+                        Text("wird analysiert…").font(.caption).foregroundStyle(.secondary)
                     }
-                    if let p = meal.protein { macroTag(String(format: "%.0fg P", p), .blue) }
-                    if let c = meal.carbs   { macroTag(String(format: "%.0fg C", c), .orange) }
-                    if let f = meal.fat     { macroTag(String(format: "%.0fg F", f), .yellow) }
+                } else if meal.status == "failed" {
+                    Text("Analyse fehlgeschlagen — tippen zum Eintragen")
+                        .font(.caption).foregroundStyle(.red)
+                } else {
+                    HStack(spacing: 12) {
+                        if let kcal = meal.calories {
+                            Text(String(format: "%.0f kcal", kcal)).font(.caption).foregroundStyle(.secondary)
+                        }
+                        if let p = meal.protein { macroTag(String(format: "%.0fg P", p), .blue) }
+                        if let c = meal.carbs   { macroTag(String(format: "%.0fg C", c), .orange) }
+                        if let f = meal.fat     { macroTag(String(format: "%.0fg F", f), .yellow) }
+                    }
                 }
             }
             Spacer()
@@ -327,5 +372,94 @@ struct ImagePicker: UIViewControllerRepresentable {
             parent.dismiss()
         }
         func imagePickerControllerDidCancel(_ picker: UIImagePickerController) { parent.dismiss() }
+    }
+}
+
+struct PhotoDescriptionSheet: View {
+    let image: UIImage?
+    @Binding var note: String
+    let onAnalyze: () -> Void
+    let onCancel: () -> Void
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        NavigationStack {
+            VStack(spacing: 16) {
+                if let img = image {
+                    Image(uiImage: img).resizable().scaledToFill()
+                        .frame(height: 200).clipped()
+                        .clipShape(RoundedRectangle(cornerRadius: 16))
+                }
+                TextField("Beschreibung (optional, z.B. 2 Portionen Nudeln)", text: $note, axis: .vertical)
+                    .textFieldStyle(.roundedBorder)
+                Button { onAnalyze(); dismiss() } label: {
+                    Label("Analysieren", systemImage: "sparkles")
+                        .frame(maxWidth: .infinity).padding()
+                        .background(Color.green).foregroundStyle(.white)
+                        .clipShape(RoundedRectangle(cornerRadius: 14))
+                }
+                Text("Läuft im Hintergrund — du kannst sofort weitermachen.")
+                    .font(.caption).foregroundStyle(.secondary)
+                Spacer()
+            }
+            .padding()
+            .navigationTitle("Foto")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) { Button("Abbrechen") { onCancel(); dismiss() } }
+            }
+        }
+    }
+}
+
+struct MealEditView: View {
+    let meal: MealItem
+    let onSave: (String, Double?, Double?, Double?, Double?) -> Void
+    @Environment(\.dismiss) private var dismiss
+    @State private var name = ""
+    @State private var kcal = ""
+    @State private var protein = ""
+    @State private var carbs = ""
+    @State private var fat = ""
+
+    var body: some View {
+        NavigationStack {
+            Form {
+                Section("Mahlzeit") { TextField("Name", text: $name) }
+                Section("Makros") {
+                    field("Kalorien (kcal)", $kcal)
+                    field("Protein (g)", $protein)
+                    field("Kohlenhydrate (g)", $carbs)
+                    field("Fett (g)", $fat)
+                }
+            }
+            .navigationTitle("Bearbeiten")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) { Button("Abbrechen") { dismiss() } }
+                ToolbarItem(placement: .primaryAction) {
+                    Button("Sichern") {
+                        onSave(name.isEmpty ? meal.displayName : name,
+                               Double(kcal), Double(protein), Double(carbs), Double(fat))
+                        dismiss()
+                    }.fontWeight(.semibold)
+                }
+            }
+            .onAppear {
+                name = meal.displayName
+                kcal = meal.calories.map { String(format: "%.0f", $0) } ?? ""
+                protein = meal.protein.map { String(format: "%.0f", $0) } ?? ""
+                carbs = meal.carbs.map { String(format: "%.0f", $0) } ?? ""
+                fat = meal.fat.map { String(format: "%.0f", $0) } ?? ""
+            }
+        }
+    }
+
+    private func field(_ label: String, _ binding: Binding<String>) -> some View {
+        HStack {
+            Text(label); Spacer()
+            TextField("0", text: binding).keyboardType(.decimalPad)
+                .multilineTextAlignment(.trailing).frame(width: 80)
+        }
     }
 }
