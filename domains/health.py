@@ -47,7 +47,7 @@ def process_health_data(data: dict) -> int:
     s("steps",            _safe(data.get("steps"), round))
     s("active_calories",  _safe(data.get("activeEnergyKcal"), round))
     s("exercise_minutes", _safe(data.get("exerciseMinutes"), round))
-    s("weight",           _safe(data.get("weightKg"), _R2))
+    s("weight",           _safe(data.get("weightKg") or data.get("weight"), _R2))
     s("hrv",      _safe(data.get("hrv") or data.get("heartRateVariability"), _R2))
     s("vo2max",   _safe(data.get("vo2Max"), _R2))
     s("bmi",      _safe(data.get("bmi"), _R2))
@@ -66,13 +66,17 @@ def process_health_data(data: dict) -> int:
     s("distance",  _safe(data.get("distanceWalkingRunningKm") or data.get("walkingDistanceKm"), _R2))
 
     # Herzfrequenz
-    s("resting_hr", _safe(data.get("restingHeartRate"), round))
+    s("resting_hr", _safe(data.get("restingHeartRate") or data.get("restingHr")
+                          or data.get("resting_hr"), round))
     s("hr_avg",     _safe(data.get("heartRateAvg"), round))
     s("hr_max",     _safe(data.get("heartRateMax"), round))
     s("hr_min",     _safe(data.get("heartRateMin"), round))
 
     sleep = data.get("sleep") or {}
     s("sleep_duration", _safe(sleep.get("totalMinutes"),  lambda v: _R2(v / 60)))
+    # Flaches App-Schema: sleepDuration/sleep_duration direkt in Stunden
+    if "sleep_duration" not in fields:
+        s("sleep_duration", _safe(data.get("sleepDuration") or data.get("sleep_duration"), _R2))
     s("sleep_deep",     _safe(sleep.get("deepMinutes"),   lambda v: _R2(v / 60)))
     s("sleep_rem",      _safe(sleep.get("remMinutes"),    lambda v: _R2(v / 60)))
     s("sleep_core",     _safe(sleep.get("coreMinutes"),   lambda v: _R2(v / 60)))

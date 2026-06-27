@@ -7,6 +7,9 @@ final class AlfredClient {
         UserDefaults.standard.string(forKey: "alfred_base_url") ?? "http://macbook-air-von-timo.tail7e29ff.ts.net:7779"
     }
 
+    /// Direkte Tailscale-IP als Fallback, falls MagicDNS auf dem Gerät mal nicht auflöst.
+    private let fallbackBase = "http://100.107.172.123:7779"
+
     private let session: URLSession = {
         let config = URLSessionConfiguration.default
         config.timeoutIntervalForRequest = 15
@@ -15,26 +18,40 @@ final class AlfredClient {
         return URLSession(configuration: config)
     }()
 
+    /// Führt eine Anfrage aus: erst über den konfigurierten Host, bei Netz-/DNS-Fehler
+    /// automatisch über die Tailscale-IP. Server-Fehler (HTTP) lösen KEINEN Fallback aus.
+    private func perform(_ make: (String) throws -> URLRequest) async throws -> Data {
+        do {
+            return try await withRetry { try await self.session.data(for: try make(self.baseURL)) }
+        } catch let e as AlfredError {
+            throw e
+        } catch {
+            return try await withRetry { try await self.session.data(for: try make(self.fallbackBase)) }
+        }
+    }
+
     func get<T: Decodable>(_ path: String) async throws -> T {
-        let data = try await withRetry { try await self.session.data(from: self.makeURL(path)) }
+        let data = try await perform { base in
+            var r = URLRequest(url: try self.makeURL(path, base: base)); r.httpMethod = "GET"; return r
+        }
         return try decode(T.self, from: data)
     }
 
     func post<Body: Encodable, T: Decodable>(_ path: String, body: Body) async throws -> T {
-        var req = URLRequest(url: try makeURL(path))
-        req.httpMethod = "POST"
-        req.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        req.httpBody = try JSONEncoder().encode(body)
-        let data = try await withRetry { try await self.session.data(for: req) }
+        let payload = try JSONEncoder().encode(body)
+        let data = try await perform { base in
+            var r = URLRequest(url: try self.makeURL(path, base: base)); r.httpMethod = "POST"
+            r.setValue("application/json", forHTTPHeaderField: "Content-Type"); r.httpBody = payload; return r
+        }
         return try decode(T.self, from: data)
     }
 
     func put<Body: Encodable, T: Decodable>(_ path: String, body: Body) async throws -> T {
-        var req = URLRequest(url: try makeURL(path))
-        req.httpMethod = "PUT"
-        req.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        req.httpBody = try JSONEncoder().encode(body)
-        let data = try await withRetry { try await self.session.data(for: req) }
+        let payload = try JSONEncoder().encode(body)
+        let data = try await perform { base in
+            var r = URLRequest(url: try self.makeURL(path, base: base)); r.httpMethod = "PUT"
+            r.setValue("application/json", forHTTPHeaderField: "Content-Type"); r.httpBody = payload; return r
+        }
         return try decode(T.self, from: data)
     }
 
@@ -61,18 +78,19 @@ final class AlfredClient {
     }
 
     func delete(_ path: String) async throws {
-        var req = URLRequest(url: try makeURL(path))
-        req.httpMethod = "DELETE"
-        _ = try await withRetry { try await self.session.data(for: req) }
+        _ = try await perform { base in
+            var r = URLRequest(url: try self.makeURL(path, base: base)); r.httpMethod = "DELETE"; return r
+        }
     }
 
     var isReachable: Bool {
         get async {
-            guard let url = URL(string: baseURL + "/health") else { return false }
-            do {
-                let (_, r) = try await session.data(from: url)
-                return (r as? HTTPURLResponse)?.statusCode == 200
-            } catch { return false }
+            for base in [baseURL, fallbackBase] {
+                if let url = URL(string: base + "/health"),
+                   let (_, r) = try? await session.data(from: url),
+                   (r as? HTTPURLResponse)?.statusCode == 200 { return true }
+            }
+            return false
         }
     }
 
@@ -93,8 +111,8 @@ final class AlfredClient {
         }
     }
 
-    private func makeURL(_ path: String) throws -> URL {
-        guard let url = URL(string: baseURL + path) else { throw AlfredError.invalidURL }
+    private func makeURL(_ path: String, base: String? = nil) throws -> URL {
+        guard let url = URL(string: (base ?? baseURL) + path) else { throw AlfredError.invalidURL }
         return url
     }
 

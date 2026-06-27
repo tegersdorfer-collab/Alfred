@@ -31,6 +31,7 @@ def _jsonable(obj):
 def _health_dict(h):
     return {"date": str(h.date), "steps": h.steps, "active_calories": h.active_calories,
             "exercise_minutes": h.exercise_minutes, "sleep": h.sleep_duration,
+            "sleep_duration": h.sleep_duration,  # iOS-Apps erwarten sleep_duration; 'sleep' bleibt fürs Dashboard
             "sleep_deep": h.sleep_deep, "resting_hr": h.resting_hr, "hrv": h.hrv,
             "weight": h.weight}
 
