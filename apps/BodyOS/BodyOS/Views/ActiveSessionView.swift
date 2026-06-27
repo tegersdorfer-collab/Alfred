@@ -3,92 +3,99 @@ import SwiftUI
 @MainActor
 final class ActiveSessionViewModel: ObservableObject {
     @Published var session: ActiveSession
-    @Published var currentExerciseIndex: Int = 0
-    @Published var showRPE = false
-    @Published var showRestTimer = false
     @Published var isSaving = false
     @Published var saveError: String?
-    @Published var sessionNotes = ""
 
     let plan: TodayPlan
     let restTimer = RestTimer()
-    private let onComplete: () -> Void
     static let cacheKey = "active_session"
+    private let onComplete: () -> Void
 
     init(session: ActiveSession, plan: TodayPlan, onComplete: @escaping () -> Void) {
         self.session = session
         self.plan = plan
         self.onComplete = onComplete
-        self.currentExerciseIndex = session.currentExerciseIndex
-        self.sessionNotes = session.notes
     }
 
-    var currentExercise: PlannedExercise? {
-        plan.exercises[safe: currentExerciseIndex]
-    }
+    func persist() { OfflineCache.shared.save(session, key: Self.cacheKey) }
 
-    var allExercisesComplete: Bool { currentExerciseIndex >= plan.exercises.count }
-
-    /// Sichert den aktuellen Stand, damit ein unterbrochenes Training fortgesetzt werden kann.
-    func persist() {
-        session.currentExerciseIndex = currentExerciseIndex
-        session.notes = sessionNotes
-        OfflineCache.shared.save(session, key: Self.cacheKey)
-    }
-
-    func logSet(exerciseName: String, weight: Double, reps: Int, setIndex: Int, isWarmup: Bool) {
-        let logged = LoggedSet(exerciseName: exerciseName, weight: weight, reps: reps, setIndex: setIndex, isWarmup: isWarmup)
-        session.loggedSets.append(logged)
+    func addSet(_ exIdx: Int) {
+        guard session.exercises.indices.contains(exIdx) else { return }
+        let last = session.exercises[exIdx].sets.last
+        session.exercises[exIdx].sets.append(SessionSet(weight: last?.weight ?? 0, reps: last?.reps ?? 0))
         persist()
-        if !isWarmup {
-            let rest = currentExercise?.restSec ?? 90
-            showRestTimer = true
-            Task { @MainActor in restTimer.start(seconds: rest) }
+    }
+
+    func deleteSet(_ exIdx: Int, _ setIdx: Int) {
+        guard session.exercises.indices.contains(exIdx),
+              session.exercises[exIdx].sets.indices.contains(setIdx) else { return }
+        session.exercises[exIdx].sets.remove(at: setIdx)
+        persist()
+    }
+
+    func toggleDone(_ exIdx: Int, _ setIdx: Int) {
+        guard session.exercises.indices.contains(exIdx),
+              session.exercises[exIdx].sets.indices.contains(setIdx) else { return }
+        session.exercises[exIdx].sets[setIdx].done.toggle()
+        let s = session.exercises[exIdx].sets[setIdx]
+        if s.done && !s.isWarmup { restTimer.start(seconds: 90) }
+        persist()
+    }
+
+    func addExercise(_ name: String) {
+        session.exercises.append(SessionExercise(name: name, sets: [SessionSet()]))
+        persist()
+    }
+
+    func removeExercise(_ exIdx: Int) {
+        guard session.exercises.indices.contains(exIdx) else { return }
+        session.exercises.remove(at: exIdx)
+        persist()
+    }
+
+    func swapExercise(_ exIdx: Int, _ name: String) {
+        guard session.exercises.indices.contains(exIdx) else { return }
+        session.exercises[exIdx].name = name
+        persist()
+    }
+
+    var doneSetCount: Int {
+        session.exercises.reduce(0) { $0 + $1.sets.filter { $0.done }.count }
+    }
+
+    func finish() async {
+        isSaving = true
+        var payload: [LogSetPayload] = []
+        for ex in session.exercises {
+            var idx = 0
+            for s in ex.sets where s.done {
+                idx += 1
+                payload.append(LogSetPayload(
+                    exercise: ex.name, setIndex: idx,
+                    reps: s.reps, weightKg: s.weight > 0 ? s.weight : nil,
+                    rpe: s.rpe, isWarmup: s.isWarmup, isFailure: s.isFailure))
+            }
+        }
+        let req = LogWorkoutRequest(
+            title: session.dayLabel, type: plan.dayType,
+            durationMin: session.elapsedSeconds / 60,
+            notes: session.notes.isEmpty ? nil : session.notes,
+            rpe: nil, sets: payload)
+        do {
+            _ = try await FitnessAPI.shared.logWorkout(req)
+            OfflineCache.shared.clear(Self.cacheKey)
+            isSaving = false
+            onComplete()
+        } catch {
+            saveError = error.localizedDescription
+            isSaving = false
         }
     }
 
-    func recordRPE(_ rpe: Int, for exercise: String) {
-        session.rpeByExercise[exercise] = rpe
-        showRPE = false
-        currentExerciseIndex += 1
-        persist()
-    }
-
-    func skipRPE() { showRPE = false; currentExerciseIndex += 1; persist() }
-    func exerciseComplete() { restTimer.stop(); showRestTimer = false; showRPE = true }
-
-    /// Bricht das Training ab und verwirft den gesicherten Stand.
-    func cancelSession() {
+    func cancel() {
         restTimer.stop()
         OfflineCache.shared.clear(Self.cacheKey)
         onComplete()
-    }
-
-    func finishSession() async {
-        isSaving = true
-        let sets = session.loggedSets.filter { !$0.isWarmup }.map {
-            LogSetPayload(exercise: $0.exerciseName, setIndex: $0.setIndex, reps: $0.reps,
-                          weightKg: $0.weight > 0 ? $0.weight : nil, distanceKm: nil)
-        }
-        let avgRPE = session.rpeByExercise.values.isEmpty ? nil :
-            session.rpeByExercise.values.reduce(0, +) / session.rpeByExercise.count
-        let req = LogWorkoutRequest(
-            title: session.dayLabel,
-            type: plan.dayType,
-            durationMin: session.elapsedSeconds / 60,
-            notes: sessionNotes.isEmpty ? nil : sessionNotes,
-            rpe: avgRPE, sets: sets
-        )
-        do {
-            let resp = try await FitnessAPI.shared.logWorkout(req)
-            for (exercise, rpe) in session.rpeByExercise {
-                try? await FitnessAPI.shared.logRPE(LogRPERequest(workoutId: resp.id, exercise: exercise, rpe: rpe))
-            }
-            OfflineCache.shared.clear(Self.cacheKey)
-            isSaving = false; onComplete()
-        } catch {
-            saveError = error.localizedDescription; isSaving = false
-        }
     }
 }
 
@@ -96,7 +103,14 @@ struct ActiveSessionView: View {
     @StateObject private var vm: ActiveSessionViewModel
     @State private var elapsedDisplay = ""
     @State private var showCancelConfirm = false
+    @State private var pickerTarget: PickerTarget?
     let onComplete: () -> Void
+
+    enum PickerTarget: Identifiable {
+        case add
+        case swap(Int)
+        var id: String { switch self { case .add: return "add"; case .swap(let i): return "swap\(i)" } }
+    }
 
     init(session: ActiveSession, plan: TodayPlan, onComplete: @escaping () -> Void) {
         _vm = StateObject(wrappedValue: ActiveSessionViewModel(session: session, plan: plan, onComplete: onComplete))
@@ -105,21 +119,25 @@ struct ActiveSessionView: View {
 
     var body: some View {
         NavigationStack {
-            ZStack {
-                if vm.allExercisesComplete {
-                    sessionCompleteView
-                } else if vm.showRPE, let ex = vm.plan.exercises[safe: vm.currentExerciseIndex - 1] {
-                    RPESliderView(exerciseName: ex.name) { rpe in vm.recordRPE(rpe, for: ex.name) } onSkip: { vm.skipRPE() }
-                } else if let exercise = vm.currentExercise {
-                    VStack(spacing: 0) {
-                        ExerciseSetLogView(exercise: exercise,
-                            onSetLogged: { w, r, si, iw in vm.logSet(exerciseName: exercise.name, weight: w, reps: r, setIndex: si, isWarmup: iw) },
-                            onExerciseDone: { vm.exerciseComplete() })
-                        if vm.showRestTimer { RestTimerView(timer: vm.restTimer) { vm.showRestTimer = false } }
+            List {
+                ForEach(Array(vm.session.exercises.enumerated()), id: \.element.id) { exIdx, _ in
+                    exerciseSection(exIdx)
+                }
+                Section {
+                    Button { pickerTarget = .add } label: {
+                        Label("Übung hinzufügen", systemImage: "plus.circle.fill")
                     }
+                    notesField
                 }
             }
-            .navigationTitle(vm.plan.dayLabel)
+            .listStyle(.insetGrouped)
+            .safeAreaInset(edge: .bottom) {
+                if vm.restTimer.isRunning {
+                    RestTimerView(timer: vm.restTimer) { vm.restTimer.stop() }
+                        .background(.ultraThinMaterial)
+                }
+            }
+            .navigationTitle(vm.session.dayLabel)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
@@ -130,57 +148,66 @@ struct ActiveSessionView: View {
                     Text(elapsedDisplay).font(.caption.monospacedDigit()).foregroundStyle(.secondary)
                 }
                 ToolbarItem(placement: .topBarTrailing) {
-                    Text("\(min(vm.currentExerciseIndex + 1, vm.plan.exercises.count))/\(vm.plan.exercises.count)")
-                        .font(.caption).foregroundStyle(.secondary)
+                    Button {
+                        Task { await vm.finish() }
+                    } label: {
+                        if vm.isSaving { ProgressView() } else { Text("Fertig").fontWeight(.semibold) }
+                    }
+                    .disabled(vm.isSaving || vm.doneSetCount == 0)
                 }
             }
+            .confirmationDialog("Training abbrechen?", isPresented: $showCancelConfirm, titleVisibility: .visible) {
+                Button("Training verwerfen", role: .destructive) { vm.cancel() }
+                Button("Weiter trainieren", role: .cancel) {}
+            } message: { Text("Der bisherige Fortschritt geht verloren.") }
             .alert("Fehler", isPresented: .constant(vm.saveError != nil)) {
                 Button("OK") { vm.saveError = nil }
             } message: { Text(vm.saveError ?? "") }
-            .confirmationDialog("Training abbrechen?", isPresented: $showCancelConfirm, titleVisibility: .visible) {
-                Button("Training verwerfen", role: .destructive) { vm.cancelSession() }
-                Button("Weiter trainieren", role: .cancel) {}
-            } message: {
-                Text("Der bisherige Fortschritt geht verloren.")
+            .sheet(item: $pickerTarget) { target in
+                ExercisePickerView { name in
+                    switch target {
+                    case .add: vm.addExercise(name)
+                    case .swap(let i): vm.swapExercise(i, name)
+                    }
+                    pickerTarget = nil
+                }
             }
         }
         .onAppear { startTimer() }
     }
 
-    private var sessionCompleteView: some View {
-        VStack(spacing: 24) {
-            Spacer()
-            Image(systemName: "checkmark.circle.fill").font(.system(size: 64)).foregroundStyle(.green)
-            Text("Training abgeschlossen! 💪").font(.title2.bold())
-            Text("\(vm.session.loggedSets.filter { !$0.isWarmup }.count) Sätze · \(vm.session.elapsedSeconds / 60) min")
-                .foregroundStyle(.secondary)
-            TextEditor(text: $vm.sessionNotes)
-                .frame(height: 80).padding(8)
-                .background(Color(.secondarySystemBackground))
-                .clipShape(RoundedRectangle(cornerRadius: 10))
-                .onChange(of: vm.sessionNotes) { _, _ in vm.persist() }
-                .overlay(alignment: .topLeading) {
-                    if vm.sessionNotes.isEmpty {
-                        Text("Notiz hinzufügen…").foregroundStyle(.tertiary).padding(12)
+    @ViewBuilder
+    private func exerciseSection(_ exIdx: Int) -> some View {
+        let ex = vm.session.exercises[exIdx]
+        Section {
+            ForEach(Array(ex.sets.enumerated()), id: \.element.id) { setIdx, _ in
+                SetRow(set: $vm.session.exercises[exIdx].sets[setIdx],
+                       number: setIdx + 1,
+                       onDone: { vm.toggleDone(exIdx, setIdx); vm.persist() },
+                       onChange: { vm.persist() })
+                    .swipeActions(edge: .trailing) {
+                        Button(role: .destructive) { vm.deleteSet(exIdx, setIdx) } label: {
+                            Label("Löschen", systemImage: "trash")
+                        }
                     }
-                }
-                .padding(.horizontal)
-            Button { Task { await vm.finishSession() } } label: {
-                Group {
-                    if vm.isSaving { ProgressView().tint(.white) }
-                    else { HStack { Image(systemName: "square.and.arrow.up"); Text("Speichern & Beenden") } }
-                }
-                .frame(maxWidth: .infinity).padding()
-                .background(Color.orange).foregroundStyle(.white)
-                .clipShape(RoundedRectangle(cornerRadius: 14))
             }
-            .disabled(vm.isSaving).padding(.horizontal)
-            Spacer()
+            Button { vm.addSet(exIdx) } label: {
+                Label("Satz", systemImage: "plus").font(.subheadline)
+            }
+        } header: {
+            ExerciseHeader(name: ex.name,
+                           onSwap: { pickerTarget = .swap(exIdx) },
+                           onRemove: { vm.removeExercise(exIdx) })
         }
     }
 
+    private var notesField: some View {
+        TextField("Notiz zum Training…", text: $vm.session.notes, axis: .vertical)
+            .onChange(of: vm.session.notes) { _, _ in vm.persist() }
+    }
+
     private func startTimer() {
-        let start = Date()
+        let start = vm.session.startTime
         Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { _ in
             let e = Int(Date().timeIntervalSince(start))
             elapsedDisplay = String(format: "%d:%02d", e / 60, e % 60)
@@ -188,202 +215,163 @@ struct ActiveSessionView: View {
     }
 }
 
-struct ExerciseSetLogView: View {
-    let exercise: PlannedExercise
-    let onSetLogged: (Double, Int, Int, Bool) -> Void
-    let onExerciseDone: () -> Void
+// MARK: - Exercise Header (Name + letztes Mal + Menü)
 
-    @State private var currentPhase: Phase = .warmup
-    @State private var currentSetIndex = 0
-    @State private var weight: Double = 0
-    @State private var reps: Int = 0
-
-    enum Phase { case warmup, working }
-    private var currentSets: [PlannedSet] { currentPhase == .warmup ? exercise.warmupSets : exercise.workingSets }
-    private var currentSet: PlannedSet? { currentSets[safe: currentSetIndex] }
+struct ExerciseHeader: View {
+    let name: String
+    let onSwap: () -> Void
+    let onRemove: () -> Void
+    @State private var lastHint: String?
+    @State private var showRemoveConfirm = false
 
     var body: some View {
-        ScrollView {
-            VStack(spacing: 20) {
-                VStack(spacing: 6) {
-                    Text(exercise.name).font(.title2.bold())
-                    Text(currentPhase == .warmup ? "Aufwärmen" : "Arbeitssätze")
-                        .font(.subheadline).foregroundStyle(currentPhase == .warmup ? Color.secondary : Color.orange)
-                }
-                .padding(.top)
-
-                HStack(spacing: 8) {
-                    ForEach(Array(currentSets.enumerated()), id: \.offset) { i, _ in
-                        Circle().fill(i < currentSetIndex ? Color.green : (i == currentSetIndex ? Color.orange : Color.gray.opacity(0.3)))
-                            .frame(width: 10, height: 10)
-                    }
-                }
-
-                if let set = currentSet { currentSetCard(set) }
-
-                VStack(spacing: 16) {
-                    adjuster(label: "Gewicht (kg)", value: $weight, step: 2.5, format: "%.1f")
-                    adjuster(label: "Wiederholungen", value: Binding(get: { Double(reps) }, set: { reps = Int($0) }), step: 1, format: "%.0f")
-                }
-                .padding(.horizontal)
-
-                Button { logCurrentSet() } label: {
-                    Text("Satz abschließen ✓").frame(maxWidth: .infinity).padding()
-                        .background(Color.orange).foregroundStyle(.white)
-                        .clipShape(RoundedRectangle(cornerRadius: 14))
-                }
-                .padding(.horizontal)
-
-                if currentPhase == .warmup {
-                    Button("Aufwärmen überspringen") {
-                        currentPhase = .working; currentSetIndex = 0; applyDefaults()
-                    }
-                    .font(.caption).foregroundStyle(.secondary)
-                }
-            }
-        }
-        .onAppear { applyDefaults() }
-    }
-
-    private func adjuster(label: String, value: Binding<Double>, step: Double, format: String) -> some View {
         HStack {
-            Text(label).font(.subheadline)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(name).font(.subheadline.bold()).textCase(nil).foregroundStyle(.primary)
+                if let hint = lastHint {
+                    Text(hint).font(.caption2).textCase(nil).foregroundStyle(.secondary)
+                }
+            }
             Spacer()
-            HStack(spacing: 16) {
-                Button { value.wrappedValue = max(0, value.wrappedValue - step) } label: {
-                    Image(systemName: "minus.circle.fill").font(.title2).foregroundStyle(.orange)
-                }
-                Text(String(format: format, value.wrappedValue))
-                    .font(.title3.bold().monospacedDigit()).frame(minWidth: 60)
-                Button { value.wrappedValue += step } label: {
-                    Image(systemName: "plus.circle.fill").font(.title2).foregroundStyle(.orange)
-                }
+            Menu {
+                Button { onSwap() } label: { Label("Übung tauschen", systemImage: "arrow.left.arrow.right") }
+                Button(role: .destructive) { showRemoveConfirm = true } label: { Label("Übung entfernen", systemImage: "trash") }
+            } label: {
+                Image(systemName: "ellipsis.circle").foregroundStyle(.secondary)
             }
         }
-        .padding()
-        .background(Color(.secondarySystemBackground))
-        .clipShape(RoundedRectangle(cornerRadius: 12))
-    }
-
-    private func currentSetCard(_ set: PlannedSet) -> some View {
-        VStack(spacing: 8) {
-            Text(currentPhase == .warmup ? "Aufwärmsatz \(currentSetIndex + 1)" : "Satz \(currentSetIndex + 1)")
-                .font(.caption.bold()).foregroundStyle(.secondary)
-            HStack(spacing: 24) {
-                if let w = set.weight {
-                    VStack { Text(String(format: "%.1f", w)).font(.title.bold().monospacedDigit()); Text("kg").font(.caption2).foregroundStyle(.secondary) }
-                }
-                if let r = set.reps {
-                    VStack { Text("\(r)").font(.title.bold().monospacedDigit()); Text("Wdh").font(.caption2).foregroundStyle(.secondary) }
-                }
-            }
-            if let rpe = set.rpeTarget {
-                Text("RPE Ziel: \(rpe)").font(.caption).foregroundStyle(.orange)
-            }
-        }
-        .padding().frame(maxWidth: .infinity)
-        .background(Color(.secondarySystemBackground))
-        .clipShape(RoundedRectangle(cornerRadius: 14))
-        .padding(.horizontal)
-    }
-
-    private func logCurrentSet() {
-        onSetLogged(weight, reps, currentSetIndex + 1, currentPhase == .warmup)
-        let next = currentSetIndex + 1
-        if next < currentSets.count {
-            currentSetIndex = next; applyDefaults()
-        } else if currentPhase == .warmup && !exercise.workingSets.isEmpty {
-            currentPhase = .working; currentSetIndex = 0; applyDefaults()
-        } else {
-            onExerciseDone()
+        .task { await loadLast() }
+        .confirmationDialog("Übung entfernen?", isPresented: $showRemoveConfirm, titleVisibility: .visible) {
+            Button("Entfernen", role: .destructive) { onRemove() }
+            Button("Abbrechen", role: .cancel) {}
         }
     }
 
-    private func applyDefaults() {
-        if let set = currentSet { weight = set.weight ?? weight; reps = set.reps ?? reps }
+    private func loadLast() async {
+        guard let sets = try? await FitnessAPI.shared.lastSets(exercise: name), !sets.isEmpty,
+              let top = sets.max(by: { ($0.weightKg ?? 0) < ($1.weightKg ?? 0) }) else { return }
+        let kg = top.weightKg.map { String(format: "%.1f kg", $0) } ?? "–"
+        lastHint = "Letztes Mal: \(kg) × \(top.reps ?? 0)"
     }
 }
+
+// MARK: - Set Row
+
+struct SetRow: View {
+    @Binding var set: SessionSet
+    let number: Int
+    let onDone: () -> Void
+    let onChange: () -> Void
+
+    var body: some View {
+        HStack(spacing: 8) {
+            Text("\(number)").font(.caption.monospacedDigit()).foregroundStyle(.secondary).frame(width: 16)
+
+            Button { set.isWarmup.toggle(); onChange() } label: {
+                Text("W").font(.caption2.bold())
+                    .frame(width: 22, height: 22)
+                    .background(set.isWarmup ? Color.orange.opacity(0.25) : Color(.tertiarySystemFill))
+                    .foregroundStyle(set.isWarmup ? .orange : .secondary)
+                    .clipShape(Circle())
+            }.buttonStyle(.plain)
+
+            TextField("kg", value: $set.weight, format: .number)
+                .keyboardType(.decimalPad).multilineTextAlignment(.center)
+                .frame(width: 56).textFieldStyle(.roundedBorder)
+                .onChange(of: set.weight) { _, _ in onChange() }
+            Text("×").foregroundStyle(.secondary)
+            TextField("Wdh", value: $set.reps, format: .number)
+                .keyboardType(.numberPad).multilineTextAlignment(.center)
+                .frame(width: 44).textFieldStyle(.roundedBorder)
+                .onChange(of: set.reps) { _, _ in onChange() }
+
+            Menu {
+                Button("Kein RPE") { set.rpe = nil; onChange() }
+                ForEach(6...10, id: \.self) { v in Button("RPE \(v)") { set.rpe = v; onChange() } }
+            } label: {
+                Text(set.rpe.map { "\($0)" } ?? "–").font(.caption.bold())
+                    .frame(width: 26, height: 22)
+                    .background(Color(.tertiarySystemFill)).clipShape(RoundedRectangle(cornerRadius: 6))
+                    .foregroundStyle(set.rpe == nil ? Color.secondary : Color.orange)
+            }
+
+            Button { set.isFailure.toggle(); onChange() } label: {
+                Text("F").font(.caption2.bold())
+                    .frame(width: 22, height: 22)
+                    .background(set.isFailure ? Color.red.opacity(0.2) : Color(.tertiarySystemFill))
+                    .foregroundStyle(set.isFailure ? .red : .secondary)
+                    .clipShape(Circle())
+            }.buttonStyle(.plain)
+
+            Button { onDone() } label: {
+                Image(systemName: set.done ? "checkmark.circle.fill" : "circle")
+                    .font(.title3).foregroundStyle(set.done ? .green : .secondary)
+            }.buttonStyle(.plain)
+        }
+        .listRowBackground(set.done ? Color.green.opacity(0.06) : nil)
+    }
+}
+
+// MARK: - Exercise Picker
+
+struct ExercisePickerView: View {
+    let onPick: (String) -> Void
+    @Environment(\.dismiss) private var dismiss
+    @State private var exercises: [ExerciseItem] = []
+    @State private var query = ""
+    @State private var custom = ""
+
+    private var filtered: [ExerciseItem] {
+        query.isEmpty ? exercises : exercises.filter { $0.name.localizedCaseInsensitiveContains(query) }
+    }
+
+    var body: some View {
+        NavigationStack {
+            List {
+                if !custom.trimmingCharacters(in: .whitespaces).isEmpty {
+                    Button { onPick(custom); dismiss() } label: {
+                        Label("Hinzufügen: \(custom)", systemImage: "plus")
+                    }
+                }
+                ForEach(filtered) { ex in
+                    Button(ex.name) { onPick(ex.name); dismiss() }
+                        .foregroundStyle(.primary)
+                }
+            }
+            .searchable(text: $query, prompt: "Übung suchen")
+            .navigationTitle("Übung wählen")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) { Button("Abbrechen") { dismiss() } }
+            }
+            .safeAreaInset(edge: .bottom) {
+                HStack {
+                    TextField("Eigene Übung…", text: $custom).textFieldStyle(.roundedBorder)
+                }.padding()
+            }
+            .task {
+                exercises = (try? await FitnessAPI.shared.fetchExercises()) ?? []
+            }
+        }
+    }
+}
+
+// MARK: - Rest Timer (wiederverwendet)
 
 struct RestTimerView: View {
     @ObservedObject var timer: RestTimer
     let onSkip: () -> Void
 
     var body: some View {
-        VStack(spacing: 12) {
-            HStack {
-                Text("Pause").font(.headline)
-                Spacer()
-                Button("Überspringen", action: onSkip).font(.subheadline).foregroundStyle(.orange)
-            }
-            ZStack {
-                Circle().stroke(Color.gray.opacity(0.2), lineWidth: 6)
-                Circle().trim(from: 0, to: timer.progress)
-                    .stroke(Color.orange, style: StrokeStyle(lineWidth: 6, lineCap: .round))
-                    .rotationEffect(.degrees(-90))
-                    .animation(.linear(duration: 1), value: timer.progress)
-                Text("\(timer.secondsRemaining)s").font(.title2.bold().monospacedDigit())
-            }
-            .frame(width: 80, height: 80)
-        }
-        .padding().background(Color(.secondarySystemBackground))
-        .clipShape(RoundedRectangle(cornerRadius: 16)).padding(.horizontal)
-    }
-}
-
-struct RPESliderView: View {
-    let exerciseName: String
-    let onSubmit: (Int) -> Void
-    let onSkip: () -> Void
-    @State private var rpe: Double = 7
-
-    var body: some View {
-        VStack(spacing: 24) {
+        HStack(spacing: 16) {
+            Image(systemName: "timer").foregroundStyle(.orange)
+            Text("Pause").font(.subheadline.bold())
             Spacer()
-            Image(systemName: "figure.strengthtraining.functional").font(.system(size: 48)).foregroundStyle(.orange)
-            VStack(spacing: 8) {
-                Text("Wie war \(exerciseName)?").font(.title2.bold())
-                Text("Rate of Perceived Exertion").font(.caption).foregroundStyle(.secondary)
-            }
-            VStack(spacing: 8) {
-                Text("\(Int(rpe))").font(.system(size: 72, weight: .bold, design: .rounded)).foregroundStyle(rpeColor)
-                Text(rpeLabel).font(.headline).foregroundStyle(rpeColor)
-            }
-            Slider(value: $rpe, in: 1...10, step: 1).tint(rpeColor).padding(.horizontal, 32)
-            HStack {
-                Text("1\nLeicht").font(.caption2).multilineTextAlignment(.center)
-                Spacer()
-                Text("10\nMaximal").font(.caption2).multilineTextAlignment(.center)
-            }
-            .foregroundStyle(.secondary).padding(.horizontal, 32)
-            Spacer()
-            VStack(spacing: 12) {
-                Button { onSubmit(Int(rpe)) } label: {
-                    Text("RPE \(Int(rpe)) bestätigen").frame(maxWidth: .infinity).padding()
-                        .background(rpeColor).foregroundStyle(.white)
-                        .clipShape(RoundedRectangle(cornerRadius: 14))
-                }
-                Button("Überspringen", action: onSkip).foregroundStyle(.secondary).font(.subheadline)
-            }
-            .padding(.horizontal).padding(.bottom, 32)
+            Text("\(timer.secondsRemaining)s").font(.title3.bold().monospacedDigit())
+            Button("Überspringen", action: onSkip).font(.subheadline).foregroundStyle(.orange)
         }
-    }
-
-    private var rpeColor: Color {
-        switch Int(rpe) {
-        case 1...4: return .green
-        case 5...7: return .orange
-        default: return .red
-        }
-    }
-
-    private var rpeLabel: String {
-        switch Int(rpe) {
-        case 1...3: return "Sehr leicht"
-        case 4...5: return "Leicht"
-        case 6...7: return "Mittel"
-        case 8: return "Schwer"
-        case 9: return "Sehr schwer"
-        default: return "Maximal"
-        }
+        .padding()
+        .clipShape(RoundedRectangle(cornerRadius: 16))
+        .padding(.horizontal)
     }
 }

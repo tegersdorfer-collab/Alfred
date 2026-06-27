@@ -33,7 +33,12 @@ final class WorkoutViewModel: ObservableObject {
 
     func startSession() {
         guard let plan else { return }
-        activeSession = ActiveSession(dayType: plan.dayType, dayLabel: plan.dayLabel)
+        let exs = plan.exercises.map { ex in
+            SessionExercise(name: ex.name, sets: ex.workingSets.map {
+                SessionSet(weight: $0.weight ?? 0, reps: $0.reps ?? 0)
+            })
+        }
+        activeSession = ActiveSession(dayType: plan.dayType, dayLabel: plan.dayLabel, exercises: exs)
     }
 
     func markJogDone(auto: Bool, km: Double? = nil, min: Int? = nil) async {
