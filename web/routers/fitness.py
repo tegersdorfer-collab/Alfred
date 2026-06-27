@@ -130,7 +130,13 @@ def build_router(orch=None) -> APIRouter:
 
         plan_row = fitness.active_plan()
         plan_json = plan_row.get("plan_json") if plan_row else None
-        plan_source = "alfred" if isinstance(plan_json, dict) and plan_json.get(day_type) else "default"
+
+        def _variant(slot: str) -> str:
+            return plan_generator.pick_variant(fitness.slot_workout_count(slot))
+
+        variant = _variant(day_type) if day_type in ("lower", "upper") else "A"
+        plan_key = f"{day_type}{variant}"
+        plan_source = "alfred" if isinstance(plan_json, dict) and plan_json.get(plan_key) else "default"
         plan_week = None
         if plan_source == "alfred":
             created = plan_row.get("created_at")
@@ -141,7 +147,8 @@ def build_router(orch=None) -> APIRouter:
                     plan_week = min(6, (_date.today() - cd).days // 7 + 1)
 
         def _block(slot: str) -> list[dict]:
-            src = plan_json.get(slot) if isinstance(plan_json, dict) and plan_json.get(slot) \
+            key = f"{slot}{_variant(slot)}"
+            src = plan_json.get(key) if isinstance(plan_json, dict) and plan_json.get(key) \
                 else plan_generator.DEFAULT_PLAN[slot]
             return [build_sets(ex["name"], float(ex.get("weight") or 20), int(ex.get("reps") or 8),
                                working_count=int(ex.get("sets") or 3),
@@ -155,9 +162,13 @@ def build_router(orch=None) -> APIRouter:
             exercises_list = []
             alfred_note = "Heute: Joggen — läuft über Strava."
 
+        day_label = fitness.CYCLE_LABEL[day_type]
+        if day_type in ("lower", "upper"):
+            day_label = f"{day_label} · {variant}"
+
         return {
             "day_type": day_type,
-            "day_label": fitness.CYCLE_LABEL[day_type],
+            "day_label": day_label,
             "intensity_factor": intensity,
             "done_today": done_today,
             "next_label": state["next_label"],
