@@ -18,6 +18,32 @@ def log_meal(description: str, meal_type: str = "snack",
     )
 
 
+def create_pending_meal(description: str, on_date: date | None = None) -> int:
+    d = on_date or date.today()
+    return db.insert_returning(
+        "INSERT INTO meals (date, meal_type, description, status) "
+        "VALUES (%s,'snack',%s,'analyzing') RETURNING id",
+        (d, description or "Wird analysiert…"))
+
+
+def complete_meal(meal_id: int, name: str, calories, protein, carbs, fat) -> None:
+    db.execute(
+        "UPDATE meals SET description=%s, calories=%s, protein_g=%s, carbs_g=%s, fat_g=%s, "
+        "status='done' WHERE id=%s",
+        (name, calories, protein, carbs, fat, meal_id))
+
+
+def fail_meal(meal_id: int) -> None:
+    db.execute("UPDATE meals SET status='failed' WHERE id=%s", (meal_id,))
+
+
+def update_meal(meal_id: int, name: str | None, calories, protein, carbs, fat) -> None:
+    db.execute(
+        "UPDATE meals SET description=COALESCE(%s,description), calories=%s, protein_g=%s, "
+        "carbs_g=%s, fat_g=%s WHERE id=%s",
+        (name, calories, protein, carbs, fat, meal_id))
+
+
 def meals_for(d: date | None = None) -> list[dict]:
     d = d or date.today()
     return db.query("SELECT * FROM meals WHERE date=%s ORDER BY created_at", (d,))
