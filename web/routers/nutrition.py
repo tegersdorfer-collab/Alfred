@@ -109,7 +109,7 @@ def build_router(orch=None) -> APIRouter:
             resp = await _client.chat(
                 model=vision_model,
                 messages=[{"role": "user", "content": prompt, "images": [b64]}],
-                options={"num_predict": 600, "temperature": 0.2},
+                options={"num_predict": 600, "temperature": 0.2, "num_ctx": 8192},
                 keep_alive=0,
                 format="json",
             )
