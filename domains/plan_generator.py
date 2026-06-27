@@ -31,39 +31,50 @@ def _clamp_int(v, lo: int, hi: int, default: int) -> int:
     return max(lo, min(hi, v))
 
 
+def _clean_exercise_list(items) -> list:
+    """Säubert eine Übungsliste: nur Einträge mit Namen, sets/reps gekappt."""
+    if not isinstance(items, list):
+        return []
+    cleaned = []
+    for it in items:
+        if not isinstance(it, dict):
+            continue
+        name = (it.get("name") or "").strip()
+        if not name:
+            continue
+        ex = {"name": name,
+              "sets": _clamp_int(it.get("sets"), 1, 6, 3),
+              "reps": _clamp_int(it.get("reps"), 1, 30, 8)}
+        w = it.get("weight")
+        try:
+            if w is not None:
+                ex["weight"] = float(w)
+        except (TypeError, ValueError):
+            pass
+        rpe = it.get("rpe")
+        if rpe is not None:
+            ex["rpe"] = _clamp_int(rpe, 1, 10, 7)
+        cleaned.append(ex)
+    return cleaned
+
+
 def normalize_plan(raw) -> dict | None:
-    """Validiert/säubert LLM-JSON zu {lower:[...], upper:[...]}. None wenn ungültig."""
+    """Validiert LLM-JSON zu {lowerA,lowerB,upperA,upperB}. None wenn ungültig.
+    Pflicht: lowerA + upperA nicht-leer. Fehlt eine B-Variante → B = A."""
     if not isinstance(raw, dict):
         return None
-    out = {}
-    for slot in ("lower", "upper"):
-        items = raw.get(slot)
-        if not isinstance(items, list):
-            return None
-        cleaned = []
-        for it in items:
-            if not isinstance(it, dict):
-                continue
-            name = (it.get("name") or "").strip()
-            if not name:
-                continue
-            ex = {"name": name,
-                  "sets": _clamp_int(it.get("sets"), 1, 6, 3),
-                  "reps": _clamp_int(it.get("reps"), 1, 30, 8)}
-            w = it.get("weight")
-            try:
-                if w is not None:
-                    ex["weight"] = float(w)
-            except (TypeError, ValueError):
-                pass
-            rpe = it.get("rpe")
-            if rpe is not None:
-                ex["rpe"] = _clamp_int(rpe, 1, 10, 7)
-            cleaned.append(ex)
-        if not cleaned:
-            return None
-        out[slot] = cleaned
-    return out
+    lower_a = _clean_exercise_list(raw.get("lowerA"))
+    upper_a = _clean_exercise_list(raw.get("upperA"))
+    if not lower_a or not upper_a:
+        return None
+    lower_b = _clean_exercise_list(raw.get("lowerB")) or lower_a
+    upper_b = _clean_exercise_list(raw.get("upperB")) or upper_a
+    return {"lowerA": lower_a, "lowerB": lower_b, "upperA": upper_a, "upperB": upper_b}
+
+
+def pick_variant(slot_count: int) -> str:
+    """A bei gerader Anzahl bisheriger Slot-Sessions, sonst B (wechselt jede Runde)."""
+    return "A" if slot_count % 2 == 0 else "B"
 
 
 def needs_regen(plan: dict | None, today: date) -> bool:

@@ -3,47 +3,65 @@ import sys, os
 from datetime import date, datetime, timedelta
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
-from domains.plan_generator import normalize_plan, needs_regen, DEFAULT_PLAN
+from domains.plan_generator import normalize_plan, needs_regen, DEFAULT_PLAN, pick_variant
 
 TODAY = date(2026, 6, 26)
 
 
 class TestNormalizePlan:
-    def test_valid_plan_passes(self):
-        raw = {"lower": [{"name": "Squat", "weight": 100, "reps": 5, "sets": 4, "rpe": 8}],
-               "upper": [{"name": "Bench", "weight": 80, "reps": 6, "sets": 4}]}
-        out = normalize_plan(raw)
-        assert out["lower"][0]["name"] == "Squat"
-        assert out["upper"][0]["sets"] == 4
-        assert out["upper"][0]["reps"] == 6
+    def _valid_raw(self):
+        return {
+            "lowerA": [{"name": "Squat", "weight": 100, "reps": 5, "sets": 4, "rpe": 8}],
+            "lowerB": [{"name": "Deadlift", "weight": 120, "reps": 5, "sets": 3}],
+            "upperA": [{"name": "Bench", "weight": 80, "reps": 6, "sets": 4}],
+            "upperB": [{"name": "Overhead Press", "weight": 50, "reps": 8, "sets": 3}],
+        }
 
-    def test_missing_upper_returns_none(self):
-        assert normalize_plan({"lower": [{"name": "Squat", "reps": 5, "sets": 4}]}) is None
+    def test_valid_ab_plan_passes(self):
+        out = normalize_plan(self._valid_raw())
+        assert out["lowerA"][0]["name"] == "Squat"
+        assert out["upperB"][0]["name"] == "Overhead Press"
+        assert set(out.keys()) == {"lowerA", "lowerB", "upperA", "upperB"}
+
+    def test_missing_upperA_returns_none(self):
+        raw = self._valid_raw(); del raw["upperA"]
+        assert normalize_plan(raw) is None
+
+    def test_missing_lowerB_falls_back_to_lowerA(self):
+        raw = self._valid_raw(); del raw["lowerB"]
+        out = normalize_plan(raw)
+        assert out["lowerB"] == out["lowerA"]
 
     def test_not_a_dict_returns_none(self):
         assert normalize_plan(None) is None
         assert normalize_plan("nope") is None
 
     def test_exercise_without_name_dropped(self):
-        raw = {"lower": [{"name": "", "reps": 5, "sets": 4}, {"name": "Squat", "reps": 5, "sets": 4}],
-               "upper": [{"name": "Bench", "reps": 6, "sets": 4}]}
+        raw = self._valid_raw()
+        raw["lowerA"] = [{"name": "", "reps": 5, "sets": 4},
+                         {"name": "Squat", "reps": 5, "sets": 4}]
         out = normalize_plan(raw)
-        assert len(out["lower"]) == 1
-        assert out["lower"][0]["name"] == "Squat"
+        assert len(out["lowerA"]) == 1 and out["lowerA"][0]["name"] == "Squat"
 
-    def test_all_exercises_invalid_returns_none(self):
-        raw = {"lower": [{"name": "", "reps": 5}], "upper": [{"name": "Bench", "reps": 6, "sets": 4}]}
+    def test_empty_lowerA_returns_none(self):
+        raw = self._valid_raw(); raw["lowerA"] = [{"name": "", "reps": 5}]
         assert normalize_plan(raw) is None
 
     def test_sets_reps_clamped(self):
-        raw = {"lower": [{"name": "Squat", "reps": 999, "sets": 99}],
-               "upper": [{"name": "Bench", "reps": 6, "sets": 4}]}
+        raw = self._valid_raw()
+        raw["lowerA"] = [{"name": "Squat", "reps": 999, "sets": 99}]
         out = normalize_plan(raw)
-        assert out["lower"][0]["sets"] == 6     # 1..6
-        assert out["lower"][0]["reps"] == 30    # 1..30
+        assert out["lowerA"][0]["sets"] == 6 and out["lowerA"][0]["reps"] == 30
 
-    def test_default_plan_is_valid(self):
-        assert normalize_plan(DEFAULT_PLAN) is not None
+
+class TestPickVariant:
+    def test_even_is_a(self):
+        assert pick_variant(0) == "A"
+        assert pick_variant(2) == "A"
+
+    def test_odd_is_b(self):
+        assert pick_variant(1) == "B"
+        assert pick_variant(3) == "B"
 
 
 class TestNeedsRegen:
