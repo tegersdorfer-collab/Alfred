@@ -145,8 +145,16 @@ def update_workout(workout_id: int, title: str | None = None, notes: str | None 
 
 
 def delete_workout(workout_id: int) -> None:
+    w = db.query_one("SELECT date, type FROM workouts WHERE id=%s", (workout_id,))
     db.execute("DELETE FROM workout_sets WHERE workout_id=%s", (workout_id,))
     db.execute("DELETE FROM workouts WHERE id=%s", (workout_id,))
+    # Zugehöriges Zyklus-Event mit entfernen, sonst denkt der Zyklus, der Tag sei erledigt
+    if w and (w.get("type") or "").lower() in ("lower", "upper"):
+        db.execute(
+            """DELETE FROM training_cycle_events WHERE id = (
+                 SELECT id FROM training_cycle_events
+                 WHERE date=%s AND slot=%s AND kind='workout' ORDER BY id DESC LIMIT 1)""",
+            (w["date"], w["type"].lower()))
 
 
 def last_sets_for(exercise_name: str) -> list[dict]:
