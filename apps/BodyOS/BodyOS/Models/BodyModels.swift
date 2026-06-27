@@ -204,12 +204,24 @@ struct MealItem: Codable, Identifiable {
     let name: String?
     let description: String?
     let calories: Double?
+    let proteinG: Double?
+    let carbsG: Double?
+    let fatG: Double?
+    let createdAt: String?
+    let status: String?
+
+    var protein: Double? { proteinG }
+    var carbs: Double? { carbsG }
+    var fat: Double? { fatG }
+    var displayName: String { name ?? description ?? "Mahlzeit" }
+}
+
+struct UpdateMealRequest: Encodable {
+    let name: String
+    let calories: Double?
     let protein: Double?
     let carbs: Double?
     let fat: Double?
-    let createdAt: String?
-
-    var displayName: String { name ?? description ?? "Mahlzeit" }
 }
 
 struct NutritionGoals: Decodable {
