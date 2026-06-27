@@ -108,15 +108,17 @@ def build_prompt(profile: dict, last_exercises: list[str], muscle_volume: dict) 
         f"Übungen des letzten Blocks (VARIIERE, möglichst nicht wiederholen): {avoid}\n\n"
         "Erstelle JE ZWEI Varianten pro Krafttag (A und B), die sich klar unterscheiden — "
         "Timo wechselt jede Runde zwischen A und B für Abwechslung.\n"
-        "Regeln pro Tag:\n"
-        "- Reihenfolge: schwerer Haupt-Compound → zweiter Compound → Akzessorisch/Isolation → "
-        "bewusst vernachlässigte Muskeln.\n"
-        "- 5–7 Übungen pro Tag.\n"
+        "Regeln pro Tag-Variante:\n"
+        "- GENAU 6 Übungen. Jede der vier Listen (lowerA, lowerB, upperA, upperB) MUSS 6 Übungen haben.\n"
+        "- Reihenfolge: schwerer Haupt-Compound → zweiter Compound → 2–3 Akzessorisch/Isolation → "
+        "1 vernachlässigter Muskel.\n"
+        "- Nutze GÄNGIGE, KURZE Übungsnamen ohne Klammer-Zusätze oder Kommentare "
+        "(z.B. 'Beinpresse', 'Bankdrücken', 'Wadenheben', 'Nackenheben', 'Unterarm-Curl', 'Crunches').\n"
         "- Decke über UPPER-A und UPPER-B zusammen auch UNTERARME, NACKEN und HINTERE SCHULTER ab; "
         "über LOWER-A und LOWER-B zusammen auch WADEN und BAUCH/CORE.\n"
         "- Schemata passend zum Ziel (Hypertrophie: meist 3–4 Sätze × 6–12 Wdh, Hauptübung 4–6). "
         "Realistische Startgewichte in kg, passend zu Equipment und Erfahrung.\n\n"
-        "Antworte AUSSCHLIESSLICH mit JSON in genau diesem Schema:\n"
+        "Antworte AUSSCHLIESSLICH mit JSON in genau diesem Schema (jede Liste 6 Einträge):\n"
         '{"lowerA":[{"name":"...","weight":100,"reps":5,"sets":4,"rpe":8}],'
         '"lowerB":[...],"upperA":[...],"upperB":[...]}'
     )

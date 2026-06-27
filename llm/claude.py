@@ -18,9 +18,16 @@ class ClaudeProvider(LLMProvider):
     def model_name(self) -> str:
         return self._model
 
-    def _to_anthropic(self, messages: list[Message]) -> list[dict]:
-        return [{"role": m.role, "content": m.content} for m in messages
-                if m.role in ("user", "assistant")]
+    def _to_anthropic(self, messages: list) -> list[dict]:
+        """Akzeptiert sowohl Message-Objekte als auch dict-Nachrichten
+        ({"role":..., "content":...}) — Caller im Code nutzen beide Formen."""
+        out = []
+        for m in messages:
+            role = m["role"] if isinstance(m, dict) else m.role
+            content = m["content"] if isinstance(m, dict) else m.content
+            if role in ("user", "assistant"):
+                out.append({"role": role, "content": content})
+        return out
 
     async def chat(
         self,
