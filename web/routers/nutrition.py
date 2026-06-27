@@ -62,6 +62,48 @@ def _sum_food_items(data: dict) -> dict:
     return out
 
 
+_BG_TASKS: set = set()
+
+
+async def _run_analysis(meal_id: int, image_bytes: bytes, annotation: str) -> None:
+    """Hintergrund: Vision-Modell laufen lassen und die Pending-Mahlzeit füllen."""
+    import base64 as _b64
+    try:
+        import ollama as _ollama
+        b64 = _b64.standard_b64encode(image_bytes).decode()
+        _client = _ollama.AsyncClient(host=config.OLLAMA_BASE_URL)
+        vision_model = getattr(config, "VISION_MODEL", "qwen3-vl:8b")
+        prompt = (
+            "Du bist ein Ernährungsexperte. Schätze die Nährwerte dieses Essens/Getränks "
+            "so genau wie möglich.\n"
+            + (f"Zusatzinfo vom Nutzer: {annotation}.\n" if annotation else "")
+            + "Gehe so vor:\n"
+            "1. Zerlege das Gericht in seine einzelnen Komponenten (z.B. Reis, Hähnchen, Soße).\n"
+            "2. Schätze für JEDE Komponente das Gewicht in Gramm — nutze Teller, Besteck oder "
+            "Hand als Größenreferenz. Lieber realistisch großzügig als zu klein.\n"
+            "3. Berechne pro Komponente kcal/Protein/Kohlenhydrate/Fett anhand üblicher Nährwerte.\n"
+            "Antworte NUR mit JSON (kein Text davor/danach), Einheiten kcal und Gramm:\n"
+            '{"items":[{"name":"...","grams":0,"calories":0,"protein":0,"carbs":0,"fat":0}],'
+            '"food_name":"Gesamtgericht","portion":"z.B. 1 großer Teller","confidence":0.0}'
+        )
+        resp = await _client.chat(
+            model=vision_model,
+            messages=[{"role": "user", "content": prompt, "images": [b64]}],
+            options={"num_predict": 600, "temperature": 0.2, "num_ctx": 8192},
+            keep_alive=0, format="json")
+        data = _sum_food_items(extract_json((resp.message.content or "").strip(), default={}))
+        if not data or not data.get("calories"):
+            nutrition.fail_meal(meal_id)
+            return
+        name = annotation or data.get("food_name") or "Mahlzeit"
+        nutrition.complete_meal(meal_id, name, data.get("calories"), data.get("protein"),
+                                data.get("carbs"), data.get("fat"))
+        log.info(f"Async-Foto-Analyse fertig (meal {meal_id})")
+    except Exception:
+        log.exception("Async-Foto-Analyse fehlgeschlagen")
+        nutrition.fail_meal(meal_id)
+
+
 def build_router(orch=None) -> APIRouter:
     router = APIRouter()
 
@@ -72,53 +114,21 @@ def build_router(orch=None) -> APIRouter:
 
     @router.post("/api/nutrition/analyze-photo")
     async def analyze_food_photo(req: Request):
-        """
-        Empfängt multipart/form-data mit 'image' (JPEG) und optionalem 'text'.
-        Schickt Bild an lokales Vision-Modell → gibt Makro-Schätzung zurück.
-        """
-        import base64 as _b64
-        import re as _re
+        """Legt sofort eine Pending-Mahlzeit an und analysiert im Hintergrund."""
         try:
             form = await req.form()
             image_file = form.get("image")
-            annotation = form.get("text") or ""
+            annotation = (form.get("text") or "").strip()
             if not image_file:
                 return JSONResponse({"error": "kein Bild"}, 400)
             image_bytes = await image_file.read()
         except Exception as e:
             return JSONResponse({"error": f"Upload-Fehler: {e}"}, 400)
-
-        try:
-            import ollama as _ollama
-            b64 = _b64.standard_b64encode(image_bytes).decode()
-            _client = _ollama.AsyncClient(host=config.OLLAMA_BASE_URL)
-            vision_model = getattr(config, "VISION_MODEL", "qwen3-vl:8b")
-            prompt = (
-                "Du bist ein Ernährungsexperte. Schätze die Nährwerte dieses Essens/Getränks "
-                "so genau wie möglich.\n"
-                + (f"Zusatzinfo vom Nutzer: {annotation}.\n" if annotation else "")
-                + "Gehe so vor:\n"
-                "1. Zerlege das Gericht in seine einzelnen Komponenten (z.B. Reis, Hähnchen, Soße).\n"
-                "2. Schätze für JEDE Komponente das Gewicht in Gramm — nutze Teller, Besteck oder "
-                "Hand als Größenreferenz. Lieber realistisch großzügig als zu klein.\n"
-                "3. Berechne pro Komponente kcal/Protein/Kohlenhydrate/Fett anhand üblicher Nährwerte.\n"
-                "Antworte NUR mit JSON (kein Text davor/danach), Einheiten kcal und Gramm:\n"
-                '{"items":[{"name":"...","grams":0,"calories":0,"protein":0,"carbs":0,"fat":0}],'
-                '"food_name":"Gesamtgericht","portion":"z.B. 1 großer Teller","confidence":0.0}'
-            )
-            resp = await _client.chat(
-                model=vision_model,
-                messages=[{"role": "user", "content": prompt, "images": [b64]}],
-                options={"num_predict": 600, "temperature": 0.2, "num_ctx": 8192},
-                keep_alive=0,
-                format="json",
-            )
-            raw = (resp.message.content or "").strip()
-            data = extract_json(raw, default={})
-            return {"ok": True, "result": _sum_food_items(data)}
-        except Exception as e:
-            log.error(f"Vision-Analyse fehlgeschlagen: {e}")
-            return JSONResponse({"ok": False, "error": str(e)}, 500)
+        mid = nutrition.create_pending_meal(annotation)
+        task = asyncio.create_task(_run_analysis(mid, image_bytes, annotation))
+        _BG_TASKS.add(task)
+        task.add_done_callback(_BG_TASKS.discard)
+        return {"ok": True, "meal_id": mid, "status": "analyzing"}
 
     @router.post("/api/nutrition/log-meal")
     async def log_meal_from_app(req: Request):
@@ -145,6 +155,13 @@ def build_router(orch=None) -> APIRouter:
                                  calories=d.get("calories"), protein_g=d.get("protein_g"),
                                  carbs_g=d.get("carbs_g"), fat_g=d.get("fat_g"))
         return {"id": mid}
+
+    @router.put("/api/nutrition/{mid}")
+    async def nutrition_update(mid: int, req: Request):
+        d = await req.json()
+        nutrition.update_meal(mid, d.get("name"), d.get("calories"), d.get("protein"),
+                              d.get("carbs"), d.get("fat"))
+        return {"ok": True}
 
     @router.get("/api/nutrition/goals")
     def nutrition_goals():

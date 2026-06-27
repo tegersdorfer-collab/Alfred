@@ -202,6 +202,8 @@ class Orchestrator:
             self.lzg.setup()
             self._reminders.setup()
             db.run_migrations()
+            # Verwaiste Foto-Analysen (Server während Hintergrund-Task neu gestartet) abräumen
+            db.execute("UPDATE meals SET status='failed' WHERE status='analyzing'")
             log.info("Datenbank bereit")
         except Exception as e:
             log.error(f"DB-Fehler: {e}")
