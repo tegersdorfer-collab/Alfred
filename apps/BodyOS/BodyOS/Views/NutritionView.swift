@@ -1,6 +1,18 @@
 import SwiftUI
 import UIKit
 
+extension UIImage {
+    /// Skaliert das Bild so, dass die längste Kante maxDimension nicht überschreitet.
+    func downscaled(maxDimension: CGFloat) -> UIImage {
+        let longest = max(size.width, size.height)
+        guard longest > maxDimension else { return self }
+        let scale = maxDimension / longest
+        let newSize = CGSize(width: size.width * scale, height: size.height * scale)
+        let renderer = UIGraphicsImageRenderer(size: newSize)
+        return renderer.image { _ in draw(in: CGRect(origin: .zero, size: newSize)) }
+    }
+}
+
 @MainActor
 final class NutritionViewModel: ObservableObject {
     @Published var nutrition: TodayNutritionResponse?
@@ -47,7 +59,8 @@ final class NutritionViewModel: ObservableObject {
 
     /// Lädt das aufgenommene Foto hoch (mit Notiz) — kehrt sofort zurück, Analyse läuft im Hintergrund.
     func analyzeCaptured() async {
-        guard let img = capturedImage, let jpeg = img.jpegData(compressionQuality: 0.8) else { return }
+        guard let img = capturedImage,
+              let jpeg = img.downscaled(maxDimension: 1024).jpegData(compressionQuality: 0.7) else { return }
         let note = photoNote
         capturedImage = nil; photoNote = ""
         try? await NutritionAPI.shared.analyzePhoto(imageData: jpeg, annotation: note.isEmpty ? nil : note)
@@ -100,7 +113,10 @@ struct NutritionView: View {
             .task { await vm.load(); vm.startPolling() }
             .refreshable { await vm.load() }
             .sheet(isPresented: $vm.showCamera, onDismiss: {
-                if vm.capturedImage != nil { vm.showDescription = true }
+                // Kurze Verzögerung, sonst schluckt SwiftUI das zweite Sheet (Race beim Dismiss)
+                if vm.capturedImage != nil {
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { vm.showDescription = true }
+                }
             }) {
                 ImagePicker(image: $vm.capturedImage, sourceType: vm.pickerSource).ignoresSafeArea()
             }
@@ -228,10 +244,9 @@ struct NutritionView: View {
                 ProgressView().frame(maxWidth: .infinity).padding()
             } else if let meals = vm.nutrition?.meals, !meals.isEmpty {
                 ForEach(meals) { meal in
-                    MealRowView(meal: meal) {
-                        Task { await vm.deleteMeal(id: meal.id) }
-                    }
-                    .onTapGesture { if meal.status != "analyzing" { vm.editingMeal = meal } }
+                    MealRowView(meal: meal,
+                        onEdit: { if meal.status != "analyzing" { vm.editingMeal = meal } },
+                        onDelete: { Task { await vm.deleteMeal(id: meal.id) } })
                 }
             } else {
                 ContentUnavailableView(
@@ -247,40 +262,56 @@ struct NutritionView: View {
 
 struct MealRowView: View {
     let meal: MealItem
+    let onEdit: () -> Void
     let onDelete: () -> Void
+
+    private var barColor: Color {
+        meal.status == "failed" ? .red : (meal.status == "analyzing" ? .orange : .green)
+    }
 
     var body: some View {
         HStack(spacing: 12) {
-            RoundedRectangle(cornerRadius: 3).fill(Color.green).frame(width: 4)
-            VStack(alignment: .leading, spacing: 4) {
-                Text(meal.displayName).font(.subheadline.bold())
-                if meal.status == "analyzing" {
-                    HStack(spacing: 6) {
-                        ProgressView().controlSize(.small)
-                        Text("wird analysiert…").font(.caption).foregroundStyle(.secondary)
+            Button(action: onEdit) {
+                HStack(spacing: 12) {
+                    RoundedRectangle(cornerRadius: 3).fill(barColor).frame(width: 4)
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(meal.displayName).font(.subheadline.bold()).foregroundStyle(.primary)
+                        detail
                     }
-                } else if meal.status == "failed" {
-                    Text("Analyse fehlgeschlagen — tippen zum Eintragen")
-                        .font(.caption).foregroundStyle(.red)
-                } else {
-                    HStack(spacing: 12) {
-                        if let kcal = meal.calories {
-                            Text(String(format: "%.0f kcal", kcal)).font(.caption).foregroundStyle(.secondary)
-                        }
-                        if let p = meal.protein { macroTag(String(format: "%.0fg P", p), .blue) }
-                        if let c = meal.carbs   { macroTag(String(format: "%.0fg C", c), .orange) }
-                        if let f = meal.fat     { macroTag(String(format: "%.0fg F", f), .yellow) }
-                    }
+                    Spacer()
                 }
             }
-            Spacer()
+            .buttonStyle(.plain)
+            Button(action: onDelete) {
+                Image(systemName: "trash").foregroundStyle(.secondary).padding(.leading, 4)
+            }
+            .buttonStyle(.borderless)
         }
         .padding(12)
         .background(Color(.secondarySystemBackground))
         .clipShape(RoundedRectangle(cornerRadius: 12))
         .padding(.horizontal)
-        .swipeActions(edge: .trailing) {
-            Button(role: .destructive, action: onDelete) { Label("Löschen", systemImage: "trash") }
+    }
+
+    @ViewBuilder
+    private var detail: some View {
+        if meal.status == "analyzing" {
+            HStack(spacing: 6) {
+                ProgressView().controlSize(.small)
+                Text("wird analysiert…").font(.caption).foregroundStyle(.secondary)
+            }
+        } else if meal.status == "failed" {
+            Text("Analyse fehlgeschlagen — tippen zum Eintragen")
+                .font(.caption).foregroundStyle(.red)
+        } else {
+            HStack(spacing: 12) {
+                if let kcal = meal.calories {
+                    Text(String(format: "%.0f kcal", kcal)).font(.caption).foregroundStyle(.secondary)
+                }
+                if let p = meal.protein { macroTag(String(format: "%.0fg P", p), .blue) }
+                if let c = meal.carbs   { macroTag(String(format: "%.0fg C", c), .orange) }
+                if let f = meal.fat     { macroTag(String(format: "%.0fg F", f), .yellow) }
+            }
         }
     }
 
