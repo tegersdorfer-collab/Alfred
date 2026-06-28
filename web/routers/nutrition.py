@@ -86,11 +86,13 @@ async def _run_analysis(meal_id: int, image_bytes: bytes, annotation: str) -> No
             '{"items":[{"name":"...","grams":0,"calories":0,"protein":0,"carbs":0,"fat":0}],'
             '"food_name":"Gesamtgericht","portion":"z.B. 1 großer Teller","confidence":0.0}'
         )
+        # KEIN format="json" — das lässt qwen3-vl:8b leer antworten; der Prompt erzwingt JSON,
+        # extract_json holt es robust raus.
         resp = await _client.chat(
             model=vision_model,
             messages=[{"role": "user", "content": prompt, "images": [b64]}],
             options={"num_predict": 600, "temperature": 0.2, "num_ctx": 8192},
-            keep_alive=0, format="json")
+            keep_alive=0)
         data = _sum_food_items(extract_json((resp.message.content or "").strip(), default={}))
         if not data or not data.get("calories"):
             nutrition.fail_meal(meal_id)
