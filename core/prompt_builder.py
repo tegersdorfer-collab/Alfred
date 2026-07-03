@@ -96,8 +96,7 @@ class PromptBuilder:
                 embedding = None
             return await asyncio.to_thread(self.memory_context, user_text, embedding)
 
-        (mem_ctx, dash_ctx, task_ctx,
-         kg_ctx, dir_ctx, warm_profile, skill_ctx) = await asyncio.gather(
+        results = await asyncio.gather(
             _embed_and_mem(),
             asyncio.to_thread(self._dashboard_ctx),
             asyncio.to_thread(self._task_ctx),
@@ -105,7 +104,20 @@ class PromptBuilder:
             asyncio.to_thread(self.kg.format_directives),
             asyncio.to_thread(self.kg.warm_profile),
             asyncio.to_thread(lambda: skill_md.build_skill_context(user_text)),
+            return_exceptions=True,
         )
+        # Ein kaputter Kontext-Baustein darf niemals den ganzen Turn killen —
+        # degradierter Prompt statt toter Chat.
+        labels = ("memory", "dashboard", "tasks", "kg", "directives", "warm_profile", "skills")
+        clean = []
+        for label, r in zip(labels, results):
+            if isinstance(r, BaseException):
+                log.warning(f"Prompt-Kontext '{label}' fehlgeschlagen: {r}")
+                clean.append("")
+            else:
+                clean.append(r)
+        (mem_ctx, dash_ctx, task_ctx, kg_ctx, dir_ctx, warm_profile, skill_ctx) = clean
+        mem_ctx = mem_ctx or "—"
 
         behavior = self.reflection.behavior_notes()
         now = datetime.now()

@@ -62,29 +62,32 @@ def cursor(dict_rows: bool = True, vector: bool = False):
 
 
 # ── Sync-Helfer ──────────────────────────────────────────────────────────────
+# `params or None`: psycopg2 macht Platzhalter-Substitution nur wenn vars nicht
+# None ist. Ein leeres Tuple würde literale %-Zeichen im SQL (z.B. ILIKE 'x%')
+# als kaputten Platzhalter interpretieren → IndexError.
 
 def query(sql: str, params: tuple = ()) -> list[dict]:
     with cursor() as cur:
-        cur.execute(sql, params)
+        cur.execute(sql, params or None)
         return [dict(r) for r in cur.fetchall()]
 
 
 def query_one(sql: str, params: tuple = ()) -> dict | None:
     with cursor() as cur:
-        cur.execute(sql, params)
+        cur.execute(sql, params or None)
         row = cur.fetchone()
         return dict(row) if row else None
 
 
 def execute(sql: str, params: tuple = ()) -> int:
     with cursor() as cur:
-        cur.execute(sql, params)
+        cur.execute(sql, params or None)
         return cur.rowcount
 
 
 def insert_returning(sql: str, params: tuple = ()):
     with cursor() as cur:
-        cur.execute(sql, params)
+        cur.execute(sql, params or None)
         row = cur.fetchone()
         if row is None:
             return None

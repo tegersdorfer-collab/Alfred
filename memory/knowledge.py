@@ -286,11 +286,12 @@ class KnowledgeGraph:
             LEFT JOIN kg_relations r ON r.subject_id = e.id
             LEFT JOIN kg_entities o ON r.object_id = o.id
             WHERE e.type IN ('person','goal','habit','concept')
-              AND e.name ILIKE 'timo%'
+              AND e.name ILIKE %s
             GROUP BY e.id
             ORDER BY e.updated_at DESC
             LIMIT 20
-            """
+            """,
+            ("timo%",),
         )
         if not rows:
             self._profile_cache = ""
