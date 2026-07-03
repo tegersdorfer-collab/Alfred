@@ -55,7 +55,7 @@ EVAL_CASES: list[EvalCase] = [
     EvalCase(
         name="task_create_on_request",
         prompt="Erinnere mich heute Abend um 19 Uhr an mein Meeting",
-        must_call_tool=["create_reminder", "create_task"],
+        must_call_tool=["set_reminder", "create_task"],
         description="Direkte Aktionsanfragen müssen in Tool-Calls resultieren",
     ),
     EvalCase(
