@@ -31,7 +31,12 @@ STYLE = (
     "keine Entschuldigungen, kein Meta-Kommentar über dich selbst. "
     "Schreibe konkret, freundlich und direkt. Gib NUR die Nachricht aus — "
     "keine Anführungszeichen, keine Überschrift, kein einleitendes 'Hier ist'. "
-    "Erfinde nichts dazu; wenn Daten fehlen, lass es weg."
+    "Erfinde nichts dazu; wenn Daten fehlen, lass es weg. "
+    "Formuliere Empfehlungen (Trainingsintensität, Tagesfokus, Pausentage) IMMER als Vorschlag "
+    "('könnte heute...', 'würde sich anbieten...'), NIEMALS als bereits getroffene Entscheidung "
+    "('heute ist Fokus auf...', 'wir machen einen ruhigen Tag'). Timo entscheidet, nicht du. "
+    "Wenn eine Gewohnheit heute noch keinen Eintrag hat, heißt das 'noch nicht eingetragen', "
+    "nicht 'nicht gemacht' — das weißt du nicht sicher, also unterstelle es nicht."
 )
 
 # Mindestlänge an echtem Text (ohne Emoji/Whitespace), damit eine Nachricht
@@ -453,7 +458,8 @@ class Autopilot:
             f"{self.identity}\n\n"
             "Erstelle ein kurzes, energetisches Morgen-Briefing für Timo auf Deutsch. "
             "Max 5-6 Zeilen. Konkret, motivierend, kein Smalltalk. "
-            "Beginne mit 'Guten Morgen'. Hebe das Wichtigste hervor und gib einen klaren Fokus für den Tag. "
+            "Beginne mit 'Guten Morgen'. Hebe das Wichtigste hervor und schlage EINEN möglichen "
+            "Fokus für den Tag vor — als Idee, nicht als Ansage, Timo entscheidet selbst. "
             "Schreibe jeden Punkt nur EINMAL. Keine Wiederholungen, keine Selbstkorrekturen.\n\n"
             f"Daten von heute:\n{facts}\n\nBriefing:"
         )
@@ -737,7 +743,7 @@ class Autopilot:
             )
             if stale_habits:
                 names = ", ".join(h["name"] for h in stale_habits)
-                msgs.append(f"🔁 Habits seit 3+ Tagen nicht gemacht: {names}")
+                msgs.append(f"🔁 Seit 3+ Tagen kein Eintrag bei: {names} — nachgetragen oder pausiert?")
         except Exception:
             pass
 
