@@ -186,6 +186,12 @@ def build_router(orch=None) -> APIRouter:
     async def api_weather():
         return await weather.get_weather()
 
+    @router.get("/api/usage")
+    def api_usage(days: int = 30):
+        """Token-Verbrauch + API-Kosten (Tages-Aggregate, pro Modell, Summen)."""
+        from core import llm_usage
+        return llm_usage.summary(max(1, min(days, 365)))
+
     @router.get("/api/errors/today")
     def errors_today():
         rows = db.query(

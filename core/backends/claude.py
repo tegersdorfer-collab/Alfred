@@ -154,10 +154,12 @@ class ClaudeBackend(AgentBackend):
                     except Exception:
                         pass
             final = await stream.get_final_message()
+            self._record_usage(final)
             tool_calls = _extract_tool_calls(final)
             return _extract_text(final) or collected, tool_calls
 
         response = await self._client.messages.create(**kwargs)
+        self._record_usage(response)
         tool_calls = _extract_tool_calls(response)
 
         # Tool-Result-Messages brauchen tool_use_id → rückwärts befüllen
@@ -166,6 +168,18 @@ class ClaudeBackend(AgentBackend):
             tc["tool_use_id"] = tc["id"]
 
         return _extract_text(response), tool_calls
+
+    def _record_usage(self, response) -> None:
+        try:
+            from core import llm_usage
+            u = getattr(response, "usage", None)
+            if u:
+                llm_usage.record("claude", self._model,
+                                 getattr(u, "input_tokens", 0) or 0,
+                                 getattr(u, "output_tokens", 0) or 0,
+                                 purpose="chat-agent")
+        except Exception:
+            pass
 
     async def warmup(self) -> None:
         log.info(f"☁️  Claude-Backend bereit ({self._model})")

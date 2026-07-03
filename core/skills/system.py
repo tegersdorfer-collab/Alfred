@@ -102,6 +102,29 @@ async def _list_dynamic_skills():
     names = list_dynamic_skills()
     return "\n".join(names) if names else "Noch keine selbst erstellten Skills."
 
+@T.register("api_costs",
+    "Zeigt Token-Verbrauch und API-Kosten deiner LLM-Calls (Claude API kostet Geld, "
+    "lokale Ollama-Modelle sind kostenlos). Nutze dies wenn Timo nach API-Kosten, "
+    "Token-Verbrauch oder LLM-Ausgaben fragt.",
+    {"days": {"type": "integer", "description": "Zeitraum in Tagen (Standard 30)"}},
+    [], "system")
+async def _api_costs(days: int = 30):
+    import asyncio as _asyncio
+    from core import llm_usage
+    s = await _asyncio.to_thread(llm_usage.summary, max(1, min(int(days or 30), 365)))
+    t = s["totals"]
+    lines = [f"API-Kosten: heute ${t['today']:.2f} · 7 Tage ${t['week']:.2f} · 30 Tage ${t['month']:.2f}"]
+    for m in s["by_model"][:8]:
+        cost = f"${m['cost_usd']:.2f}" if m["cost_usd"] else "kostenlos (lokal)"
+        lines.append(
+            f"- {m['model']}: {m['calls']} Calls, "
+            f"{(m['input_tokens'] or 0) // 1000}k in / {(m['output_tokens'] or 0) // 1000}k out → {cost}"
+        )
+    if len(lines) == 1:
+        lines.append("Noch keine Usage-Daten erfasst.")
+    return "\n".join(lines)
+
+
 @T.register("claude_code_run",
     "Startet eine Claude Code Aufgabe im Hintergrund (z.B. 'Baue Feature X', "
     "'Schreibe Tests für Y', 'Refactor Z'). Alfred spawnt einen claude-Subprocess, "

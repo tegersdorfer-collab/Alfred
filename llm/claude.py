@@ -48,7 +48,20 @@ class ClaudeProvider(LLMProvider):
             sys_extra = "\n\nAntworte ausschließlich mit validem JSON, ohne Text drumherum."
             kwargs["system"] = (kwargs.get("system", "") + sys_extra).strip()
         response = await self._client.messages.create(**kwargs)
+        self._record_usage(response)
         return response.content[0].text
+
+    def _record_usage(self, response) -> None:
+        try:
+            from core import llm_usage
+            u = getattr(response, "usage", None)
+            if u:
+                llm_usage.record("claude", self._model,
+                                 getattr(u, "input_tokens", 0) or 0,
+                                 getattr(u, "output_tokens", 0) or 0,
+                                 purpose="background")
+        except Exception:
+            pass
 
     async def stream(
         self,
@@ -67,6 +80,10 @@ class ClaudeProvider(LLMProvider):
         async with self._client.messages.stream(**kwargs) as stream:
             async for text in stream.text_stream:
                 yield text
+            try:
+                self._record_usage(await stream.get_final_message())
+            except Exception:
+                pass
 
     async def embed(self, text: str) -> list[float]:
         # Claude hat kein Embedding-API → Fehler werfen damit Caller

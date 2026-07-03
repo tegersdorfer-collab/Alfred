@@ -494,6 +494,21 @@ MIGRATIONS = [
     "ALTER TABLE workout_sets ADD COLUMN IF NOT EXISTS is_warmup BOOLEAN DEFAULT FALSE;",
     "ALTER TABLE workout_sets ADD COLUMN IF NOT EXISTS is_failure BOOLEAN DEFAULT FALSE;",
     "ALTER TABLE meals ADD COLUMN IF NOT EXISTS status TEXT DEFAULT 'done';",
+
+    # LLM-Usage-Tracking (Token-Verbrauch + API-Kosten pro Call)
+    """
+    CREATE TABLE IF NOT EXISTS llm_usage (
+        id            SERIAL PRIMARY KEY,
+        provider      TEXT NOT NULL,           -- claude | ollama
+        model         TEXT NOT NULL,
+        purpose       TEXT DEFAULT 'chat',     -- chat-agent | background
+        input_tokens  INT DEFAULT 0,
+        output_tokens INT DEFAULT 0,
+        cost_usd      NUMERIC(10,6) DEFAULT 0,
+        created_at    TIMESTAMPTZ DEFAULT NOW()
+    );
+    """,
+    "CREATE INDEX IF NOT EXISTS llm_usage_created_idx ON llm_usage (created_at DESC);",
 ]
 
 

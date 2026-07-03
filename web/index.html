@@ -1800,7 +1800,9 @@ VIEWS.analytics=async(root)=>{
       <div class="c" style="padding:14px;margin-top:10px"><div style="font-size:11px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:var(--t3);margin-bottom:8px">Schlaf & HRV 30T</div><div style="position:relative;height:140px"><canvas id="aHealth"></canvas></div></div>
       <div class="c" style="padding:14px;margin-top:10px"><div style="font-size:11px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:var(--t3);margin-bottom:8px">Schritte 30T</div><div style="position:relative;height:140px"><canvas id="aSteps"></canvas></div></div>
     </div>
-    <div class="c" style="padding:14px;margin-top:10px"><div style="font-size:11px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:var(--t3);margin-bottom:8px">Habits Konsistenz 30T</div><div id="aHabits"></div></div>`;
+    <div class="c" style="padding:14px;margin-top:10px"><div style="font-size:11px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:var(--t3);margin-bottom:8px">Habits Konsistenz 30T</div><div id="aHabits"></div></div>
+    <div class="c" style="padding:14px;margin-top:10px"><div style="font-size:11px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:var(--t3);margin-bottom:8px">API-Kosten (LLM)</div><div id="aUsage">Lädt…</div></div>`;
+  loadUsage();
   const a=await api('/api/analytics');const h=[...(a.health||[])].reverse();
   lineChart('aHealth',h.map(x=>x.date?.slice(5)),[{label:'Schlaf',data:h.map(x=>x.sleep),color:'#d97706'},{label:'HRV',data:h.map(x=>x.hrv),color:'#22c55e',y1:true}]);
   barChart('aSteps',h.map(x=>x.date?.slice(5)),h.map(x=>x.steps));
@@ -1808,6 +1810,18 @@ VIEWS.analytics=async(root)=>{
   loadReview('week');
 };
 
+async function loadUsage(){
+  const el=$('#aUsage');if(!el)return;
+  try{
+    const u=await api('/api/usage?days=30');const t=u.totals||{};
+    const fmt=v=>'$'+(v||0).toFixed(2);
+    el.innerHTML=`<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:8px">
+      <div><div style="font-size:10px;color:var(--t3);text-transform:uppercase">Heute</div><b>${fmt(t.today)}</b></div>
+      <div><div style="font-size:10px;color:var(--t3);text-transform:uppercase">7 Tage</div><b>${fmt(t.week)}</b></div>
+      <div><div style="font-size:10px;color:var(--t3);text-transform:uppercase">30 Tage</div><b>${fmt(t.month)}</b></div>
+    </div>`+((u.by_model||[]).map(m=>`<div style="display:flex;justify-content:space-between;font-size:12px;padding:3px 0;border-top:1px solid var(--bd)"><span style="color:var(--t2)">${esc(m.model)}</span><span>${Math.round((m.input_tokens||0)/1000)}k→${Math.round((m.output_tokens||0)/1000)}k · <b>${m.cost_usd?fmt(m.cost_usd):'lokal'}</b></span></div>`).join('')||'<span style="color:var(--t3);font-size:13px">Noch keine Daten.</span>');
+  }catch(e){el.innerHTML='<span style="color:var(--t3);font-size:13px">Noch keine Daten.</span>'}
+}
 function _trend(cur,prev){
   if(cur==null)return '<span style="color:var(--t3)">–</span>';
   if(prev==null||prev===0)return `<b>${cur}</b>`;

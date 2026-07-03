@@ -43,11 +43,15 @@ class Agent:
         allowed_tools: list[str] | None = None,
         force_tools: bool = False,
         think: bool = False,
+        dry_run_tools: bool = False,
     ) -> tuple[str, list[dict]]:
         """
         Führt den ReAct-Loop aus.
         Gibt (finale_antwort, tool_trace) zurück.
         tool_trace = [{"tool": name, "args": {...}, "result": "..."}]
+
+        dry_run_tools: Tool-Calls werden aufgezeichnet aber NICHT ausgeführt
+        (für die Eval-Suite — kein Test-Müll in der Produktions-DB).
         """
         norm: list[dict] = []
         for m in messages:
@@ -146,9 +150,13 @@ class Agent:
                     except Exception:
                         args = {}
                 BUS.emit("tool", f"🔧 {name}", detail=_short(args) or None)
-                result = await toolreg.execute(name, args)
+                if dry_run_tools:
+                    result = f"[Eval-Dry-Run] Tool '{name}' würde ausgeführt (Argumente akzeptiert)."
+                else:
+                    result = await toolreg.execute(name, args)
                 trace.append({"tool": name, "args": args, "result": result[:500]})
-                log_event("tool", f"{name}({_short(args)})", {"result": result[:300]})
+                if not dry_run_tools:
+                    log_event("tool", f"{name}({_short(args)})", {"result": result[:300]})
                 msgs.append({
                     "role": "tool",
                     "content": result,

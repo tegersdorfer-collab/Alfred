@@ -84,6 +84,14 @@ class OllamaProvider(LLMProvider):
             kwargs["format"] = format
         async with GATE:
             response = await self._client.chat(**kwargs)
+        try:
+            from core import llm_usage
+            llm_usage.record("ollama", self._model,
+                             getattr(response, "prompt_eval_count", 0) or 0,
+                             getattr(response, "eval_count", 0) or 0,
+                             purpose="background")
+        except Exception:
+            pass
         return response.message.content
 
     async def stream(

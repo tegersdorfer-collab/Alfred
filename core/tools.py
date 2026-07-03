@@ -126,6 +126,8 @@ _CATEGORY_KEYWORDS = {
                      "wissen", "ressource", "daily note", "tageslog"],
     "memory":       ["merk dir", "merke", "behalte", "vergiss nicht", "erinnere dich"],
     "health":       ["schlaf", "schritte", "hrv", "puls", "gewicht", "gesundheit"],
+    "system":       ["api-kosten", "api kosten", "api-ausgaben", "token", "llm-kosten",
+                     "was kostest du", "deine kosten", "claude-kosten"],
 }
 
 # Generelle Aktionsverben → es soll etwas GETAN werden

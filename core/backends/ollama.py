@@ -62,8 +62,10 @@ class OllamaBackend(AgentBackend):
             parts: list[str] = []
             tool_calls: list[dict] = []
             last_len = 0
+            last_chunk = None
             async with GATE:
                 async for chunk in await self._client.chat(**kwargs, stream=True):
+                    last_chunk = chunk
                     m = chunk.message
                     if m.content:
                         parts.append(m.content)
@@ -77,6 +79,7 @@ class OllamaBackend(AgentBackend):
                     calls = self._extract_tool_calls(m)
                     if calls:
                         tool_calls.extend(calls)
+            self._record_usage(last_chunk)
             full = "".join(parts)
             if full and not tool_calls:
                 try:
@@ -87,7 +90,19 @@ class OllamaBackend(AgentBackend):
 
         async with GATE:
             resp = await self._client.chat(**kwargs)
+        self._record_usage(resp)
         return resp.message.content or "", self._extract_tool_calls(resp.message)
+
+    def _record_usage(self, resp) -> None:
+        try:
+            from core import llm_usage
+            if resp is not None:
+                llm_usage.record("ollama", self._model,
+                                 getattr(resp, "prompt_eval_count", 0) or 0,
+                                 getattr(resp, "eval_count", 0) or 0,
+                                 purpose="chat-agent")
+        except Exception:
+            pass
 
     async def warmup(self) -> None:
         try:

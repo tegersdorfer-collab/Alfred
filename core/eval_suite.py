@@ -4,16 +4,18 @@ core/eval_suite.py
 Eval-Suite: Benannte Test-Cases für Alfred-Verhalten.
 Läuft via `python -m core.eval_suite` oder API-Endpoint.
 
-Jeder Test schickt eine Nachricht an den Orchestrator (simuliert)
-und prüft ob die Antwort ein Muster erfüllt.
+Jeder Case läuft durch den ECHTEN Agent-Loop (System-Prompt aus prompt_builder,
+Tool-Auswahl wie im MessageHandler) — aber mit Dry-Run-Tools: Tool-Calls werden
+aufgezeichnet, nicht ausgeführt. So bleibt die Produktions-DB sauber und
+`must_call_tool` prüft echtes Agent-Verhalten.
 """
 import asyncio
 import logging
-import re
 from dataclasses import dataclass, field
-from datetime import datetime
 
 log = logging.getLogger(__name__)
+
+CASE_TIMEOUT_S = 90
 
 
 @dataclass
@@ -22,7 +24,7 @@ class EvalCase:
     prompt: str
     must_contain: list[str] = field(default_factory=list)    # Antwort muss diese Strings enthalten
     must_not_contain: list[str] = field(default_factory=list)  # Antwort darf diese NICHT enthalten
-    must_call_tool: list[str] = field(default_factory=list)  # Tools die aufgerufen werden müssen
+    must_call_tool: list[str] = field(default_factory=list)  # mind. EINES dieser Tools muss aufgerufen werden
     description: str = ""
 
 
@@ -33,6 +35,7 @@ class EvalResult:
     reason: str
     response: str
     duration_ms: int
+    tools_called: list[str] = field(default_factory=list)
 
 
 EVAL_CASES: list[EvalCase] = [
@@ -88,41 +91,78 @@ class EvalRunner:
             self._results.append(result)
             status = "✅" if result.passed else "❌"
             log.info(f"Eval {status} {case.name}: {result.reason}")
+        try:
+            from core.db import log_event
+            passed = sum(1 for r in self._results if r.passed)
+            log_event("eval", f"Eval-Suite: {passed}/{len(self._results)} bestanden",
+                      {"results": self.to_dict()})
+        except Exception:
+            pass
         return self._results
 
+    async def _agent_turn(self, case: EvalCase) -> tuple[str, list[dict]]:
+        """Ein isolierter Agent-Turn wie im MessageHandler — aber ohne KZG/Persistenz
+        und mit Dry-Run-Tools (Tool-Calls werden aufgezeichnet, nicht ausgeführt)."""
+        from core import skills
+        system = await self.orch.prompt_builder.build(case.prompt)
+        allowed = skills.T.select_tools(case.prompt)
+        force = bool(allowed) and skills.T.is_action(case.prompt)
+        return await self.orch.agent.run(
+            messages=[{"role": "user", "content": case.prompt}],
+            system=system,
+            allowed_tools=allowed,
+            force_tools=force,
+            temperature=0.3,
+            max_tokens=400,
+            dry_run_tools=True,
+        )
+
     async def _run_case(self, case: EvalCase) -> EvalResult:
-        from llm.base import Message
         import time
 
         t0 = time.time()
-        response_text = ""
-        tools_called: list[str] = []
-
         try:
-            sys_prompt = await self.orch._build_system_prompt(case.prompt)
-            messages = [{"role": "user", "content": case.prompt}]
-            resp = await self.orch.chat_llm.chat(messages=messages, temperature=0.3, max_tokens=300)
-            response_text = resp
+            response_text, trace = await asyncio.wait_for(
+                self._agent_turn(case), timeout=CASE_TIMEOUT_S
+            )
+        except asyncio.TimeoutError:
+            return EvalResult(case=case, passed=False,
+                              reason=f"Timeout ({CASE_TIMEOUT_S}s)",
+                              response="", duration_ms=int((time.time() - t0) * 1000))
         except Exception as e:
             return EvalResult(case=case, passed=False, reason=f"Exception: {e}",
-                              response="", duration_ms=0)
+                              response="", duration_ms=int((time.time() - t0) * 1000))
 
         elapsed = int((time.time() - t0) * 1000)
+        tools_called = [t.get("tool", "") for t in trace]
+        return self._check(case, response_text, tools_called, elapsed)
 
-        # Checks
+    @staticmethod
+    def _check(case: EvalCase, response_text: str,
+               tools_called: list[str], elapsed: int) -> EvalResult:
+        """Prüft eine Antwort + Tool-Trace gegen die Erwartungen des Cases."""
+        if case.must_call_tool and not any(t in tools_called for t in case.must_call_tool):
+            return EvalResult(case=case, passed=False,
+                              reason=f"Kein Tool aus {case.must_call_tool} aufgerufen "
+                                     f"(aufgerufen: {tools_called or 'keins'})",
+                              response=response_text, duration_ms=elapsed,
+                              tools_called=tools_called)
         for pat in case.must_contain:
             if pat.lower() not in response_text.lower():
                 return EvalResult(case=case, passed=False,
                                   reason=f"Fehlend: '{pat}'",
-                                  response=response_text, duration_ms=elapsed)
+                                  response=response_text, duration_ms=elapsed,
+                                  tools_called=tools_called)
         for pat in case.must_not_contain:
             if pat.lower() in response_text.lower():
                 return EvalResult(case=case, passed=False,
                                   reason=f"Verbotenes Muster: '{pat}'",
-                                  response=response_text, duration_ms=elapsed)
+                                  response=response_text, duration_ms=elapsed,
+                                  tools_called=tools_called)
 
         return EvalResult(case=case, passed=True, reason="OK",
-                          response=response_text, duration_ms=elapsed)
+                          response=response_text, duration_ms=elapsed,
+                          tools_called=tools_called)
 
     def summary(self) -> str:
         if not self._results:
@@ -143,6 +183,7 @@ class EvalRunner:
                 "reason": r.reason,
                 "duration_ms": r.duration_ms,
                 "description": r.case.description,
+                "tools_called": r.tools_called,
             }
             for r in self._results
         ]
