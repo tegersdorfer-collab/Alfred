@@ -64,14 +64,20 @@ async def main():
         log.info(f"💬 Chat-LLM: Ollama {cfg.OLLAMA_MODEL} (kein API-Key)")
 
     # ── Agent-Backend: Haiku (user-facing Chat + Tool-Calls) ────────────────────
+    # Mit API-Key: Claude primär + lokales Ollama als automatischer Fallback —
+    # Alfred bleibt auch ohne Internet/bei Anthropic-Ausfall funktionsfähig.
+    from core.backends.ollama import OllamaBackend
     if cfg.ANTHROPIC_API_KEY:
         from core.backends.claude import ClaudeBackend
-        agent_backend = ClaudeBackend(model=cfg.CLAUDE_CHAT_MODEL)
-        log.info(f"🔧 Agent-Backend: {cfg.CLAUDE_CHAT_MODEL} (Haiku, user-facing)")
+        from core.backends.fallback import FallbackBackend
+        agent_backend = FallbackBackend(
+            primary=ClaudeBackend(model=cfg.CLAUDE_CHAT_MODEL),
+            fallback=OllamaBackend(),
+        )
+        log.info(f"🔧 Agent-Backend: {cfg.CLAUDE_CHAT_MODEL} → Fallback {cfg.AGENT_MODEL_STRONG} (lokal)")
     else:
-        from core.backends.ollama import OllamaBackend
         agent_backend = OllamaBackend()
-        log.info(f"🔧 Agent-Backend: Ollama ({cfg.AGENT_MODEL_STRONG}, Fallback)")
+        log.info(f"🔧 Agent-Backend: Ollama ({cfg.AGENT_MODEL_STRONG}, kein API-Key)")
 
     # ── Background-LLM: Routed (Spezialisten je nach Aufgabe) ─────────────────
     from llm.routed import RoutedLLMProvider
