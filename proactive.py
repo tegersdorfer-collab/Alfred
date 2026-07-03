@@ -78,6 +78,8 @@ class ProactiveTracker:
         self._count: int = 0
         # Beim Start so tun als hätten wir gerade gesendet → kein Spam direkt nach Neustart
         self._last_sent: datetime | None = datetime.now()
+        # Verhindert Mehrfachzählung von record_ignored() für dieselbe unbeantwortete Nachricht
+        self._ignore_recorded_for: datetime | None = None
 
     def _reset_if_new_day(self) -> None:
         today = date.today()
@@ -97,8 +99,30 @@ class ProactiveTracker:
             pass
         return config.PROACTIVE_INTERVAL
 
+    def _check_stale_ignore(self) -> None:
+        """Prüft ob die letzte proaktive Nachricht unbeantwortet blieb und zählt das
+        als Ignore, statt einfach stur weiterzuschreiben. Ohne diesen Check bleibt
+        record_ignored() totes Backoff-Logik ohne Wirkung."""
+        if not self._last_sent or self._ignore_recorded_for == self._last_sent:
+            return
+        # Genug Zeit seit dem Senden vergangen, um eine Reaktion zu erwarten?
+        if (datetime.now() - self._last_sent).total_seconds() < self._interval():
+            return
+        try:
+            from core import db
+            rows = db.query(
+                "SELECT 1 FROM chat_messages WHERE role='user' AND created_at > %s LIMIT 1",
+                (self._last_sent,),
+            )
+            if not rows:
+                self.record_ignored()
+            self._ignore_recorded_for = self._last_sent
+        except Exception:
+            pass
+
     def can_send(self) -> bool:
         self._reset_if_new_day()
+        self._check_stale_ignore()
 
         # Nacht-Modus: zwischen 22:30 und 06:30 keine proaktiven Nachrichten
         now = datetime.now()
@@ -131,18 +155,16 @@ class ProactiveTracker:
         log.info(f"📤 Proaktive Nachricht gesendet ({self._count} heute)")
 
     def record_user_response(self) -> None:
-        """Aufrufen wenn Timo auf eine proaktive Nachricht antwortet → Decay zurücksetzen."""
+        """Aufrufen wenn Timo auf eine proaktive Nachricht antwortet → Ignore-Streak brechen
+        und ein evtl. verlängertes Intervall zurücksetzen."""
         try:
             from core import db
             db.execute(
-                """
-                INSERT INTO settings (key, value) VALUES ('proactive_response_streak', '0')
-                ON CONFLICT (key) DO UPDATE SET value = (
-                    CASE WHEN CAST(settings.value AS INT) > 0
-                         THEN CAST(settings.value AS INT) - 1
-                         ELSE 0 END
-                )::text
-                """
+                "INSERT INTO settings (key, value) VALUES ('proactive_ignore_streak', '0') "
+                "ON CONFLICT (key) DO UPDATE SET value = '0'"
+            )
+            db.execute(
+                "DELETE FROM settings WHERE key = 'proactive_interval_override'"
             )
         except Exception:
             pass
@@ -168,12 +190,6 @@ class ProactiveTracker:
                     (str(int(new_interval)), str(int(new_interval))),
                 )
                 log.info(f"📉 Engagement Decay: Intervall auf {int(new_interval)}s erhöht (streak={streak})")
-            elif streak == 0:
-                # Streak gebrochen → Interval zurücksetzen
-                db.execute(
-                    "INSERT INTO settings (key, value) VALUES ('proactive_interval_override', NULL) "
-                    "ON CONFLICT (key) DO UPDATE SET value = NULL"
-                )
         except Exception:
             pass
 
