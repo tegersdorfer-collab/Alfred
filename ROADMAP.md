@@ -14,6 +14,8 @@
 - Streaming: Token-Streaming an Telegram + Dashboard (SSE)
 - `_safe_task()` — alle Background-Tasks mit Fehlerbehandlung
 - Subagent Delegation (`delegate_task`) — isolierter Kind-Agent, eigener Context, Timeout
+- LLM-Fallback: Claude API ausgefallen → lokales Ollama übernimmt transparent
+  (90s-Timeout, 180s-Cooldown, Ausfall im Fehler-Widget sichtbar)
 
 ### Gedächtnis-Architektur
 - PostgreSQL + pgvector Langzeitgedächtnis
