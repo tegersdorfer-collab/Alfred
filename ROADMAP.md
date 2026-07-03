@@ -72,6 +72,12 @@
 - Web Push (VAPID) + Push-Templates + Dedup-Filterung
 - Eval-Suite (6 Test-Cases, `/api/eval/run`)
 - Alfred als MCP-Server (stdio JSON-RPC + HTTP `/mcp/`)
+- Eval-Suite v2: echter Agent-Lauf (prompt_builder + agent.run), Dry-Run-Tools,
+  must_call_tool-Check, Timeout pro Case — deckte den warm_profile-Crash auf
+- LLM-Usage-Tracking: Token + Kosten pro Call (`llm_usage`), `/api/usage`,
+  API-Kosten-Karte in Analytics, `api_costs`-Tool
+- warm_profile-Fix (literales % in SQL crashte jeden Prompt-Build) +
+  prompt_builder degradiert bei Kontext-Fehlern statt den Turn zu killen
 - Batch-Embeddings (multi-text in einem Ollama-Call)
 - Automatischer Start nach Neustart (launchd + KeepAlive)
 - Automatische DB-Backups
