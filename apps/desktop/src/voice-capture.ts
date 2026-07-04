@@ -18,10 +18,17 @@ export function startVoiceCapture(
   let segmentStartedAt = 0;
   let rafId: number | null = null;
 
-  async function uploadSegment(blob: Blob): Promise<void> {
+  function extensionFor(mimeType: string): string {
+    if (mimeType.includes('mp4')) return 'm4a';
+    if (mimeType.includes('ogg')) return 'ogg';
+    if (mimeType.includes('wav')) return 'wav';
+    return 'webm';
+  }
+
+  async function uploadSegment(blob: Blob, mimeType: string): Promise<void> {
     try {
       const form = new FormData();
-      form.append('audio', blob, 'segment.webm');
+      form.append('audio', blob, `segment.${extensionFor(mimeType)}`);
       const res = await fetch(`${baseUrl}/api/voice/segment`, { method: 'POST', body: form });
       const data = (await res.json()) as VoiceSegmentResult;
       onSegment(data);
@@ -80,7 +87,8 @@ export function startVoiceCapture(
             if (activeRecorder && activeRecorder.state !== 'inactive') {
               activeRecorder.onstop = () => {
                 if (duration >= MIN_SEGMENT_MS) {
-                  uploadSegment(new Blob(chunks, { type: 'audio/webm' }));
+                  const mimeType = activeRecorder.mimeType || 'audio/webm';
+                  uploadSegment(new Blob(chunks, { type: mimeType }), mimeType);
                 }
               };
               activeRecorder.stop();
