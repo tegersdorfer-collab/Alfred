@@ -1,5 +1,5 @@
 """
-UI-State — API-Router. Neuer SSE-Kanal für das generative UI (Phase 2).
+UI-State — API-Router. SSE-Kanal für das generative UI.
 Verhaltensgleiches Muster zu web/routers/chat.py::status_stream.
 """
 import asyncio
@@ -19,7 +19,7 @@ def build_router(orch=None) -> APIRouter:
 
     @router.get("/api/ui/current")
     def ui_current():
-        return UI_BUS.current or {"widget": None}
+        return UI_BUS.current
 
     @router.get("/api/ui/stream")
     async def ui_stream():
@@ -27,7 +27,7 @@ def build_router(orch=None) -> APIRouter:
 
         async def gen():
             try:
-                yield f"data: {json.dumps(UI_BUS.current or {'widget': None})}\n\n"
+                yield f"data: {json.dumps(UI_BUS.current)}\n\n"
                 while True:
                     try:
                         evt = await asyncio.wait_for(q.get(), timeout=25)

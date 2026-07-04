@@ -78,28 +78,32 @@ class TestSleepWidgetPayload:
 
 class TestMaybeUpdateUiZurueckZumRuhezustand:
     def setup_method(self):
-        UI_BUS._current = None
+        UI_BUS.clear()
 
     def teardown_method(self):
-        UI_BUS._current = None
+        UI_BUS.clear()
 
-    def test_leere_tool_liste_setzt_current_auf_none(self):
-        UI_BUS._current = {"widget": "sleep", "payload": {}, "ts": 0}
+    def test_leere_tool_liste_geht_zurueck_in_ruhezustand(self):
+        UI_BUS.show_widget("sleep", {}, slot="main")
         maybe_update_ui([])
-        assert UI_BUS.current is None
+        assert UI_BUS.current["layout"] is None
+        assert UI_BUS.current["slots"] == {}
 
-    def test_kein_gemapptes_tool_setzt_current_auf_none(self):
-        UI_BUS._current = {"widget": "sleep", "payload": {}, "ts": 0}
+    def test_kein_gemapptes_tool_geht_zurueck_in_ruhezustand(self):
+        UI_BUS.show_widget("sleep", {}, slot="main")
         maybe_update_ui(["create_task"])
-        assert UI_BUS.current is None
+        assert UI_BUS.current["layout"] is None
+        assert UI_BUS.current["slots"] == {}
 
     def test_get_health_setzt_weiterhin_sleep_widget(self):
         dash = FakeDashboard([_fake_health_row(date(2026, 7, 4), 7.0, 1.0)])
         with patch("core.container.services.get", return_value=dash):
             maybe_update_ui(["get_health"])
-        assert UI_BUS.current is not None
-        assert UI_BUS.current["widget"] == "sleep"
-        assert UI_BUS.current["payload"] == {
+        assert UI_BUS.current["layout"] == "single"
+        assert UI_BUS.current["slots"]["main"] == {
             "widget": "sleep",
-            "nights": [{"date": "2026-07-04", "hours": 7.0, "deep_hours": 1.0}],
+            "payload": {
+                "widget": "sleep",
+                "nights": [{"date": "2026-07-04", "hours": 7.0, "deep_hours": 1.0}],
+            },
         }

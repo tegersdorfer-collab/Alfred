@@ -1,6 +1,6 @@
 """Testet den /api/ui/current-Endpunkt über einen echten FastAPI-TestClient
-(SSE-Streaming selbst wird per manueller curl-Verifikation in Task 4 geprüft,
-nicht hier — blockierende Generatoren sind mit TestClient unhandlich)."""
+(SSE-Streaming selbst wird per manueller curl-Verifikation geprüft, nicht
+hier — blockierende Generatoren sind mit TestClient unhandlich)."""
 import sys, os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
@@ -18,19 +18,21 @@ def _make_client() -> TestClient:
 
 
 class TestUiCurrentEndpoint:
-    def test_liefert_none_widget_wenn_kein_zustand(self):
-        UI_BUS._current = None
+    def test_liefert_ruhezustand_wenn_kein_widget_aktiv(self):
+        UI_BUS.clear()
         client = _make_client()
         resp = client.get("/api/ui/current")
         assert resp.status_code == 200
-        assert resp.json() == {"widget": None}
+        body = resp.json()
+        assert body["layout"] is None
+        assert body["slots"] == {}
 
-    def test_liefert_aktuellen_widget_zustand(self):
+    def test_liefert_aktuellen_layout_zustand(self):
         UI_BUS.show_widget("sleep", {"nights": []})
         client = _make_client()
         resp = client.get("/api/ui/current")
         assert resp.status_code == 200
         body = resp.json()
-        assert body["widget"] == "sleep"
-        assert body["payload"] == {"nights": []}
+        assert body["layout"] == "single"
+        assert body["slots"]["main"] == {"widget": "sleep", "payload": {"nights": []}}
         UI_BUS.clear()  # Zustand für andere Tests zurücksetzen
