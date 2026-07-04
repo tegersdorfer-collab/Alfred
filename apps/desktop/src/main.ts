@@ -1,22 +1,21 @@
-import { invoke } from "@tauri-apps/api/core";
+import { getBaseUrl } from './config';
+import { checkBackendHealth } from './backend';
+import { deriveHudState } from './hud-state';
 
-let greetInputEl: HTMLInputElement | null;
-let greetMsgEl: HTMLElement | null;
+const POLL_INTERVAL_MS = 10_000;
 
-async function greet() {
-  if (greetMsgEl && greetInputEl) {
-    // Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
-    greetMsgEl.textContent = await invoke("greet", {
-      name: greetInputEl.value,
-    });
-  }
+function render(): void {
+  const ring = document.getElementById('hud-ring')!;
+  const label = document.getElementById('hud-label')!;
+  const status = document.getElementById('hud-status')!;
+
+  checkBackendHealth(getBaseUrl()).then((health) => {
+    const state = deriveHudState(health, new Date());
+    ring.style.color = state.ringColor;
+    label.textContent = state.label;
+    status.textContent = state.statusLine;
+  });
 }
 
-window.addEventListener("DOMContentLoaded", () => {
-  greetInputEl = document.querySelector("#greet-input");
-  greetMsgEl = document.querySelector("#greet-msg");
-  document.querySelector("#greet-form")?.addEventListener("submit", (e) => {
-    e.preventDefault();
-    greet();
-  });
-});
+render();
+setInterval(render, POLL_INTERVAL_MS);
