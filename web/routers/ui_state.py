@@ -32,6 +32,11 @@ def build_router(orch=None) -> APIRouter:
         UI_BUS.show_widget(widget_type, payload, slot="main")
         return UI_BUS.current
 
+    @router.post("/api/ui/clear")
+    async def ui_clear():
+        UI_BUS.clear()
+        return UI_BUS.current
+
     @router.get("/api/ui/stream")
     async def ui_stream():
         q = UI_BUS.subscribe()

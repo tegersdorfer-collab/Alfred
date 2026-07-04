@@ -7,9 +7,10 @@ const LABELS: Record<string, string> = {
 export function initNavOverlay(baseUrl: string): void {
   const overlay = document.createElement('div');
   overlay.id = 'nav-overlay';
-  overlay.innerHTML = `<div class="nav-grid">${WIDGET_TYPES.map(
+  const tiles = WIDGET_TYPES.map(
     (t) => `<button class="nav-tile" data-widget-type="${t}">${LABELS[t]}</button>`
-  ).join('')}</div>`;
+  ).join('') + `<button class="nav-tile" data-widget-type="">Home</button>`;
+  overlay.innerHTML = `<div class="nav-grid">${tiles}</div>`;
   document.body.appendChild(overlay);
 
   function close(): void {
@@ -19,11 +20,15 @@ export function initNavOverlay(baseUrl: string): void {
   overlay.querySelectorAll<HTMLButtonElement>('.nav-tile').forEach((tile) => {
     tile.addEventListener('click', () => {
       const widgetType = tile.dataset.widgetType;
-      fetch(`${baseUrl}/api/ui/select`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ widget_type: widgetType }),
-      }).catch(() => {});
+      if (widgetType) {
+        fetch(`${baseUrl}/api/ui/select`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ widget_type: widgetType }),
+        }).catch(() => {});
+      } else {
+        fetch(`${baseUrl}/api/ui/clear`, { method: 'POST' }).catch(() => {});
+      }
       close();
     });
   });

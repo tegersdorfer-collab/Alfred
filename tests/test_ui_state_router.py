@@ -58,3 +58,14 @@ class TestUiSelectEndpoint:
         with patch("web.routers.ui_state.build_widget_payload", return_value=None):
             resp = client.post("/api/ui/select", json={"widget_type": "sleep"})
         assert resp.status_code == 400
+
+
+class TestUiClearEndpoint:
+    def test_clear_setzt_ruhezustand(self):
+        client = _make_client()
+        UI_BUS.show_widget("sleep", {"nights": []})
+        resp = client.post("/api/ui/clear")
+        assert resp.status_code == 200
+        body = resp.json()
+        assert body["layout"] is None
+        assert body["slots"] == {}
