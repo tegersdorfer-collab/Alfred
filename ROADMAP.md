@@ -23,6 +23,9 @@
 - Generatives UI (Phase 3, Layout-Vorlagen + explizite Tools): Multi-Slot-Layout-Fundament
   (LAYOUT_PRESETS: single/split2), Agent-Tools show_widget/arrange_screen/close_widget für
   Fälle mit echtem Urteilsbedarf, Frontend rendert mehrere Widgets gleichzeitig im Grid
+- Generatives UI (Phase 4, Widget-Bibliothek): 6 Widget-Typen (sleep/training/tasks/calendar/
+  nutrition/habits), konsolidierte build_widget_payload()-Dispatch-Funktion, generisches
+  Frontend-Rendering (Balken für sleep/training, Listen für tasks/calendar/habits)
 
 ### Gedächtnis-Architektur
 - PostgreSQL + pgvector Langzeitgedächtnis
