@@ -35,15 +35,32 @@ html, body {
   opacity: 0.6;
 }
 
-.widget {
+#widget-area {
   position: absolute;
   inset: 0;
+  background: #04070d;
+  display: grid;
+  gap: 12px;
+  padding: 20px;
+  box-sizing: border-box;
+}
+
+#widget-area.layout-single {
+  grid-template-columns: 1fr;
+}
+
+#widget-area.layout-split2 {
+  grid-template-columns: 1fr 1fr;
+}
+
+.widget-slot {
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   gap: 16px;
-  background: #04070d;
+  border: 1px solid #00e5ff22;
+  border-radius: 8px;
 }
 
 .widget-title {
@@ -54,7 +71,7 @@ html, body {
   opacity: 0.7;
 }
 
-#widget-sleep-bars {
+.sleep-bars {
   display: flex;
   align-items: flex-end;
   gap: 8px;
