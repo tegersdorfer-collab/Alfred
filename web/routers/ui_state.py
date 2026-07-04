@@ -1,0 +1,44 @@
+"""
+UI-State — API-Router. Neuer SSE-Kanal für das generative UI (Phase 2).
+Verhaltensgleiches Muster zu web/routers/chat.py::status_stream.
+"""
+import asyncio
+import json
+import logging
+
+from fastapi import APIRouter
+from fastapi.responses import StreamingResponse
+
+from core.ui_state import UI_BUS
+
+log = logging.getLogger("alfred.api")
+
+
+def build_router(orch=None) -> APIRouter:
+    router = APIRouter()
+
+    @router.get("/api/ui/current")
+    def ui_current():
+        return UI_BUS.current or {"widget": None}
+
+    @router.get("/api/ui/stream")
+    async def ui_stream():
+        q = UI_BUS.subscribe()
+
+        async def gen():
+            try:
+                yield f"data: {json.dumps(UI_BUS.current or {'widget': None})}\n\n"
+                while True:
+                    try:
+                        evt = await asyncio.wait_for(q.get(), timeout=25)
+                        yield f"data: {json.dumps(evt)}\n\n"
+                    except asyncio.TimeoutError:
+                        yield "data: {\"keepalive\":true}\n\n"
+            finally:
+                UI_BUS.unsubscribe(q)
+
+        return StreamingResponse(gen(), media_type="text/event-stream",
+                                 headers={"Cache-Control": "no-cache",
+                                          "X-Accel-Buffering": "no"})
+
+    return router
