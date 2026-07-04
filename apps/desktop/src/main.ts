@@ -2,13 +2,12 @@ import { getBaseUrl } from './config';
 import { checkBackendHealth } from './backend';
 import { deriveHudState } from './hud-state';
 import { subscribeUiState } from './ui-state-client';
-import type { UiEvent, SleepNight } from './ui-state-client';
+import type { UiEvent, WidgetSlot } from './ui-state-client';
 
 const POLL_INTERVAL_MS = 10_000;
 
 // Spiegelt core/ui_state.py::LAYOUT_PRESETS — bewusste Duplikation über die
-// Sprachgrenze, da es keine Codegen-Infrastruktur zwischen Backend und
-// Frontend gibt (siehe Plan-Nicht-Ziele).
+// Sprachgrenze (siehe Plan-Nicht-Ziele in Phase 3).
 const LAYOUT_SLOTS: Record<string, string[]> = {
   single: ['main'],
   split2: ['main', 'side'],
@@ -27,15 +26,73 @@ function renderHud(): void {
   });
 }
 
-function renderSleepWidget(container: HTMLElement, nights: SleepNight[]): void {
-  const maxHours = Math.max(1, ...nights.map((n) => n.hours ?? 0));
-  const bars = nights
-    .map((n) => {
-      const heightPx = Math.round(((n.hours ?? 0) / maxHours) * 120);
-      return `<div class="sleep-bar" style="height:${heightPx}px" title="${n.date}: ${n.hours ?? '–'}h"></div>`;
+function renderBars(
+  container: HTMLElement,
+  title: string,
+  items: { value: number | null; tooltip: string }[],
+): void {
+  const maxVal = Math.max(1, ...items.map((i) => i.value ?? 0));
+  const bars = items
+    .map((i) => {
+      const heightPx = Math.round(((i.value ?? 0) / maxVal) * 120);
+      return `<div class="sleep-bar" style="height:${heightPx}px" title="${i.tooltip}"></div>`;
     })
     .join('');
-  container.innerHTML = `<div class="widget-title">Schlaf — letzte Nächte</div><div class="sleep-bars">${bars}</div>`;
+  container.innerHTML = `<div class="widget-title">${title}</div><div class="sleep-bars">${bars}</div>`;
+}
+
+function renderList(container: HTMLElement, title: string, lines: string[]): void {
+  const items = lines.map((l) => `<div class="list-line">${l}</div>`).join('');
+  container.innerHTML = `<div class="widget-title">${title}</div><div class="widget-list">${items}</div>`;
+}
+
+function renderWidget(container: HTMLElement, slot: WidgetSlot): void {
+  const p: any = slot.payload;
+  switch (slot.widget) {
+    case 'sleep':
+      renderBars(
+        container,
+        'Schlaf — letzte Nächte',
+        (p.nights ?? []).map((n: any) => ({ value: n.hours, tooltip: `${n.date}: ${n.hours ?? '–'}h` })),
+      );
+      break;
+    case 'training':
+      renderBars(
+        container,
+        'Training — letzte Einheiten',
+        (p.workouts ?? []).map((w: any) => ({
+          value: w.duration_min,
+          tooltip: `${w.date}: ${w.title} (${w.duration_min ?? '–'}min)`,
+        })),
+      );
+      break;
+    case 'tasks':
+      renderList(
+        container,
+        'Offene Aufgaben',
+        (p.tasks ?? []).map((t: any) => `${t.title} (${t.progress_pct}%)`),
+      );
+      break;
+    case 'calendar':
+      renderList(
+        container,
+        'Anstehende Termine',
+        (p.events ?? []).map((e: any) => `${e.title} — ${e.start}`),
+      );
+      break;
+    case 'habits':
+      renderList(
+        container,
+        'Gewohnheiten',
+        (p.habits ?? []).map((h: any) => `${h.emoji} ${h.name} (${h.streak}d)`),
+      );
+      break;
+    case 'nutrition':
+      container.innerHTML = `<div class="widget-title">Ernährung heute</div><div class="widget-title">${p.kcal} kcal · ${p.protein}g P · ${p.carbs}g C · ${p.fat}g F</div>`;
+      break;
+    default:
+      container.innerHTML = '<div class="widget-title">unbekannt</div>';
+  }
 }
 
 function applyUiEvent(evt: UiEvent): void {
@@ -61,8 +118,8 @@ function applyUiEvent(evt: UiEvent): void {
   for (const name of slotNames) {
     const slotEl = widgetArea.querySelector(`[data-slot="${name}"]`) as HTMLElement;
     const slot = evt.slots[name];
-    if (slot && slot.widget === 'sleep') {
-      renderSleepWidget(slotEl, slot.payload.nights);
+    if (slot) {
+      renderWidget(slotEl, slot);
     } else {
       slotEl.innerHTML = '<div class="widget-title">leer</div>';
     }

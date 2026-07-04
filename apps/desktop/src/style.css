@@ -84,3 +84,19 @@ html, body {
   border-radius: 3px;
   min-height: 4px;
 }
+
+.widget-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: 100%;
+  padding: 0 12px;
+  box-sizing: border-box;
+}
+
+.list-line {
+  font-size: 12px;
+  color: #e0f7ff;
+  padding: 4px 0;
+  border-bottom: 1px solid #00e5ff11;
+}
