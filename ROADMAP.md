@@ -26,6 +26,12 @@
 - Generatives UI (Phase 4, Widget-Bibliothek): 6 Widget-Typen (sleep/training/tasks/calendar/
   nutrition/habits), konsolidierte build_widget_payload()-Dispatch-Funktion, generisches
   Frontend-Rendering (Balken für sleep/training, Listen für tasks/calendar/habits)
+- Sprach-Erfassungs-Messversuch (Phase 5a, isolierter Spike): core/voice.py bündelt
+  Whisper-Transkription + Adress-Check (aus Telegram-Code extrahiert), neuer Endpunkt
+  POST /api/voice/segment, Tauri-Client erfasst Mikrofon-Audio mit einfacher
+  RMS-Lautstärke-VAD (kein ML, kein Wake-Word), zeigt Transkript + Adressierungs-Status
+  im HUD — noch NICHT an den Agent/Chat-Loop angebunden, dient nur der Messung von
+  Latenz/Trefferquote vor dem vollen Ausbau
 
 ### Gedächtnis-Architektur
 - PostgreSQL + pgvector Langzeitgedächtnis
