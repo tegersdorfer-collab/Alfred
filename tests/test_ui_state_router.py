@@ -3,6 +3,7 @@
 hier — blockierende Generatoren sind mit TestClient unhandlich)."""
 import sys, os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
+from unittest.mock import patch
 
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
@@ -36,3 +37,18 @@ class TestUiCurrentEndpoint:
         assert body["layout"] == "single"
         assert body["slots"]["main"] == {"widget": "sleep", "payload": {"nights": []}}
         UI_BUS.clear()  # Zustand für andere Tests zurücksetzen
+
+
+class TestUiSelectEndpoint:
+    def test_select_setzt_widget_direkt_ohne_agent(self):
+        client = _make_client()
+        with patch("web.routers.ui_state.build_widget_payload", return_value={"nights": []}):
+            resp = client.post("/api/ui/select", json={"widget_type": "sleep"})
+        assert resp.status_code == 200
+        assert resp.json()["slots"]["main"]["widget"] == "sleep"
+        UI_BUS.clear()
+
+    def test_select_unbekannter_typ_gibt_400(self):
+        client = _make_client()
+        resp = client.post("/api/ui/select", json={"widget_type": "quatsch"})
+        assert resp.status_code == 400
