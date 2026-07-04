@@ -10,7 +10,7 @@ import time
 from communication.base import IncomingMessage
 from core.background_review import run_background_review
 from core.status import BUS
-from core import skills, db
+from core import skills, db, ui_state
 
 log = logging.getLogger(__name__)
 
@@ -144,6 +144,10 @@ class MessageHandler:
 
         self.kzg.add("assistant", response)
         tools_used = [t["tool"] for t in trace]
+        try:
+            ui_state.maybe_update_ui(tools_used)
+        except Exception:
+            pass
         self._persist_msg("assistant", response, channel="telegram",
                           meta={"tools": tools_used, "model": model})
         elapsed = time.time() - t0
@@ -181,6 +185,10 @@ class MessageHandler:
 
         self.kzg.add("assistant", response)
         tools_used = [t["tool"] for t in trace]
+        try:
+            ui_state.maybe_update_ui(tools_used)
+        except Exception:
+            pass
         self._persist_msg("assistant", response, channel="dashboard",
                           meta={"tools": tools_used, "model": model})
         _safe_task(self._post_turn(text, response, tools_used), "post_turn")
