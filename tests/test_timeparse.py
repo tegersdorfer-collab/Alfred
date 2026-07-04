@@ -2,6 +2,7 @@
 import sys, os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
+import warnings
 from datetime import date, datetime, timedelta
 
 from core.timeparse import parse_datetime, parse_date, _next_weekday
@@ -91,6 +92,35 @@ class TestAbsolute:
     def test_html_datetime_local(self):
         dt = parse_datetime("2026-07-10T09:30")
         assert (dt.year, dt.month, dt.day, dt.hour, dt.minute) == (2026, 7, 10, 9, 30)
+
+
+class TestPython315Kompatibel:
+    """Ab Python 3.15 ändert sich das Default-Jahr bei strptime ohne Jahresangabe
+    (gh-70647) — der Parser darf sich nicht auf den 1900-Default verlassen."""
+
+    def test_kein_deprecation_warning(self):
+        with warnings.catch_warnings(record=True) as caught:
+            warnings.simplefilter("always")
+            parse_datetime("24.12.")
+            parse_datetime("24.12. 18:00")
+            parse_datetime("15:45")
+            parse_datetime("morgen 18 uhr")
+            parse_datetime("blafasel xyz")
+        deprecations = [w for w in caught if issubclass(w.category, DeprecationWarning)]
+        assert deprecations == [], [str(w.message) for w in deprecations]
+
+    def test_jahrloses_datum_in_vergangenheit_faellt_auf_naechstes_jahr(self):
+        gestern = date.today() - timedelta(days=1)
+        if (gestern.month, gestern.day) == (2, 29):  # 29.02. existiert nicht jedes Jahr
+            gestern -= timedelta(days=1)
+        dt = parse_datetime(f"{gestern.day:02d}.{gestern.month:02d}.")
+        assert (dt.month, dt.day) == (gestern.month, gestern.day)
+        assert dt.date() > date.today()
+
+    def test_jahrloses_datum_mit_uhrzeit(self):
+        dt = parse_datetime("24.12. 18:00")
+        assert (dt.month, dt.day, dt.hour, dt.minute) == (12, 24, 18, 0)
+        assert dt.date() >= date.today()
 
 
 class TestRobustness:

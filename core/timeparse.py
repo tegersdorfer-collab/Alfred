@@ -92,27 +92,37 @@ def _parse_naive(s: str) -> datetime | None:
         # Keine Uhrzeit → 9:00 als Default
         return base.replace(hour=9, minute=0, second=0, microsecond=0)
 
-    # Absolute Formate
+    # Absolute Formate mit Jahr
     for fmt in (
-        "%d.%m.%Y %H:%M", "%d.%m.%y %H:%M", "%d.%m. %H:%M",
+        "%d.%m.%Y %H:%M", "%d.%m.%y %H:%M",
         "%Y-%m-%d %H:%M", "%Y-%m-%dT%H:%M",
-        "%d.%m.%Y", "%d.%m.%y", "%d.%m.", "%Y-%m-%d",
-        "%H:%M",
+        "%d.%m.%Y", "%d.%m.%y", "%Y-%m-%d",
     ):
         try:
-            dt = datetime.strptime(s, fmt)
-            # Fehlende Jahresangabe → aktuelles Jahr
-            if dt.year == 1900:
-                dt = dt.replace(year=now.year)
-                if dt.date() < now.date():
-                    dt = dt.replace(year=now.year + 1)
-            # Nur Uhrzeit → heute
-            if fmt == "%H:%M":
-                dt = dt.replace(year=now.year, month=now.month, day=now.day)
-            return dt
+            return datetime.strptime(s, fmt)
         except ValueError:
             continue
-    return None
+
+    # Formate ohne Jahr: aktuelles Jahr explizit anhängen statt strptime-Default
+    # (1900-Default entfällt ab Python 3.15, gh-70647); Vergangenheit → nächstes Jahr
+    for fmt in ("%d.%m. %H:%M", "%d.%m."):
+        try:
+            dt = datetime.strptime(f"{s} {now.year}", f"{fmt} %Y")
+        except ValueError:
+            continue
+        if dt.date() < now.date():
+            try:
+                dt = dt.replace(year=now.year + 1)
+            except ValueError:  # 29.02., aber Folgejahr ist kein Schaltjahr
+                return None
+        return dt
+
+    # Nur Uhrzeit → heute
+    try:
+        t = datetime.strptime(s, "%H:%M")
+        return now.replace(hour=t.hour, minute=t.minute, second=0, microsecond=0)
+    except ValueError:
+        return None
 
 
 def parse_date(s: str) -> date | None:
