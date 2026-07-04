@@ -19,37 +19,10 @@ from telegram.ext import (
 from telegram.constants import ChatAction
 
 from communication.base import CommunicationChannel, IncomingMessage, MessageHandler as MH
+from core.voice import transcribe_audio as _transcribe
 import config
 
 log = logging.getLogger(__name__)
-
-
-# ── Whisper (lazy-loaded, optional) ──────────────────────────────────────────
-
-_whisper_model = None
-_whisper_lock = asyncio.Lock()
-
-
-async def _transcribe(audio_path: str) -> str:
-    """Transkribiert eine Audiodatei lokal mit Whisper. Gibt leeren String bei Fehler zurück."""
-    global _whisper_model
-    try:
-        import whisper
-    except ImportError:
-        log.warning("openai-whisper nicht installiert – Sprachnachricht kann nicht transkribiert werden")
-        return ""
-
-    async with _whisper_lock:
-        if _whisper_model is None:
-            log.info("🔊 Lade Whisper-Modell 'base' …")
-            _whisper_model = await asyncio.to_thread(whisper.load_model, "base")
-
-    try:
-        result = await asyncio.to_thread(_whisper_model.transcribe, audio_path, language="de")
-        return (result.get("text") or "").strip()
-    except Exception as e:
-        log.error(f"Whisper-Transkription fehlgeschlagen: {e}")
-        return ""
 
 
 # ── Ollama-Vision (für Fotos) ─────────────────────────────────────────────────
