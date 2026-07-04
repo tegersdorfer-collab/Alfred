@@ -12,6 +12,7 @@ zu duplizieren.
 import asyncio
 import logging
 
+import config
 from core import fast
 
 log = logging.getLogger(__name__)
@@ -46,10 +47,21 @@ async def transcribe_audio(audio_path: str) -> str:
 
 async def is_addressed_to_alfred(text: str) -> bool:
     """Schneller Ja/Nein-Check: ist dieser transkribierte Text ein an Alfred
-    gerichteter Befehl/Anfrage? Leerer Text spart den LLM-Call."""
-    if not text.strip():
+    gerichteter Befehl/Anfrage? Leerer Text spart den LLM-Call.
+
+    Zwei Layer: (1) Keyword-Vorfilter — wird "Alfred" explizit genannt, sofort JA
+    ohne LLM-Call (Latenz ~0). (2) Nur wenn der Name fehlt, entscheidet ein sehr
+    kleines dediziertes Modell (core.fast mit ADDRESS_CHECK_MODEL statt dem großen
+    AGENT_MODEL_FAST), ob es sich auch ohne Namensnennung um eine an Alfred
+    gerichtete Anfrage handelt (Spec: "nicht nur Wake-Word")."""
+    stripped = text.strip()
+    if not stripped:
         return False
+    if "alfred" in stripped.lower():
+        return True
     return await fast.yes_no(
         f"Ist dieser Satz eine Anfrage oder ein Befehl an einen persönlichen KI-Assistenten "
-        f"namens Alfred (nicht nur Small Talk mit jemand anderem im Raum)?\n\n\"{text}\""
+        f"namens Alfred (nicht nur Small Talk mit jemand anderem im Raum), auch wenn der Name "
+        f"'Alfred' nicht genannt wird?\n\n\"{stripped}\"",
+        model=config.ADDRESS_CHECK_MODEL,
     )

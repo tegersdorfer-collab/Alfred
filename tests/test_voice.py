@@ -56,12 +56,26 @@ class TestTranscribeAudio:
 
 
 class TestIsAddressedToAlfred:
-    def test_ja_antwort_liefert_true(self):
-        with patch("core.fast.yes_no", new=AsyncMock(return_value=True)):
+    def test_namensnennung_liefert_true_ohne_llm_call(self):
+        with patch("core.fast.yes_no", new=AsyncMock()) as mock_yes_no:
+            result = asyncio.run(voice.is_addressed_to_alfred("Alfred, wie wird das Wetter morgen?"))
+        assert result is True
+        mock_yes_no.assert_not_called()
+
+    def test_namensnennung_gross_klein_unabhaengig(self):
+        with patch("core.fast.yes_no", new=AsyncMock()) as mock_yes_no:
+            result = asyncio.run(voice.is_addressed_to_alfred("hey ALFRED wie geht's"))
+        assert result is True
+        mock_yes_no.assert_not_called()
+
+    def test_ohne_namen_faellt_auf_kleines_modell_zurueck_ja(self):
+        with patch("core.fast.yes_no", new=AsyncMock(return_value=True)) as mock_yes_no:
             result = asyncio.run(voice.is_addressed_to_alfred("Ruf mir die Nacht-Zusammenfassung auf"))
         assert result is True
+        mock_yes_no.assert_called_once()
+        assert mock_yes_no.call_args.kwargs["model"] == voice.config.ADDRESS_CHECK_MODEL
 
-    def test_nein_antwort_liefert_false(self):
+    def test_ohne_namen_faellt_auf_kleines_modell_zurueck_nein(self):
         with patch("core.fast.yes_no", new=AsyncMock(return_value=False)):
             result = asyncio.run(voice.is_addressed_to_alfred("Ich rede gerade mit jemand anderem"))
         assert result is False

@@ -31,6 +31,10 @@ class AlfredSettings(BaseSettings):
     OLLAMA_KEEP_ALIVE: str = "0"
     AGENT_MODEL_FAST: str = "qwen3.5:9b"
     AGENT_MODEL_STRONG: str = "qwen3.5:9b"
+    # Kleines, schnelles Modell für Ja/Nein-Klassifikation (z.B. Voice-Adress-Check).
+    # 1.5b war zu ungenau (praktisch immer "JA"), 9b (AGENT_MODEL_FAST) zu langsam (~6s) —
+    # 3b ist der beste getestete Kompromiss aus Tempo (~1s) und Genauigkeit.
+    ADDRESS_CHECK_MODEL: str = "qwen2.5:3b-instruct"
     ANTHROPIC_API_KEY: str = ""
     CLAUDE_CHAT_MODEL: str = "claude-haiku-4-5-20251001"
     # ── Background-LLM Routing ────────────────────────────────────────────────
