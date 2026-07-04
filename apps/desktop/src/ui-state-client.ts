@@ -1,5 +1,6 @@
 export type SleepNight = { date: string; hours: number | null; deep_hours: number | null };
-export type UiEvent = { widget: string | null; payload?: { nights: SleepNight[] }; ts?: number };
+export type WidgetSlot = { widget: string; payload: { nights: SleepNight[] } };
+export type UiEvent = { layout: string | null; slots: Record<string, WidgetSlot>; ts?: number };
 
 export type EventSourceLike = {
   onmessage: ((ev: { data: string }) => void) | null;

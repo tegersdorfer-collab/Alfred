@@ -28,17 +28,22 @@ describe('subscribeUiState', () => {
     expect(created!.url).toBe('http://test:7779/api/ui/stream');
   });
 
-  it('leitet eingehende Events an den Callback weiter', () => {
+  it('leitet eingehende Multi-Slot-Events an den Callback weiter', () => {
     let received: UiEvent | null = null;
     let source: FakeEventSource | null = null;
     const factory = (url: string) => (source = new FakeEventSource(url));
     subscribeUiState('http://test:7779', (evt) => { received = evt; }, factory);
 
-    source!.emit({ widget: 'sleep', payload: { nights: [{ date: '2026-07-04', hours: 7.2, deep_hours: 1.1 }] } });
+    source!.emit({
+      layout: 'single',
+      slots: { main: { widget: 'sleep', payload: { nights: [{ date: '2026-07-04', hours: 7.2, deep_hours: 1.1 }] } } },
+      ts: 123,
+    });
 
     expect(received).toEqual({
-      widget: 'sleep',
-      payload: { nights: [{ date: '2026-07-04', hours: 7.2, deep_hours: 1.1 }] },
+      layout: 'single',
+      slots: { main: { widget: 'sleep', payload: { nights: [{ date: '2026-07-04', hours: 7.2, deep_hours: 1.1 }] } } },
+      ts: 123,
     });
   });
 
@@ -48,7 +53,6 @@ describe('subscribeUiState', () => {
     const factory = (url: string) => (source = new FakeEventSource(url));
     subscribeUiState('http://test:7779', onEvent, factory);
 
-    expect(() => source!.emit as any).not.toThrow();
     source!.onmessage?.({ data: 'kein-json{{{' });
 
     expect(onEvent).not.toHaveBeenCalled();
