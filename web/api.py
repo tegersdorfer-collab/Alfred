@@ -9,6 +9,7 @@ und wird unten via `app.include_router(...)` eingebunden.
 import logging
 
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 import config
@@ -23,6 +24,16 @@ def create_app(orch=None) -> FastAPI:
 
     # Kein App-Token: main.py bindet den Server nur ins Tailnet, das Netzwerk
     # selbst ist die Zugriffskontrolle. Macht PWA-Homescreen-start_url "/" möglich.
+
+    # Der Tauri-Desktop-Client läuft auf einem anderen Origin (localhost:1420 im
+    # Dev-Modus, tauri:// im Bundle) als das Backend — ohne CORS blockt der
+    # Webview jeden fetch()/EventSource()-Aufruf trotz erreichbarem Server.
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=["*"],
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
 
     # ── System Health-Check ──────────────────────────────────────────────────
     @app.get("/health")
