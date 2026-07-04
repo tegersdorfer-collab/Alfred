@@ -27,6 +27,8 @@ def build_router(orch=None) -> APIRouter:
         if widget_type not in WIDGET_TYPES:
             raise HTTPException(status_code=400, detail=f"Unbekannter widget_type: {widget_type}")
         payload = build_widget_payload(widget_type)
+        if payload is None:
+            raise HTTPException(status_code=400, detail=f"Datenquelle für '{widget_type}' nicht verfügbar")
         UI_BUS.show_widget(widget_type, payload, slot="main")
         return UI_BUS.current
 

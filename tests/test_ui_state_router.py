@@ -52,3 +52,9 @@ class TestUiSelectEndpoint:
         client = _make_client()
         resp = client.post("/api/ui/select", json={"widget_type": "quatsch"})
         assert resp.status_code == 400
+
+    def test_select_datenquelle_nicht_verfuegbar_gibt_400(self):
+        client = _make_client()
+        with patch("web.routers.ui_state.build_widget_payload", return_value=None):
+            resp = client.post("/api/ui/select", json={"widget_type": "sleep"})
+        assert resp.status_code == 400
