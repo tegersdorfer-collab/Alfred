@@ -20,6 +20,9 @@
   Widgets im Tauri-Desktop-Client aus — deterministische Tool→Widget-Zuordnung
   (core/ui_state.py), neuer SSE-Kanal (/api/ui/stream, /api/ui/current), Sleep-Widget
   ersetzt den HUD-Ring bei Treffer und schaltet bei irrelevanten Turns zurück
+- Generatives UI (Phase 3, Layout-Vorlagen + explizite Tools): Multi-Slot-Layout-Fundament
+  (LAYOUT_PRESETS: single/split2), Agent-Tools show_widget/arrange_screen/close_widget für
+  Fälle mit echtem Urteilsbedarf, Frontend rendert mehrere Widgets gleichzeitig im Grid
 
 ### Gedächtnis-Architektur
 - PostgreSQL + pgvector Langzeitgedächtnis
