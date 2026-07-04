@@ -3,6 +3,8 @@ import { checkBackendHealth } from './backend';
 import { deriveHudState } from './hud-state';
 import { subscribeUiState } from './ui-state-client';
 import type { UiEvent, WidgetSlot } from './ui-state-client';
+import { startVoiceCapture } from './voice-capture';
+import type { VoiceSegmentResult } from './voice-capture';
 
 const POLL_INTERVAL_MS = 10_000;
 
@@ -129,3 +131,12 @@ function applyUiEvent(evt: UiEvent): void {
 renderHud();
 setInterval(renderHud, POLL_INTERVAL_MS);
 subscribeUiState(getBaseUrl(), applyUiEvent);
+
+function renderVoiceStatus(result: VoiceSegmentResult): void {
+  const el = document.getElementById('voice-status');
+  if (!el) return;
+  const marker = result.addressed ? '🎙️ an Alfred' : '🎙️ ignoriert';
+  el.textContent = `${marker}: "${result.text}"`;
+}
+
+startVoiceCapture(getBaseUrl(), renderVoiceStatus);
