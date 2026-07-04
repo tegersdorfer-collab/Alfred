@@ -11,6 +11,7 @@ import logging
 from datetime import datetime
 
 from core import db
+from core.jsonutil import extract_json
 from llm.base import LLMProvider, Message
 
 log = logging.getLogger(__name__)
@@ -176,34 +177,9 @@ async def plan_task(task: dict, llm: LLMProvider, lzg=None) -> dict:
             ))],
             temperature=0.4, max_tokens=800,
         )
-        # JSON aus Antwort extrahieren (robuster Parser)
-        import re
-        # Finde den ersten { und den zugehörigen schließenden }
-        start = resp.find('{')
-        if start >= 0:
-            depth, end = 0, start
-            in_str, escape = False, False
-            for i, ch in enumerate(resp[start:], start):
-                if escape:
-                    escape = False
-                elif ch == '\\' and in_str:
-                    escape = True
-                elif ch == '"':
-                    in_str = not in_str
-                elif not in_str:
-                    if ch == '{':
-                        depth += 1
-                    elif ch == '}':
-                        depth -= 1
-                        if depth == 0:
-                            end = i
-                            break
-            try:
-                return json.loads(resp[start:end+1])
-            except json.JSONDecodeError:
-                # Letzter Versuch: Trailing-Kommas und häufige Fehler beheben
-                cleaned = re.sub(r',\s*([}\]])', r'\1', resp[start:end+1])
-                return json.loads(cleaned)
+        parsed = extract_json(resp)
+        if parsed is not None:
+            return parsed
     except Exception as e:
         log.warning(f"Planning fehlgeschlagen: {e}")
 
