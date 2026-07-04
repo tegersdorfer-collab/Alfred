@@ -3,6 +3,11 @@ export type VoiceSegmentResult = { text: string; addressed: boolean };
 const SILENCE_THRESHOLD = 0.02;   // RMS-Lautstärke-Schwelle (0..1)
 const SILENCE_MS_TO_STOP = 800;   // so lange Stille beendet ein Sprachsegment
 const MIN_SEGMENT_MS = 300;       // kürzere "Segmente" werden verworfen (Rauschen)
+const PREROLL_MS = 400;           // Vorlauf vor Lautstärke-Trigger, damit der Wortanfang nicht abgeschnitten wird
+const CHUNK_TIMESLICE_MS = 100;   // Aufnahme-Intervall des durchgehenden Recorders
+const BUFFER_RETENTION_MS = 4000; // wie lange gepufferte Chunks für den Vorlauf vorgehalten werden
+
+type TimedChunk = { ts: number; data: Blob };
 
 export function startVoiceCapture(
   baseUrl: string,
@@ -12,10 +17,11 @@ export function startVoiceCapture(
   let stream: MediaStream | null = null;
   let audioCtx: AudioContext | null = null;
   let recorder: MediaRecorder | null = null;
-  let chunks: BlobPart[] = [];
+  let buffer: TimedChunk[] = [];
   let speaking = false;
   let silenceStartedAt: number | null = null;
   let segmentStartedAt = 0;
+  let segmentStartTs = 0;
   let rafId: number | null = null;
 
   function extensionFor(mimeType: string): string {
@@ -61,6 +67,16 @@ export function startVoiceCapture(
       source.connect(analyser);
       const data = new Uint8Array(analyser.fftSize);
 
+      // Durchgehender Recorder (nie gestoppt/neugestartet pro Segment) — vermeidet, dass der
+      // Wortanfang verloren geht, während MediaRecorder erst nach dem Lautstärke-Trigger anläuft.
+      recorder = new MediaRecorder(stream);
+      recorder.ondataavailable = (e) => {
+        const now = performance.now();
+        buffer.push({ ts: now, data: e.data });
+        buffer = buffer.filter((c) => now - c.ts <= BUFFER_RETENTION_MS);
+      };
+      recorder.start(CHUNK_TIMESLICE_MS);
+
       function tick(): void {
         if (stopped || !audioCtx) return;
         analyser.getByteTimeDomainData(data);
@@ -72,26 +88,19 @@ export function startVoiceCapture(
           if (!speaking) {
             speaking = true;
             segmentStartedAt = now;
-            chunks = [];
-            recorder = new MediaRecorder(stream!);
-            recorder.ondataavailable = (e) => chunks.push(e.data);
-            recorder.start();
+            segmentStartTs = now - PREROLL_MS;
           }
         } else if (speaking) {
           if (silenceStartedAt === null) silenceStartedAt = now;
           if (now - silenceStartedAt >= SILENCE_MS_TO_STOP) {
             speaking = false;
             const duration = now - segmentStartedAt;
-            const activeRecorder = recorder;
-            recorder = null;
-            if (activeRecorder && activeRecorder.state !== 'inactive') {
-              activeRecorder.onstop = () => {
-                if (duration >= MIN_SEGMENT_MS) {
-                  const mimeType = activeRecorder.mimeType || 'audio/webm';
-                  uploadSegment(new Blob(chunks, { type: mimeType }), mimeType);
-                }
-              };
-              activeRecorder.stop();
+            if (duration >= MIN_SEGMENT_MS && recorder) {
+              const parts = buffer.filter((c) => c.ts >= segmentStartTs).map((c) => c.data);
+              const mimeType = recorder.mimeType || 'audio/webm';
+              if (parts.length > 0) {
+                uploadSegment(new Blob(parts, { type: mimeType }), mimeType);
+              }
             }
           }
         }
