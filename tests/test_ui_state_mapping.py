@@ -22,9 +22,8 @@ class TestWidgetTypeForTool:
     def test_unbekanntes_tool_liefert_none(self):
         assert widget_type_for_tool("create_task") is None
 
-    def test_widget_map_enthaelt_nur_get_health(self):
-        # Phase 2: bewusst nur EIN Eintrag, Rest folgt in Phase 3
-        assert WIDGET_MAP == {"get_health": "sleep"}
+    def test_get_calendar_mappt_auf_calendar(self):
+        assert widget_type_for_tool("get_calendar") == "calendar"
 
 
 def _fake_health_row(d, hours, deep):

@@ -16,9 +16,14 @@ from typing import Any
 
 log = logging.getLogger(__name__)
 
-# Tool-Name → Widget-Typ. Erweitert sich mit der Widget-Bibliothek (Phase 4).
+# Tool-Name → Widget-Typ.
 WIDGET_MAP: dict[str, str] = {
     "get_health": "sleep",
+    "recent_workouts": "training",
+    "list_tasks": "tasks",
+    "get_calendar": "calendar",
+    "nutrition_today": "nutrition",
+    "list_habits": "habits",
 }
 
 # Begrenztes Set an Layout-Vorlagen — jede definiert ihre verfügbaren Slots.
@@ -53,6 +58,118 @@ def sleep_widget_payload(dashboard: Any, days: int = 7) -> dict:
             for r in rows
         ],
     }
+
+
+def training_widget_payload(limit: int = 8) -> dict:
+    """Baut Trainings-Daten für das Training-Widget aus domains.fitness."""
+    from domains import fitness
+    workouts = fitness.recent_workouts(limit=limit)
+    return {
+        "workouts": [
+            {
+                "date": w["date"].isoformat(),
+                "title": w["title"],
+                "duration_min": w.get("duration_min"),
+                "distance_km": w.get("distance_km"),
+            }
+            for w in workouts
+        ],
+    }
+
+
+def tasks_widget_payload(limit: int = 8) -> dict:
+    """Baut die offenen Aufgaben für das Tasks-Widget aus domains.tasks."""
+    from domains import tasks as tasks_d
+    rows = tasks_d.list_tasks("open")[:limit]
+    return {
+        "tasks": [
+            {
+                "title": t["title"],
+                "priority": t.get("priority"),
+                "progress_pct": t.get("progress_pct") or 0,
+            }
+            for t in rows
+        ],
+    }
+
+
+def calendar_widget_payload(dashboard: Any, days: int = 7) -> dict:
+    """Baut anstehende Termine für das Calendar-Widget aus DashboardReader."""
+    events = dashboard.get_upcoming_events(days=days)
+    return {
+        "events": [
+            {
+                "title": e.title,
+                "start": e.start.isoformat(),
+                "all_day": e.all_day,
+                "location": e.location,
+            }
+            for e in events
+        ],
+    }
+
+
+def nutrition_widget_payload() -> dict:
+    """Baut die heutigen Makro-Summen für das Nutrition-Widget aus domains.nutrition."""
+    from domains import nutrition
+    t = nutrition.day_totals()
+    return {
+        "kcal": t.get("kcal", 0),
+        "protein": t.get("protein", 0),
+        "carbs": t.get("carbs", 0),
+        "fat": t.get("fat", 0),
+    }
+
+
+def habits_widget_payload() -> dict:
+    """Baut die Gewohnheiten-Übersicht für das Habits-Widget aus domains.habits."""
+    from domains import habits
+    overview = habits.habit_overview()
+    return {
+        "habits": [
+            {
+                "emoji": h["emoji"],
+                "name": h["name"],
+                "today_done": h["today_done"],
+                "streak": h["streak"],
+            }
+            for h in overview
+        ],
+    }
+
+
+# Widget-Typen, die eine Dashboard-Instanz brauchen (services.get("dashboard")).
+_DASHBOARD_BUILDERS = {
+    "sleep": sleep_widget_payload,
+    "calendar": calendar_widget_payload,
+}
+
+# Widget-Typen, die keine externe Abhängigkeit brauchen (holen sich ihre Daten
+# selbst aus den passenden domains-Modulen).
+_STANDALONE_BUILDERS = {
+    "training": training_widget_payload,
+    "tasks": tasks_widget_payload,
+    "nutrition": nutrition_widget_payload,
+    "habits": habits_widget_payload,
+}
+
+WIDGET_TYPES = set(_DASHBOARD_BUILDERS) | set(_STANDALONE_BUILDERS)
+
+
+def build_widget_payload(widget_type: str) -> dict | None:
+    """Einzige Stelle, die weiß wie man Daten für einen Widget-Typ baut. Gibt
+    None zurück wenn der Typ unbekannt ist oder seine Datenquelle (aktuell
+    nur 'dashboard') nicht verfügbar ist."""
+    if widget_type in _DASHBOARD_BUILDERS:
+        from core.container import services
+        dash = services.get("dashboard")
+        if dash is None:
+            return None
+        return _DASHBOARD_BUILDERS[widget_type](dash)
+    builder = _STANDALONE_BUILDERS.get(widget_type)
+    if builder is None:
+        return None
+    return builder()
 
 
 class UIStateBus:
@@ -140,21 +257,16 @@ def maybe_update_ui(tools_used: list[str]) -> None:
         if widget_type is None:
             continue
         try:
-            from core.container import services
-            dash = services.get("dashboard")
-            if dash is None:
+            payload = build_widget_payload(widget_type)
+            if payload is None:
                 return
-            if widget_type == "sleep":
-                payload = sleep_widget_payload(dash)
-                UI_BUS.show_widget("sleep", payload, slot="main")
+            UI_BUS.show_widget(widget_type, payload, slot="main")
             return  # erstes Match gewinnt
         except Exception as e:
             log.debug(f"maybe_update_ui fehlgeschlagen für '{tool_name}': {e}")
             return
-    # Ein explizites UI-Tool hat den Bus bereits selbst korrekt gesetzt — nicht überschreiben.
     if any(t in EXPLICIT_UI_TOOLS for t in tools_used):
         return
-    # Kein Tool in diesem Turn einem Widget zugeordnet → zurück zum Ruhezustand
     try:
         UI_BUS.clear()
     except Exception as e:
