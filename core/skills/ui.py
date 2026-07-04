@@ -9,7 +9,7 @@ anordnen, eins schließen, zwischen Layout-Vorlagen wechseln.
 import logging
 
 from core import tools as T
-from core.ui_state import UI_BUS, LAYOUT_PRESETS, sleep_widget_payload
+from core.ui_state import UI_BUS, LAYOUT_PRESETS, DEFAULT_LAYOUT, sleep_widget_payload
 
 log = logging.getLogger("core.skills")
 
@@ -33,6 +33,12 @@ async def _show_widget(widget_type: str, slot: str = "main"):
     builder = _PAYLOAD_BUILDERS.get(widget_type)
     if builder is None:
         return f"FEHLER: Unbekannter Widget-Typ '{widget_type}'. Verfügbar: {', '.join(_PAYLOAD_BUILDERS)}."
+
+    active_layout = UI_BUS.current["layout"] or DEFAULT_LAYOUT
+    if slot not in LAYOUT_PRESETS[active_layout]:
+        return (f"FEHLER: Slot '{slot}' existiert nicht in Layout '{active_layout}'. "
+                f"Verfügbare Slots: {', '.join(LAYOUT_PRESETS[active_layout])}.")
+
     from core.container import services
     dash = services.get("dashboard")
     if dash is None:

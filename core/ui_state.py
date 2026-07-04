@@ -29,6 +29,10 @@ LAYOUT_PRESETS: dict[str, list[str]] = {
 
 DEFAULT_LAYOUT = "single"
 
+# Explizite UI-Tools (core/skills/ui.py) setzen den Bus bereits selbst korrekt —
+# maybe_update_ui darf deren Ergebnis in diesem Turn nicht mit clear() überschreiben.
+EXPLICIT_UI_TOOLS = {"show_widget", "arrange_screen", "close_widget"}
+
 
 def widget_type_for_tool(tool_name: str) -> str | None:
     return WIDGET_MAP.get(tool_name)
@@ -126,8 +130,11 @@ UI_BUS = UIStateBus()
 def maybe_update_ui(tools_used: list[str]) -> None:
     """Nach einem Agent-Turn aufgerufen: prüft ob ein genutztes Tool einem
     Widget zugeordnet ist, baut bei Treffer die Daten und zeigt sie im
-    'main'-Slot. Fehler werden geschluckt — UI-Updates dürfen nie einen
-    Chat-Turn brechen."""
+    'main'-Slot. Wenn der Turn stattdessen ein explizites UI-Tool genutzt hat
+    (show_widget/arrange_screen/close_widget), hat der Bus bereits den
+    korrekten Zustand — die automatische Zuordnung darf ihn dann NICHT
+    überschreiben/zurücksetzen. Fehler werden geschluckt — UI-Updates dürfen
+    nie einen Chat-Turn brechen."""
     for tool_name in tools_used:
         widget_type = widget_type_for_tool(tool_name)
         if widget_type is None:
@@ -144,6 +151,9 @@ def maybe_update_ui(tools_used: list[str]) -> None:
         except Exception as e:
             log.debug(f"maybe_update_ui fehlgeschlagen für '{tool_name}': {e}")
             return
+    # Ein explizites UI-Tool hat den Bus bereits selbst korrekt gesetzt — nicht überschreiben.
+    if any(t in EXPLICIT_UI_TOOLS for t in tools_used):
+        return
     # Kein Tool in diesem Turn einem Widget zugeordnet → zurück zum Ruhezustand
     try:
         UI_BUS.clear()

@@ -38,6 +38,7 @@ class TestShowWidget:
         assert UI_BUS.current["slots"]["main"]["widget"] == "sleep"
 
     def test_zeigt_widget_in_explizitem_slot(self):
+        UI_BUS.arrange_screen("split2")
         dash = FakeDashboard([])
         with patch("core.container.services.get", return_value=dash):
             asyncio.run(ui_skills._show_widget("sleep", slot="side"))
@@ -52,6 +53,20 @@ class TestShowWidget:
         with patch("core.container.services.get", return_value=None):
             result = asyncio.run(ui_skills._show_widget("sleep"))
         assert result.startswith("FEHLER")
+
+    def test_slot_passend_zu_aktivem_layout_funktioniert(self):
+        UI_BUS.arrange_screen("split2")
+        dash = FakeDashboard([])
+        with patch("core.container.services.get", return_value=dash):
+            result = asyncio.run(ui_skills._show_widget("sleep", slot="side"))
+        assert "side" in result
+        assert "side" in UI_BUS.current["slots"]
+
+    def test_slot_passt_nicht_zu_aktivem_layout_liefert_fehler(self):
+        UI_BUS.arrange_screen("single")
+        result = asyncio.run(ui_skills._show_widget("sleep", slot="side"))
+        assert result.startswith("FEHLER")
+        assert "side" not in UI_BUS.current["slots"]
 
 
 class TestArrangeScreen:

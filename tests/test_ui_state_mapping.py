@@ -107,3 +107,10 @@ class TestMaybeUpdateUiZurueckZumRuhezustand:
                 "nights": [{"date": "2026-07-04", "hours": 7.0, "deep_hours": 1.0}],
             },
         }
+
+    def test_explizites_ui_tool_wird_nicht_von_clear_ueberschrieben(self):
+        from core.skills import ui as ui_skills
+        import asyncio
+        asyncio.run(ui_skills._arrange_screen("split2"))
+        maybe_update_ui(["arrange_screen"])
+        assert UI_BUS.current["layout"] == "split2"
