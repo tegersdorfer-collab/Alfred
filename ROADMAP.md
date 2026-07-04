@@ -32,6 +32,10 @@
   RMS-Lautstärke-VAD (kein ML, kein Wake-Word), zeigt Transkript + Adressierungs-Status
   im HUD — noch NICHT an den Agent/Chat-Loop angebunden, dient nur der Messung von
   Latenz/Trefferquote vor dem vollen Ausbau
+- Versteckte manuelle Navigation (Phase 6): Cmd/Ctrl+K öffnet ein Vollbild-Grid mit den 6
+  existierenden Widget-Typen im Tauri-Client, Klick setzt das gewählte Widget direkt als
+  Hauptscreen — neuer Endpunkt POST /api/ui/select (kein Agent/LLM involviert, reiner
+  Fallback für manuelle Navigation ohne Sprache/Text)
 
 ### Gedächtnis-Architektur
 - PostgreSQL + pgvector Langzeitgedächtnis
