@@ -22,6 +22,8 @@ async def ask(prompt: str, max_tokens: int = 20, temperature: float = 0.1) -> st
                 messages=[{"role": "user", "content": prompt}],
                 options={"temperature": temperature, "num_predict": max_tokens},
                 keep_alive=config.OLLAMA_KEEP_ALIVE,
+                think=False,  # Reasoning-Modelle (z.B. qwen3.5) verbrauchen sonst das
+                              # ganze num_predict-Budget für <think>, message.content bleibt leer
             )
         return (resp.message.content or "").strip()
     except Exception as e:
