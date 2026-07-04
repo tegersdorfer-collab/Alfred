@@ -4,8 +4,15 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 from datetime import date
 from types import SimpleNamespace
+from unittest.mock import patch
 
-from core.ui_state import WIDGET_MAP, widget_type_for_tool, sleep_widget_payload
+from core.ui_state import (
+    WIDGET_MAP,
+    widget_type_for_tool,
+    sleep_widget_payload,
+    maybe_update_ui,
+    UI_BUS,
+)
 
 
 class TestWidgetTypeForTool:
@@ -67,3 +74,32 @@ class TestSleepWidgetPayload:
 
         sleep_widget_payload(RecordingDashboard(), days=14)
         assert calls == [14]
+
+
+class TestMaybeUpdateUiZurueckZumRuhezustand:
+    def setup_method(self):
+        UI_BUS._current = None
+
+    def teardown_method(self):
+        UI_BUS._current = None
+
+    def test_leere_tool_liste_setzt_current_auf_none(self):
+        UI_BUS._current = {"widget": "sleep", "payload": {}, "ts": 0}
+        maybe_update_ui([])
+        assert UI_BUS.current is None
+
+    def test_kein_gemapptes_tool_setzt_current_auf_none(self):
+        UI_BUS._current = {"widget": "sleep", "payload": {}, "ts": 0}
+        maybe_update_ui(["create_task"])
+        assert UI_BUS.current is None
+
+    def test_get_health_setzt_weiterhin_sleep_widget(self):
+        dash = FakeDashboard([_fake_health_row(date(2026, 7, 4), 7.0, 1.0)])
+        with patch("core.container.services.get", return_value=dash):
+            maybe_update_ui(["get_health"])
+        assert UI_BUS.current is not None
+        assert UI_BUS.current["widget"] == "sleep"
+        assert UI_BUS.current["payload"] == {
+            "widget": "sleep",
+            "nights": [{"date": "2026-07-04", "hours": 7.0, "deep_hours": 1.0}],
+        }

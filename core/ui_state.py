@@ -105,3 +105,8 @@ def maybe_update_ui(tools_used: list[str]) -> None:
         except Exception as e:
             log.debug(f"maybe_update_ui fehlgeschlagen für '{tool_name}': {e}")
             return
+    # Kein Tool in diesem Turn einem Widget zugeordnet → zurück zum Ruhezustand
+    try:
+        UI_BUS.clear()
+    except Exception as e:
+        log.debug(f"maybe_update_ui: clear() fehlgeschlagen: {e}")
