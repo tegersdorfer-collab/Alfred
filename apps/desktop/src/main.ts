@@ -5,6 +5,7 @@ import { subscribeUiState } from './ui-state-client';
 import type { UiEvent, WidgetSlot } from './ui-state-client';
 import { startVoiceCapture } from './voice-capture';
 import type { VoiceSegmentResult } from './voice-capture';
+import { initNavOverlay } from './nav-overlay';
 
 const POLL_INTERVAL_MS = 10_000;
 
@@ -140,3 +141,4 @@ function renderVoiceStatus(result: VoiceSegmentResult): void {
 }
 
 startVoiceCapture(getBaseUrl(), renderVoiceStatus);
+initNavOverlay(getBaseUrl());

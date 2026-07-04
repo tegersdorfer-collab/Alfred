@@ -100,3 +100,20 @@ html, body {
   padding: 4px 0;
   border-bottom: 1px solid #00e5ff11;
 }
+
+#nav-overlay {
+  display: none;
+  position: fixed; inset: 0;
+  background: rgba(4, 7, 13, 0.96);
+  z-index: 1000;
+}
+#nav-overlay.visible { display: flex; align-items: center; justify-content: center; }
+.nav-grid {
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px;
+}
+.nav-tile {
+  background: transparent; border: 1px solid #00e5ff55; color: #00e5ff;
+  font-family: 'SF Mono', monospace; font-size: 14px; padding: 32px 48px;
+  cursor: pointer; border-radius: 4px;
+}
+.nav-tile:hover { background: #00e5ff22; }
