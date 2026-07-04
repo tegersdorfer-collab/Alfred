@@ -1,9 +1,13 @@
 """
 Sprach-Verarbeitung — gemeinsame Whisper-Transkription + schneller Adress-Check.
 
-Whisper-Teil ist identisch zu dem, was communication/telegram.py bisher exklusiv
-für Telegram-Sprachnachrichten nutzte — jetzt hier zentralisiert, damit Phase 5
-(Desktop-Sprachsteuerung) dieselbe Logik wiederverwendet statt sie zu duplizieren.
+Nutzt whisper.cpp (via pywhispercpp) statt des reinen PyTorch-openai-whisper —
+auf Apple Silicon läuft das über Metal statt nur CPU und ist damit deutlich
+schneller bei gleicher Modellqualität (siehe docs/superpowers/plans, Phase 5a-
+Nachbesserung). Whisper-Teil ist identisch zu dem, was communication/telegram.py
+bisher exklusiv für Telegram-Sprachnachrichten nutzte — jetzt hier zentralisiert,
+damit Phase 5 (Desktop-Sprachsteuerung) dieselbe Logik wiederverwendet statt sie
+zu duplizieren.
 """
 import asyncio
 import logging
@@ -17,22 +21,24 @@ _whisper_lock = asyncio.Lock()
 
 
 async def transcribe_audio(audio_path: str) -> str:
-    """Transkribiert eine Audiodatei lokal mit Whisper. Gibt leeren String bei Fehler zurück."""
+    """Transkribiert eine Audiodatei lokal mit whisper.cpp. Gibt leeren String bei Fehler zurück."""
     global _whisper_model
     try:
-        import whisper
+        from pywhispercpp.model import Model
     except ImportError:
-        log.warning("openai-whisper nicht installiert – Audio kann nicht transkribiert werden")
+        log.warning("pywhispercpp nicht installiert – Audio kann nicht transkribiert werden")
         return ""
 
     async with _whisper_lock:
         if _whisper_model is None:
-            log.info("🔊 Lade Whisper-Modell 'base' …")
-            _whisper_model = await asyncio.to_thread(whisper.load_model, "base")
+            log.info("🔊 Lade whisper.cpp-Modell 'medium' …")
+            _whisper_model = await asyncio.to_thread(
+                Model, "medium", language="de", print_realtime=False, print_progress=False
+            )
 
     try:
-        result = await asyncio.to_thread(_whisper_model.transcribe, audio_path, language="de")
-        return (result.get("text") or "").strip()
+        segments = await asyncio.to_thread(_whisper_model.transcribe, audio_path)
+        return " ".join(s.text for s in segments).strip()
     except Exception as e:
         log.error(f"Whisper-Transkription fehlgeschlagen: {e}")
         return ""

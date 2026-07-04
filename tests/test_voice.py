@@ -1,4 +1,4 @@
-"""Unit-Tests für core/voice.py: Whisper-Transkription + Adress-Check."""
+"""Unit-Tests für core/voice.py: whisper.cpp-Transkription + Adress-Check."""
 import sys, os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
@@ -14,15 +14,22 @@ class TestTranscribeAudio:
 
     def test_gibt_transkribierten_text_zurueck(self):
         fake_model = MagicMock()
-        fake_model.transcribe.return_value = {"text": "  Wie war mein Schlaf?  "}
-        with patch("whisper.load_model", return_value=fake_model):
+        fake_model.transcribe.return_value = [MagicMock(text="  Wie war mein Schlaf?  ")]
+        with patch("pywhispercpp.model.Model", return_value=fake_model):
             text = asyncio.run(voice.transcribe_audio("/tmp/fake.wav"))
         assert text == "Wie war mein Schlaf?"
 
+    def test_verkettet_mehrere_segmente(self):
+        fake_model = MagicMock()
+        fake_model.transcribe.return_value = [MagicMock(text="Hallo"), MagicMock(text="Alfred")]
+        with patch("pywhispercpp.model.Model", return_value=fake_model):
+            text = asyncio.run(voice.transcribe_audio("/tmp/fake.wav"))
+        assert text == "Hallo Alfred"
+
     def test_laedt_modell_nur_einmal(self):
         fake_model = MagicMock()
-        fake_model.transcribe.return_value = {"text": "test"}
-        with patch("whisper.load_model", return_value=fake_model) as mock_load:
+        fake_model.transcribe.return_value = [MagicMock(text="test")]
+        with patch("pywhispercpp.model.Model", return_value=fake_model) as mock_load:
             asyncio.run(voice.transcribe_audio("/tmp/a.wav"))
             asyncio.run(voice.transcribe_audio("/tmp/b.wav"))
         mock_load.assert_called_once()
@@ -30,7 +37,7 @@ class TestTranscribeAudio:
     def test_transkriptions_fehler_gibt_leeren_string(self):
         fake_model = MagicMock()
         fake_model.transcribe.side_effect = RuntimeError("kaputt")
-        with patch("whisper.load_model", return_value=fake_model):
+        with patch("pywhispercpp.model.Model", return_value=fake_model):
             text = asyncio.run(voice.transcribe_audio("/tmp/fake.wav"))
         assert text == ""
 
@@ -39,7 +46,7 @@ class TestTranscribeAudio:
         real_import = builtins.__import__
 
         def fake_import(name, *args, **kwargs):
-            if name == "whisper":
+            if name == "pywhispercpp.model":
                 raise ImportError("nicht installiert")
             return real_import(name, *args, **kwargs)
 

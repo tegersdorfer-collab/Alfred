@@ -31,7 +31,7 @@ python-dotenv>=1.0
 asyncio-throttle>=1.0
 psutil>=5.9
 httpx>=0.27
-openai-whisper>=20231117
+pywhispercpp>=1.5.0
 numpy>=1.26
 
 # Google Calendar API (bidirektionale Kalendersynchronisation)
