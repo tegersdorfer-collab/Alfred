@@ -28,7 +28,9 @@ _BLOCKED_FILES = {
 def _safe_path(rel_path: str) -> Optional[Path]:
     """Gibt absoluten Pfad zurück wenn erlaubt, sonst None."""
     p = (ALFRED_DIR / rel_path).resolve()
-    if not str(p).startswith(str(ALFRED_DIR)):
+    # is_relative_to statt String-Prefix-Vergleich: ein Geschwisterverzeichnis
+    # wie "AlfredEvilTwin" würde den reinen str.startswith()-Check sonst bestehen.
+    if not p.is_relative_to(ALFRED_DIR):
         return None
     if rel_path in _BLOCKED_FILES:
         return None
@@ -58,7 +60,7 @@ def read_file(rel_path: str) -> str:
 def list_files(rel_dir: str = "") -> list[str]:
     """Listet Dateien in einem Verzeichnis der Codebase."""
     base = (ALFRED_DIR / rel_dir).resolve() if rel_dir else ALFRED_DIR
-    if not str(base).startswith(str(ALFRED_DIR)):
+    if not base.is_relative_to(ALFRED_DIR):
         return []
     result = []
     for p in sorted(base.rglob("*")):
