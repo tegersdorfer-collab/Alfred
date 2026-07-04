@@ -21,6 +21,9 @@ data/
 .vscode/
 .claude/
 
+# Brainstorming-Mockups (Session-Artefakte, keine Projektdateien)
+.superpowers/
+
 # Xcode (iOS-Apps unter apps/)
 xcuserdata/
 *.xcuserstate
