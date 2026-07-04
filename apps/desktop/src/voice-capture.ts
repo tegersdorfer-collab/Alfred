@@ -17,6 +17,7 @@ export function startVoiceCapture(
   let stream: MediaStream | null = null;
   let audioCtx: AudioContext | null = null;
   let recorder: MediaRecorder | null = null;
+  let initSegment: Blob | null = null;
   let buffer: TimedChunk[] = [];
   let speaking = false;
   let silenceStartedAt: number | null = null;
@@ -72,6 +73,12 @@ export function startVoiceCapture(
       recorder = new MediaRecorder(stream);
       recorder.ondataavailable = (e) => {
         const now = performance.now();
+        if (!initSegment) {
+          // Erster Chunk enthält bei fragmentiertem MP4 (ftyp/moov/trex) die einmalige
+          // Initialisierung, ohne die spätere Fragmente nicht decodierbar sind — nie verwerfen.
+          initSegment = e.data;
+          return;
+        }
         buffer.push({ ts: now, data: e.data });
         buffer = buffer.filter((c) => now - c.ts <= BUFFER_RETENTION_MS);
       };
@@ -95,12 +102,10 @@ export function startVoiceCapture(
           if (now - silenceStartedAt >= SILENCE_MS_TO_STOP) {
             speaking = false;
             const duration = now - segmentStartedAt;
-            if (duration >= MIN_SEGMENT_MS && recorder) {
-              const parts = buffer.filter((c) => c.ts >= segmentStartTs).map((c) => c.data);
+            if (duration >= MIN_SEGMENT_MS && recorder && initSegment) {
+              const parts = [initSegment, ...buffer.filter((c) => c.ts >= segmentStartTs).map((c) => c.data)];
               const mimeType = recorder.mimeType || 'audio/webm';
-              if (parts.length > 0) {
-                uploadSegment(new Blob(parts, { type: mimeType }), mimeType);
-              }
+              uploadSegment(new Blob(parts, { type: mimeType }), mimeType);
             }
           }
         }
