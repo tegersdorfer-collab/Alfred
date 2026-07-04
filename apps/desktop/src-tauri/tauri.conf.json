@@ -1,6 +1,6 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "desktop",
+  "productName": "Alfred",
   "version": "0.1.0",
   "identifier": "com.alfred.desktop",
   "build": {
@@ -13,7 +13,7 @@
     "withGlobalTauri": true,
     "windows": [
       {
-        "title": "desktop",
+        "title": "Alfred",
         "width": 800,
         "height": 600
       }

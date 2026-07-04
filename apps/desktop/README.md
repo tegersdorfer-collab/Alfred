@@ -1,7 +1,16 @@
-# Tauri + Vanilla TS
+# Alfred Desktop (Phase 1 — Grundgerüst)
 
-This template should help get you started developing with Tauri in vanilla HTML, CSS and Typescript.
+Tauri-Desktop-Client für Alfred (Windows + macOS aus einer Codebasis). Aktueller Stand:
+Verbindung zum Alfred-Backend (Health-Check mit Retry) + Ruhezustand-HUD-Screen.
 
-## Recommended IDE Setup
+Siehe: `docs/superpowers/plans/2026-07-04-desktop-app-foundation.md` (dieser Stand)
+und `docs/superpowers/specs/2026-07-04-multi-device-jarvis-ui-design.md` (Gesamt-Architektur).
 
-- [VS Code](https://code.visualstudio.com/) + [Tauri](https://marketplace.visualstudio.com/items?itemName=tauri-apps.tauri-vscode) + [rust-analyzer](https://marketplace.visualstudio.com/items?itemName=rust-lang.rust-analyzer)
+## Entwicklung
+
+npm install
+npm run tauri dev
+
+## Tests
+
+npm test

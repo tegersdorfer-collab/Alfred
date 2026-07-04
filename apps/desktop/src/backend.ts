@@ -8,7 +8,10 @@ async function tryFetchHealth(
   baseUrl: string,
   fetchImpl: typeof fetch,
 ): Promise<HealthStatus> {
-  const res = await fetchImpl(`${baseUrl}/health`, { method: 'GET' });
+  const res = await fetchImpl(`${baseUrl}/health`, {
+    method: 'GET',
+    signal: AbortSignal.timeout(3000),
+  });
   const data = await res.json();
   return { ok: !!data.ok, checks: data.checks };
 }
