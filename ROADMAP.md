@@ -16,6 +16,10 @@
 - Subagent Delegation (`delegate_task`) — isolierter Kind-Agent, eigener Context, Timeout
 - LLM-Fallback: Claude API ausgefallen → lokales Ollama übernimmt transparent
   (90s-Timeout, 180s-Cooldown, Ausfall im Fehler-Widget sichtbar)
+- Generatives UI (Phase 2, erster Durchstich): Tool-Aufrufe (get_health) lösen automatisch
+  Widgets im Tauri-Desktop-Client aus — deterministische Tool→Widget-Zuordnung
+  (core/ui_state.py), neuer SSE-Kanal (/api/ui/stream, /api/ui/current), Sleep-Widget
+  ersetzt den HUD-Ring bei Treffer und schaltet bei irrelevanten Turns zurück
 
 ### Gedächtnis-Architektur
 - PostgreSQL + pgvector Langzeitgedächtnis
