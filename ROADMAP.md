@@ -146,9 +146,10 @@
 ### Desktop-App: großzügiger Ausbau (Jarvis-Look + Funktionen)
 - [x] Chat-Texteingabe im HUD (Commit f3a3836) — Eingabefeld unten im
   Fenster, sendet an POST /api/chat, Antwort im chat-status-Bereich
-- [x] Holographic-HUD-Feinschliff (Commit a7e3eb5): Scanline-Animation,
-  Grid-Textur-Hintergrund, Vignette, Ring-Puls-Animation. Sound-Feedback
-  noch offen (kein Audio-Feedback-System implementiert).
+- [x] Holographic-HUD-Feinschliff (Commit a7e3eb5, Sound-Feedback in
+  Commit 3912bf5): Scanline-Animation, Grid-Textur-Hintergrund, Vignette,
+  Ring-Puls-Animation + synthetisierte Töne (Web Audio API) bei
+  Widget-Wechsel, Alerts/Tool-Fehlern, adressierter Sprache.
 - [x] **Modulare/adaptive Screens großzügig ausgebaut** (Commit e13d801 +
   vorherige Widget-Commits): Widget-Bibliothek von 6 auf 10 Typen erweitert
   (system/brain/skills/weather neu), Fade-In/Scale-Übergangsanimation bei
