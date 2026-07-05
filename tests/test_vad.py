@@ -26,6 +26,34 @@ class TestSileroVAD:
             assert prob == 0.87
             mock_session.run.assert_called_once()
 
+    def test_state_carries_over_between_calls(self, tmp_path):
+        import numpy as np
+
+        model_path = tmp_path / "fake.onnx"
+        model_path.write_bytes(b"fake")
+        with patch.object(vad, "_load_session") as mock_load:
+            mock_session = MagicMock()
+            state_output = np.full((2, 1, 128), 0.42, dtype=np.float32)
+            mock_session.run.return_value = [np.array([[0.75]]), state_output]
+            mock_load.return_value = mock_session
+
+            model = vad.SileroVAD(model_path)
+            initial_state = model._state.copy()
+
+            prob1 = model.speech_probability(silence_chunk())
+            assert prob1 == 0.75
+            # state should have been updated from the initial zeros
+            assert not np.array_equal(model._state, initial_state)
+            np.testing.assert_array_equal(model._state, state_output)
+
+            prob2 = model.speech_probability(silence_chunk())
+            assert prob2 == 0.75
+
+            assert mock_session.run.call_args_list[1].args[1]["state"] is not initial_state
+            np.testing.assert_array_equal(
+                mock_session.run.call_args_list[1].args[1]["state"], state_output
+            )
+
 
 class FakeVAD:
     """Test-Double: gibt vordefinierte Wahrscheinlichkeiten in Aufrufreihenfolge zurück."""
