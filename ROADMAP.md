@@ -216,11 +216,14 @@
 - [ ] Smart-Home-Steuerung (falls HomeKit/HomeAssistant vorhanden — prüfen)
 - [ ] Bildschirm-Freigabe/Screen-Context: Alfred sieht was gerade am
   Bildschirm passiert (Screenshot-Analyse) für kontextbezogene Hilfe
-- [ ] Kalender-/Termin-Konflikt-Erkennung proaktiv statt nur auf Anfrage
+- [x] **Kalender-Konflikt-Erkennung** — existierte bereits (`_calendar_check()`
+  in core/autopilot.py, nutzt domains/calendar_optimizer.py::analyze_day),
+  läuft jeden Morgen proaktiv, keine Umsetzung nötig gewesen.
 - [ ] Sprach-Emotionserkennung (Tonfall) für empathischere Antworten
   (nur wenn ein leichtgewichtiges lokales Modell existiert)
-- [ ] Multi-Turn-Voice-Conversation-Historie im Desktop-HUD sichtbar (nicht
-  nur letztes Segment)
+- [x] Multi-Turn-Konversations-Historie im HUD (Commit 7b265a9):
+  conversation-log.ts zeigt die letzten 12 Turns (Nutzer + Alfred) oben
+  links, statt nur den letzten Austausch zu überschreiben
 - [ ] Fehler-Selbstheilung: Alfred merkt wenn ein Tool wiederholt fehlschlägt
   und schlägt Fixes vor / versucht sie selbst (Skill-Factory-Erweiterung)
 
