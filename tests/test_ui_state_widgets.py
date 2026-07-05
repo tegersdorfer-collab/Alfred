@@ -14,6 +14,7 @@ from core.ui_state import (
     habits_widget_payload,
     system_widget_payload,
     brain_widget_payload,
+    skills_widget_payload,
     build_widget_payload,
     WIDGET_TYPES,
     WIDGET_MAP,
@@ -161,6 +162,23 @@ class TestBrainWidgetPayload:
         assert len(payload["notes"]) == 3
 
 
+class TestSkillsWidgetPayload:
+    def test_formt_skill_factory_status(self):
+        with patch("core.skill_factory.list_dynamic_skills", return_value=["convert_currency", "roll_dice"]), \
+             patch("core.tools.REGISTRY", {"a": object(), "b": object(), "c": object()}):
+            payload = skills_widget_payload()
+        assert payload == {
+            "dynamic_skills": ["convert_currency", "roll_dice"],
+            "total_tools": 3,
+        }
+
+    def test_keine_dynamischen_skills(self):
+        with patch("core.skill_factory.list_dynamic_skills", return_value=[]), \
+             patch("core.tools.REGISTRY", {}):
+            payload = skills_widget_payload()
+        assert payload == {"dynamic_skills": [], "total_tools": 0}
+
+
 class TestWidgetMapAndTypes:
     def test_widget_map_enthaelt_alle_sechs_typen(self):
         assert WIDGET_MAP == {
@@ -172,9 +190,9 @@ class TestWidgetMapAndTypes:
             "list_habits": "habits",
         }
 
-    def test_widget_types_enthaelt_alle_acht(self):
+    def test_widget_types_enthaelt_alle_neun(self):
         assert WIDGET_TYPES == {
-            "sleep", "training", "tasks", "calendar", "nutrition", "habits", "system", "brain",
+            "sleep", "training", "tasks", "calendar", "nutrition", "habits", "system", "brain", "skills",
         }
 
 

@@ -108,6 +108,15 @@ function renderWidget(container: HTMLElement, slot: WidgetSlot): void {
         (p.notes ?? []).map((n: any) => `${n.title} (${n.category})`),
       );
       break;
+    case 'skills':
+      renderList(
+        container,
+        `Skill-Factory — ${p.total_tools} Tools gesamt`,
+        (p.dynamic_skills ?? []).length > 0
+          ? p.dynamic_skills.map((s: string) => `🛠️ ${s}`)
+          : ['Noch keine selbst erstellten Skills.'],
+      );
+      break;
     default:
       container.innerHTML = '<div class="widget-title">unbekannt</div>';
   }

@@ -1,8 +1,8 @@
-const WIDGET_TYPES = ['sleep', 'training', 'tasks', 'calendar', 'nutrition', 'habits', 'brain', 'system'] as const;
+const WIDGET_TYPES = ['sleep', 'training', 'tasks', 'calendar', 'nutrition', 'habits', 'brain', 'system', 'skills'] as const;
 const LABELS: Record<string, string> = {
   sleep: 'Schlaf', training: 'Training', tasks: 'Aufgaben',
   calendar: 'Kalender', nutrition: 'Ernährung', habits: 'Habits',
-  brain: 'Second Brain', system: 'System',
+  brain: 'Second Brain', system: 'System', skills: 'Skills',
 };
 
 export function initNavOverlay(baseUrl: string): void {

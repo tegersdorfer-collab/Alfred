@@ -177,6 +177,16 @@ def brain_widget_payload(limit: int = 8) -> dict:
     }
 
 
+def skills_widget_payload() -> dict:
+    """Baut den Skill-Factory-Status fürs Skills-Widget — welche Tools sich
+    Alfred selbst zur Laufzeit gebaut hat, plus Gesamt-Tool-Anzahl."""
+    from core import skill_factory, tools as T
+    return {
+        "dynamic_skills": skill_factory.list_dynamic_skills(),
+        "total_tools": len(T.REGISTRY),
+    }
+
+
 # Widget-Typen, die eine Dashboard-Instanz brauchen (services.get("dashboard")).
 _DASHBOARD_BUILDERS = {
     "sleep": sleep_widget_payload,
@@ -192,6 +202,7 @@ _STANDALONE_BUILDERS = {
     "habits": habits_widget_payload,
     "system": system_widget_payload,
     "brain": brain_widget_payload,
+    "skills": skills_widget_payload,
 }
 
 WIDGET_TYPES = set(_DASHBOARD_BUILDERS) | set(_STANDALONE_BUILDERS)
