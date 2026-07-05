@@ -17,6 +17,7 @@ from datetime import date, datetime, timedelta
 
 from core import db, fast
 from core.db import log_event
+from core.status import BUS
 from domains import habits, fitness, nutrition, goals, journal, weather
 
 log = logging.getLogger(__name__)
@@ -89,6 +90,12 @@ class Autopilot:
             from core import push
             import asyncio as _asyncio
             await _asyncio.to_thread(push.send_push, "Alfred", text, "/?view=chat")
+        except Exception:
+            pass
+        try:
+            # Damit proaktive Nachrichten auch im Desktop-HUD als Alert erscheinen
+            # (SSE /api/status/stream), nicht nur via Telegram/Web-Push.
+            BUS.emit("autopilot", text, detail=kind)
         except Exception:
             pass
         try:
