@@ -63,18 +63,19 @@ async def main():
         chat_llm = OllamaProvider()
         log.info(f"💬 Chat-LLM: Ollama {cfg.OLLAMA_MODEL} (kein API-Key)")
 
-    # ── Agent-Backend: Haiku (user-facing Chat + Tool-Calls) ────────────────────
-    # Mit API-Key: Claude primär + lokales Ollama als automatischer Fallback —
-    # Alfred bleibt auch ohne Internet/bei Anthropic-Ausfall funktionsfähig.
+    # ── Agent-Backend: lokales Ollama primär (Latenz + Datenschutz) ─────────────
+    # Mit API-Key: Ollama primär + Claude als automatischer Fallback, falls das
+    # lokale Modell ausfällt/timeout — Alfred bleibt auch bei Ollama-Problemen
+    # funktionsfähig, läuft im Normalfall aber komplett lokal ohne Cloud-Latenz.
     from core.backends.ollama import OllamaBackend
     if cfg.ANTHROPIC_API_KEY:
         from core.backends.claude import ClaudeBackend
         from core.backends.fallback import FallbackBackend
         agent_backend = FallbackBackend(
-            primary=ClaudeBackend(model=cfg.CLAUDE_CHAT_MODEL),
-            fallback=OllamaBackend(),
+            primary=OllamaBackend(),
+            fallback=ClaudeBackend(model=cfg.CLAUDE_CHAT_MODEL),
         )
-        log.info(f"🔧 Agent-Backend: {cfg.CLAUDE_CHAT_MODEL} → Fallback {cfg.AGENT_MODEL_STRONG} (lokal)")
+        log.info(f"🔧 Agent-Backend: Ollama {cfg.AGENT_MODEL_STRONG} (lokal) → Fallback {cfg.CLAUDE_CHAT_MODEL}")
     else:
         agent_backend = OllamaBackend()
         log.info(f"🔧 Agent-Backend: Ollama ({cfg.AGENT_MODEL_STRONG}, kein API-Key)")
