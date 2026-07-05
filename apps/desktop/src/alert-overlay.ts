@@ -12,13 +12,19 @@ function ensureContainer(): HTMLElement {
   return el;
 }
 
+const ALERT_TYPES: Record<string, { icon: string; extraClass?: string }> = {
+  autopilot: { icon: '🛰️' },
+  tool_failure: { icon: '⚠️', extraClass: 'alert-warning' },
+};
+
 export function renderAlert(evt: StatusEvent): void {
-  if (evt.type !== 'autopilot') return;
+  const config = ALERT_TYPES[evt.type];
+  if (!config) return;
 
   const container = ensureContainer();
   const toast = document.createElement('div');
-  toast.className = 'alert-toast';
-  toast.textContent = `🛰️ ${evt.text}`;
+  toast.className = `alert-toast${config.extraClass ? ` ${config.extraClass}` : ''}`;
+  toast.textContent = `${config.icon} ${evt.text}`;
   container.appendChild(toast);
 
   setTimeout(() => {

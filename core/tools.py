@@ -9,7 +9,16 @@ import logging
 from dataclasses import dataclass, field
 from typing import Awaitable, Callable
 
+from core.status import BUS
+
 log = logging.getLogger(__name__)
+
+# Fehler-Selbstheilung Stufe 1: erkennt Tools die wiederholt hintereinander
+# fehlschlagen und meldet das (nur Erkennung + Sichtbarkeit im Desktop-HUD
+# via StatusBus — kein automatisches Auto-Fixing, das wäre ohne menschliche
+# Aufsicht zu riskant). Zähler pro Tool, wird bei Erfolg zurückgesetzt.
+_tool_failure_counts: dict[str, int] = {}
+_FAILURE_THRESHOLD = 3
 
 
 @dataclass
@@ -81,12 +90,30 @@ async def execute(name: str, args: dict) -> str:
         result = tool.handler(**args)
         if inspect.isawaitable(result):
             result = await result
+        _tool_failure_counts[name] = 0
         return str(result)
     except TypeError as e:
+        _note_failure(name, e)
         return f"FEHLER: ungültige Argumente für {name}: {e}"
     except Exception as e:
         log.warning(f"Tool {name} fehlgeschlagen: {e}")
+        _note_failure(name, e)
         return f"FEHLER beim Ausführen von {name}: {e}"
+
+
+def _note_failure(name: str, error: Exception) -> None:
+    count = _tool_failure_counts.get(name, 0) + 1
+    _tool_failure_counts[name] = count
+    if count >= _FAILURE_THRESHOLD:
+        _tool_failure_counts[name] = 0  # nicht bei jedem weiteren Fehlschlag erneut spammen
+        try:
+            BUS.emit(
+                "tool_failure",
+                f"Tool '{name}' ist {count}x hintereinander fehlgeschlagen: {error}",
+                detail=name,
+            )
+        except Exception:
+            pass
 
 
 def tool_names() -> list[str]:

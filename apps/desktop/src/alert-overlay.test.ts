@@ -32,4 +32,12 @@ describe('renderAlert', () => {
     const toasts = document.querySelectorAll('.alert-toast');
     expect(toasts.length).toBe(2);
   });
+
+  it('zeigt einen Toast bei type=tool_failure mit Warn-Styling', () => {
+    renderAlert({ type: 'tool_failure', text: "Tool 'get_weather' ist 3x hintereinander fehlgeschlagen" });
+    const toast = document.querySelector('.alert-toast');
+    expect(toast).toBeTruthy();
+    expect(toast!.className).toContain('alert-warning');
+    expect(toast!.textContent).toContain('get_weather');
+  });
 });

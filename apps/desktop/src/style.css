@@ -288,3 +288,10 @@ body::after {
   color: #00e5ffcc;
   background: rgba(0, 229, 255, 0.05);
 }
+
+.alert-toast.alert-warning {
+  border-color: #ffb84d88;
+  background: rgba(255, 184, 77, 0.08);
+  box-shadow: 0 0 16px rgba(255, 184, 77, 0.15);
+  color: #ffd9a0;
+}
