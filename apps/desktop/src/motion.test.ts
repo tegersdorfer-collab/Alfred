@@ -95,14 +95,14 @@ describe('staggerIn', () => {
 describe('drawIn', () => {
   it('setzt initial stroke-dasharray/-dashoffset auf die Pfadlänge', () => {
     const path = document.createElementNS('http://www.w3.org/2000/svg', 'path') as SVGPathElement;
-    vi.spyOn(path, 'getTotalLength').mockReturnValue(120);
+    Object.defineProperty(path, 'getTotalLength', { value: () => 120, configurable: true });
     drawIn(path);
     expect(path.style.strokeDasharray).toBe('120');
   });
 
   it('setzt transition-duration entsprechend durationMs', () => {
     const path = document.createElementNS('http://www.w3.org/2000/svg', 'path') as SVGPathElement;
-    vi.spyOn(path, 'getTotalLength').mockReturnValue(80);
+    Object.defineProperty(path, 'getTotalLength', { value: () => 80, configurable: true });
     drawIn(path, 300);
     expect(path.style.transition).toContain('300ms');
   });
