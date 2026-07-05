@@ -63,19 +63,21 @@ async def main():
         chat_llm = OllamaProvider()
         log.info(f"💬 Chat-LLM: Ollama {cfg.OLLAMA_MODEL} (kein API-Key)")
 
-    # ── Agent-Backend: lokales Ollama primär (Latenz + Datenschutz) ─────────────
-    # Mit API-Key: Ollama primär + Claude als automatischer Fallback, falls das
-    # lokale Modell ausfällt/timeout — Alfred bleibt auch bei Ollama-Problemen
-    # funktionsfähig, läuft im Normalfall aber komplett lokal ohne Cloud-Latenz.
+    # ── Agent-Backend: Claude primär (interaktiver Chat braucht schnelle Antwort) ─
+    # Der lokale 9B-Ollama-Agent kann auf diesem 16GB-Mac bis zu 166s brauchen
+    # (Cold-Reload bei jedem Call). Für interaktive Dashboard/Telegram-Antworten
+    # ist das nicht akzeptabel. Ollama-primär ist nur für Aufgaben ok, bei denen
+    # Geschwindigkeit egal ist, weil sie im Hintergrund laufen (Reflection,
+    # proaktive Nachrichten) — die laufen bereits separat über bg_llm.
     from core.backends.ollama import OllamaBackend
     if cfg.ANTHROPIC_API_KEY:
         from core.backends.claude import ClaudeBackend
         from core.backends.fallback import FallbackBackend
         agent_backend = FallbackBackend(
-            primary=OllamaBackend(),
-            fallback=ClaudeBackend(model=cfg.CLAUDE_CHAT_MODEL),
+            primary=ClaudeBackend(model=cfg.CLAUDE_CHAT_MODEL),
+            fallback=OllamaBackend(),
         )
-        log.info(f"🔧 Agent-Backend: Ollama {cfg.AGENT_MODEL_STRONG} (lokal) → Fallback {cfg.CLAUDE_CHAT_MODEL}")
+        log.info(f"🔧 Agent-Backend: Claude {cfg.CLAUDE_CHAT_MODEL} → Fallback Ollama {cfg.AGENT_MODEL_STRONG} (lokal)")
     else:
         agent_backend = OllamaBackend()
         log.info(f"🔧 Agent-Backend: Ollama ({cfg.AGENT_MODEL_STRONG}, kein API-Key)")
