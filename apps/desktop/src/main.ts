@@ -58,6 +58,8 @@ function renderBars(
     container.classList.add('charge-pulse');
     container.addEventListener('animationend', () => container.classList.remove('charge-pulse'), { once: true });
   }
+  applyPanelChrome(container);
+  staggerIn(container.querySelectorAll<HTMLElement>('.sleep-bar'), 40);
 }
 
 export function renderList(container: HTMLElement, title: string, lines: string[]): void {
@@ -69,6 +71,8 @@ export function renderList(container: HTMLElement, title: string, lines: string[
     container.classList.add('charge-pulse');
     container.addEventListener('animationend', () => container.classList.remove('charge-pulse'), { once: true });
   }
+  applyPanelChrome(container);
+  staggerIn(container.querySelectorAll<HTMLElement>('.list-line'), 40);
 }
 
 function renderGraph(
@@ -168,14 +172,14 @@ function renderWidget(container: HTMLElement, slot: WidgetSlot): void {
     case 'sleep':
       renderBars(
         container,
-        'Schlaf — letzte Nächte',
+        `${icon('sleep')} Schlaf — letzte Nächte`,
         (p.nights ?? []).map((n: any) => ({ value: n.hours, tooltip: `${n.date}: ${n.hours ?? '–'}h` })),
       );
       break;
     case 'training':
       renderBars(
         container,
-        'Training — letzte Einheiten',
+        `${icon('training')} Training — letzte Einheiten`,
         (p.workouts ?? []).map((w: any) => ({
           value: w.duration_min,
           tooltip: `${w.date}: ${w.title} (${w.duration_min ?? '–'}min)`,
@@ -185,7 +189,7 @@ function renderWidget(container: HTMLElement, slot: WidgetSlot): void {
     case 'tasks':
       renderList(
         container,
-        'Offene Aufgaben',
+        `${icon('tasks')} Offene Aufgaben`,
         (p.tasks ?? []).map(
           (t: any) =>
             `${t.title}<span class="list-inline-bar"><span class="list-inline-bar-fill" style="width:${t.progress_pct}%"></span></span>`,
@@ -195,7 +199,7 @@ function renderWidget(container: HTMLElement, slot: WidgetSlot): void {
     case 'calendar':
       renderList(
         container,
-        'Anstehende Termine',
+        `${icon('calendar')} Anstehende Termine`,
         (p.events ?? []).map((e: any) => `${e.title} — ${e.start}`),
       );
       break;
