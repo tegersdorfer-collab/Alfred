@@ -163,8 +163,12 @@
 - [x] Zwei neue Widget-Typen (Commit 92a863f): **system** (CPU/RAM/Ollama-
   Status über psutil) und **brain** (zuletzt bearbeitete Second-Brain-Notizen)
   — beide über Cmd/Ctrl+K manuell wählbar und via build_widget_payload()
+- [x] Skill-Factory-Status-Widget (Commit 23636a8): zeigt selbst erstellte
+  Skills + Gesamt-Tool-Anzahl, live verifiziert
 - [ ] Weitere Widget-Typen: Second-Brain-Graph (visuell, nicht nur Liste),
-  Wetter-Karte, Standort/Karte, Skill-Factory-Status
+  Wetter-Karte (braucht Async-Umbau der Widget-Pipeline — aktuell komplett
+  synchron, domains.weather.get_weather ist async mit Live-HTTP-Call),
+  Standort/Karte
 - [x] Benachrichtigungs-/Alert-Overlay (Commit 1b3b38b): Autopilot._send()
   emittiert jetzt auf den bestehenden StatusBus, Desktop-HUD zeigt jede
   proaktive Nachricht (Morgen-Briefing, Smart Notifications, ...) als
