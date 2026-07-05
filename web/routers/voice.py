@@ -36,7 +36,7 @@ def build_router(orch=None) -> APIRouter:
         reply = None
         audio_b64 = None
         if addressed and orch is not None:
-            reply, _trace = await orch.dashboard_respond(text)
+            reply, _trace = await orch.voice_respond(text)
             mark_conversation_active()
             try:
                 ogg = await synthesize(reply)

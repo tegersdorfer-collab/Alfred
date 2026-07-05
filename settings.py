@@ -37,6 +37,14 @@ class AlfredSettings(BaseSettings):
     # gemma4:e2b (21/24, ~2.8s) — gemma4:e2b gewählt: gleiche Genauigkeit wie die
     # größeren Qwen-Modelle, aber am schnellsten davon.
     ADDRESS_CHECK_MODEL: str = "gemma4:e2b"
+    # Dediziertes, dauerhaft geladenes Modell für Voice-Antworten (nicht der große
+    # Dashboard-Agent) — gleiches Modell wie ADDRESS_CHECK_MODEL, da es schon für
+    # den Adress-Check läuft (siehe Kommentar oben) und laut Latenztest vom
+    # 2026-07-05 warm ~5.5-7.5s statt 166s (qwen3.5:9b) braucht. KEEP_ALIVE="-1"
+    # hält es dauerhaft im Speicher, statt es (wie der Haupt-Agent) nach jedem
+    # Call sofort wieder zu entladen (OLLAMA_KEEP_ALIVE="0").
+    VOICE_AGENT_MODEL: str = "gemma4:e2b"
+    VOICE_AGENT_KEEP_ALIVE: str = "-1"
     ANTHROPIC_API_KEY: str = ""
     CLAUDE_CHAT_MODEL: str = "claude-haiku-4-5-20251001"
     # ── Background-LLM Routing ────────────────────────────────────────────────

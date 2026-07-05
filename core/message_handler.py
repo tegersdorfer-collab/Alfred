@@ -159,7 +159,8 @@ class MessageHandler:
 
     # ── Dashboard ─────────────────────────────────────────────────────────────
 
-    async def dashboard_respond(self, text: str, stream_cb=None) -> tuple[str, list]:
+    async def dashboard_respond(self, text: str, stream_cb=None, agent=None) -> tuple[str, list]:
+        agent = agent or self.agent
         self.on_user_active()
         self.kzg.add("user", text)
         self._persist_msg("user", text, channel="dashboard")
@@ -169,11 +170,11 @@ class MessageHandler:
 
         system = await self.prompt_builder.build(text)
         allowed = skills.T.select_tools(text)
-        model = self.agent.model_name
+        model = agent.model_name
         force_tools = bool(allowed) and skills.T.is_action(text)
 
         try:
-            response, trace = await self.agent.run(
+            response, trace = await agent.run(
                 messages=self.kzg.recent_messages(max_tokens=3000),
                 system=system, stream_cb=stream_cb,
                 allowed_tools=allowed, force_tools=force_tools,

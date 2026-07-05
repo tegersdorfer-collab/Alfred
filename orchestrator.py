@@ -68,7 +68,7 @@ IDENTITY = _load_identity()
 class Orchestrator:
     def __init__(self, channel: CommunicationChannel, lzg: LZG, thermal: ThermalMonitor,
                  chat_llm: LLMProvider, bg_llm: LLMProvider, embed_llm: LLMProvider,
-                 agent_backend: AgentBackend):
+                 agent_backend: AgentBackend, voice_agent_backend: AgentBackend | None = None):
         self.chat_llm  = chat_llm
         self.bg_llm    = bg_llm
         self.embed_llm = embed_llm
@@ -84,6 +84,10 @@ class Orchestrator:
         self.extractor    = MemoryExtractor(llm_provider=embed_llm, lzg=lzg, kg=self.kg)
         self.reflection   = Reflection(llm=bg_llm, lzg=lzg)
         self.agent        = Agent(backend=agent_backend, max_steps=8)
+        # Eigener, leichtgewichtiger Agent für Voice-Antworten (kleines, dauerhaft
+        # geladenes Modell statt des großen Dashboard-Agenten) — fällt auf den
+        # Haupt-Agenten zurück, falls kein dediziertes Voice-Backend übergeben wurde.
+        self.voice_agent  = Agent(backend=voice_agent_backend, max_steps=8) if voice_agent_backend else self.agent
 
         self._search    = WebSearch()
         self._dashboard = DashboardReader()
@@ -147,6 +151,11 @@ class Orchestrator:
 
     async def dashboard_respond(self, text: str, stream_cb=None) -> tuple[str, list]:
         return await self.msg_handler.dashboard_respond(text, stream_cb)
+
+    async def voice_respond(self, text: str, stream_cb=None) -> tuple[str, list]:
+        """Wie dashboard_respond, aber über das kleine, dauerhaft geladene
+        Voice-Agent-Backend statt des großen Dashboard-Agenten (Latenz)."""
+        return await self.msg_handler.dashboard_respond(text, stream_cb, agent=self.voice_agent)
 
     def lzg_embed(self, text: str) -> list[float]:
         """Synchroner Embedding-Wrapper für API-Endpoints (läuft in asyncio.to_thread)."""

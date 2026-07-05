@@ -80,6 +80,22 @@ async def main():
         agent_backend = OllamaBackend()
         log.info(f"🔧 Agent-Backend: Ollama ({cfg.AGENT_MODEL_STRONG}, kein API-Key)")
 
+    # ── Voice-Agent-Backend: kleines, dauerhaft geladenes Modell ────────────────
+    # Eigenes, leichtgewichtiges Backend nur für Voice-Antworten — dasselbe Modell
+    # wie ADDRESS_CHECK_MODEL (bereits für den Adress-Check im Einsatz), aber mit
+    # KEEP_ALIVE="-1" dauerhaft im Speicher statt bei jedem Call neu geladen zu
+    # werden. Claude bleibt als Fallback, falls die Qualität für eine bestimmte
+    # Anfrage nicht reicht oder Ollama ausfällt.
+    if cfg.ANTHROPIC_API_KEY:
+        voice_agent_backend = FallbackBackend(
+            primary=OllamaBackend(model=cfg.VOICE_AGENT_MODEL, keep_alive=cfg.VOICE_AGENT_KEEP_ALIVE),
+            fallback=ClaudeBackend(model=cfg.CLAUDE_CHAT_MODEL),
+        )
+        log.info(f"🎙️  Voice-Agent-Backend: Ollama {cfg.VOICE_AGENT_MODEL} (dauerhaft geladen) → Fallback {cfg.CLAUDE_CHAT_MODEL}")
+    else:
+        voice_agent_backend = OllamaBackend(model=cfg.VOICE_AGENT_MODEL, keep_alive=cfg.VOICE_AGENT_KEEP_ALIVE)
+        log.info(f"🎙️  Voice-Agent-Backend: Ollama ({cfg.VOICE_AGENT_MODEL}, kein API-Key)")
+
     # ── Background-LLM: Routed (Spezialisten je nach Aufgabe) ─────────────────
     from llm.routed import RoutedLLMProvider
     bg_llm = RoutedLLMProvider()
@@ -93,7 +109,7 @@ async def main():
     channel = TelegramChannel()
     orchestrator = Orchestrator(
         chat_llm=chat_llm, bg_llm=bg_llm, embed_llm=embed_llm,
-        agent_backend=agent_backend,
+        agent_backend=agent_backend, voice_agent_backend=voice_agent_backend,
         channel=channel, lzg=lzg, thermal=thermal,
     )
 
