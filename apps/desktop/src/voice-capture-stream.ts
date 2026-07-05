@@ -27,6 +27,7 @@ export function startVoiceCaptureStream(
       if (currentReplyAudio) {
         currentReplyAudio.pause();
         currentReplyAudio.onended = null;
+        currentReplyAudio.onerror = null;
       }
       const audio = new Audio(`data:audio/ogg;base64,${audioB64}`);
       currentReplyAudio = audio;
