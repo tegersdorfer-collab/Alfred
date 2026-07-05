@@ -49,6 +49,8 @@ function renderBars(
     })
     .join('');
   container.innerHTML = `<div class="widget-title">${title}</div><div class="sleep-bars">${bars}</div>`;
+  container.classList.add('charge-pulse');
+  container.addEventListener('animationend', () => container.classList.remove('charge-pulse'), { once: true });
 }
 
 function renderList(container: HTMLElement, title: string, lines: string[]): void {

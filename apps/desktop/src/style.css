@@ -131,7 +131,7 @@ body::after {
   align-items: center;
   justify-content: center;
   gap: 16px;
-  border: 1px solid #00e5ff22;
+  border: 1px solid rgba(0, 229, 255, 0.13);
   border-radius: 8px;
   animation: widget-fade-in 0.35s ease-out;
 }
@@ -165,7 +165,7 @@ body::after {
 
 .sleep-bar {
   width: 20px;
-  background: linear-gradient(#00e5ff, #00e5ff33);
+  background: linear-gradient(var(--c-active), rgba(0, 229, 255, 0.2));
   border-radius: 3px;
   min-height: 4px;
 }
