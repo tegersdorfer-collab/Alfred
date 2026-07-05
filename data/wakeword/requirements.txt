@@ -1,0 +1,38 @@
+# openWakeWord training environment (Python 3.11, isolated venv).
+#
+# openwakeword's published `[full]` extra (PyPI 0.6.0) pins
+# `torchaudio<1,>=0.13.1`, which no longer resolves against any published
+# torchaudio release (all are >=2.0.1) - the extras metadata is stale.
+# We install the same set of training-only dependencies explicitly instead
+# of via `openwakeword[full]`, with the broken version ceiling removed.
+#
+# `openwakeword.data` (imported by the training pipeline) also depends on
+# `acoustics`, which is undeclared in `[full]`'s own metadata gap-checked
+# against actual imports - added explicitly below.
+#
+# numpy is pinned <2 for compatibility with the rest of the Alfred voice
+# stack; audiomentations' own sub-deps (numpy-rms, numpy-minmax) declare
+# numpy>=2 but work fine at runtime against numpy 1.26.x - verified with a
+# functional smoke test, not just an import check.
+
+openwakeword==0.6.0
+onnxruntime>=1.17
+piper-tts>=1.2.0
+numpy<2
+soundfile>=0.12
+
+# --- training-only extras (equivalent to openwakeword[full], deps pinned manually) ---
+torch<3,>=1.13.1
+torchaudio<3,>=0.13.1
+torchinfo<2,>=1.8.0
+torchmetrics<1,>=0.11.4
+speechbrain<1,>=0.5.14
+audiomentations<1,>=0.30.0
+torch-audiomentations<1,>=0.11.0
+acoustics<1,>=0.2.6
+mutagen<2,>=1.46.0
+pronouncing<1,>=0.2.0
+pyyaml<7,>=6.0
+
+# acoustics 0.2.x imports scipy.special.sph_harm, removed in scipy>=1.15
+scipy<1.15

@@ -13,6 +13,9 @@ venv/
 /tmp/
 data/
 data/vad/*.onnx
+data/wakeword/venv/
+data/wakeword/*.onnx
+data/wakeword/samples/
 *.old
 *.pid
 
