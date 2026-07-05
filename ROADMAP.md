@@ -124,6 +124,72 @@
 
 ---
 
+## In Arbeit — autonome Nachtsession (2026-07-05)
+
+> Timo schläft, Auftrag: "Revolutioniere Alfred" — Stimme, Adress-Erkennung,
+> Desktop-App groß ausbauen (Jarvis-Look, modulare Screens, Vollzugriff),
+> Windows-Readiness, Jarvis-Feature-Parität recherchieren. Durchgehend
+> autonom bis Nutzungslimit, Fortschritt hier laufend aktualisieren.
+
+### Sofort-Fixes (hohe Priorität, konkret gemeldete Bugs)
+- [ ] **Adress-Erkennung ignoriert Folge-Antworten** — wenn Timo auf eine
+  Alfred-Frage antwortet, wird das nicht als "an Alfred gerichtet" erkannt,
+  weil is_addressed_to_alfred() jede Äußerung isoliert bewertet, ohne
+  Gesprächskontext. Fix: kurzes "Konversation aktiv"-Zeitfenster nach jeder
+  Alfred-Antwort, in dem Folge-Sprache automatisch als adressiert gilt.
+- [ ] **TTS-Stimme weiter verbessern** — Piper (de_DE-thorsten-high) ist
+  aktuell die schnellste zuverlässige Option (Kokoro kein Deutsch, Chatterbox
+  zu langsam 7-12s, CosyVoice2-PyPI-Paket kaputt). Weitere Kandidaten prüfen:
+  andere Piper-Modell-Qualitätsstufen, ggf. XTTS-v2 mit kurzer Referenzstimme
+  falls Latenz akzeptabel, Fish-Speech. Ziel: "Jarvis"-artiger, ruhiger,
+  männlicher Klang bei <2s Latenz.
+
+### Desktop-App: großzügiger Ausbau (Jarvis-Look + Funktionen)
+- [ ] Echtes Holographic-HUD-Design verfeinern (Scanlines, Glow-Effekte,
+  Partikel/Grid-Textur-Hintergrund, Sound-Feedback bei Interaktionen)
+- [ ] Modulare/adaptive Screens: Alfred wählt selbst Layout + Widgets je nach
+  Kontext (Basis existiert seit Phase 2-4, aber noch nicht "großzügig" genug
+  ausgebaut — mehr Widget-Typen, dynamischere Übergänge/Animationen)
+- [ ] Alfred volle Rechte geben: Dateisystem-Zugriff, App-Steuerung,
+  Dateien öffnen/bearbeiten direkt aus der Desktop-App heraus (nicht nur
+  Backend-Tools) — Tauri-Commands für Datei-IO, App-Launch
+- [ ] Chat-Text-Eingabe in der Desktop-App fehlt noch komplett (nur Voice +
+  Hidden-Nav bisher) — Textfeld ergänzen für Fälle wo Sprechen unpraktisch ist
+- [ ] Mehr Widget-Typen: Second-Brain-Graph, Notizen, Wetter-Karte,
+  Standort/Karte, Skill-Factory-Status, System-Health (CPU/RAM/Ollama)
+- [ ] Benachrichtigungs-/Alert-Overlay für proaktive Nachrichten (Autopilot-
+  Events sollen im Desktop-HUD auftauchen, nicht nur Telegram)
+- [ ] Persistente Fenster-Position/-Größe, Tray-Icon, Autostart
+
+### Windows-Readiness
+- [ ] Prüfen was für einen Windows-Build fehlt: Tauri-Windows-Target,
+  plattformspezifische Pfade/Berechtigungen (Mikrofon-Permission unter
+  Windows anders als macOS TCC), Cross-Compile vs. echte Windows-Maschine
+  nötig, Code-Signing-Anforderungen
+- [ ] CI/Build-Pipeline-Bedarf dokumentieren (dieses Environment ist nur
+  macOS — Windows-Build kann hier nicht nativ getestet werden)
+
+### Jarvis-Feature-Parität (Recherche + Implementierung)
+- [ ] Web-Recherche: welche Jarvis-Fähigkeiten (Iron-Man-Filme/Fiktion) hat
+  Alfred noch nicht? (z.B. Multi-Screen-Simultan-Anzeige, proaktive
+  Warnungen/Diagnosen, Geräte-/Smart-Home-Steuerung, Kontext-übergreifendes
+  Erinnern in Echtzeit, visuelle Datenanalyse/Simulationen)
+- [ ] Gefundene, machbare Lücken priorisieren und umsetzen
+
+### Weitere gesammelte Ideen (Brainstorm, nicht priorisiert)
+- [ ] Smart-Home-Steuerung (falls HomeKit/HomeAssistant vorhanden — prüfen)
+- [ ] Bildschirm-Freigabe/Screen-Context: Alfred sieht was gerade am
+  Bildschirm passiert (Screenshot-Analyse) für kontextbezogene Hilfe
+- [ ] Kalender-/Termin-Konflikt-Erkennung proaktiv statt nur auf Anfrage
+- [ ] Sprach-Emotionserkennung (Tonfall) für empathischere Antworten
+  (nur wenn ein leichtgewichtiges lokales Modell existiert)
+- [ ] Multi-Turn-Voice-Conversation-Historie im Desktop-HUD sichtbar (nicht
+  nur letztes Segment)
+- [ ] Fehler-Selbstheilung: Alfred merkt wenn ein Tool wiederholt fehlschlägt
+  und schlägt Fixes vor / versucht sie selbst (Skill-Factory-Erweiterung)
+
+---
+
 ## Offen — externe Abhängigkeiten
 
 Diese Items brauchen externe Infrastruktur oder Hardware die nicht im Code lösbar ist:
