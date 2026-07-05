@@ -11,6 +11,7 @@ zu duplizieren.
 """
 import asyncio
 import logging
+import time
 
 import config
 from core import fast
@@ -19,6 +20,19 @@ log = logging.getLogger(__name__)
 
 _whisper_model = None
 _whisper_lock = asyncio.Lock()
+
+# Nach jeder Alfred-Antwort bleibt für dieses Fenster jede Folge-Äußerung automatisch
+# "adressiert" — ohne das würde is_addressed_to_alfred() kurze Antworten wie "ja",
+# "zeig mir das" oder "und morgen?" (kein Name, kein eindeutiger Befehl) ignorieren,
+# weil jede Äußerung isoliert bewertet wird statt als Teil eines laufenden Gesprächs.
+CONVERSATION_FOLLOWUP_WINDOW_S = 15
+_conversation_active_until = 0.0
+
+
+def mark_conversation_active() -> None:
+    """Vom Voice-Router nach jeder erfolgreichen Alfred-Antwort aufzurufen."""
+    global _conversation_active_until
+    _conversation_active_until = time.monotonic() + CONVERSATION_FOLLOWUP_WINDOW_S
 
 
 async def transcribe_audio(audio_path: str) -> str:
@@ -49,8 +63,10 @@ async def is_addressed_to_alfred(text: str) -> bool:
     """Schneller Ja/Nein-Check: ist dieser transkribierte Text ein an Alfred
     gerichteter Befehl/Anfrage? Leerer Text spart den LLM-Call.
 
-    Zwei Layer: (1) Keyword-Vorfilter — wird "Alfred" explizit genannt, sofort JA
-    ohne LLM-Call (Latenz ~0). (2) Nur wenn der Name fehlt, entscheidet ein sehr
+    Drei Layer: (1) Keyword-Vorfilter — wird "Alfred" explizit genannt, sofort JA
+    ohne LLM-Call (Latenz ~0). (2) Konversations-Fortsetzung — läuft gerade ein
+    Gespräch (siehe mark_conversation_active()), gilt jede Folge-Äußerung als
+    adressiert, auch ohne Namen oder klaren Befehl. (3) Sonst entscheidet ein
     kleines dediziertes Modell (core.fast mit ADDRESS_CHECK_MODEL statt dem großen
     AGENT_MODEL_FAST), ob es sich auch ohne Namensnennung um eine an Alfred
     gerichtete Anfrage handelt (Spec: "nicht nur Wake-Word")."""
@@ -58,6 +74,8 @@ async def is_addressed_to_alfred(text: str) -> bool:
     if not stripped:
         return False
     if "alfred" in stripped.lower():
+        return True
+    if time.monotonic() < _conversation_active_until:
         return True
     return await fast.yes_no(
         f"Ist dieser Satz eine Anfrage oder ein Befehl an einen persönlichen KI-Assistenten "

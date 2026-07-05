@@ -3,9 +3,19 @@ import sys, os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 import asyncio
+import pytest
 from unittest.mock import patch, AsyncMock, MagicMock
 
 import core.voice as voice
+
+
+@pytest.fixture(autouse=True)
+def _reset_conversation_window():
+    """Verhindert Test-Verschmutzung über den globalen 'Konversation aktiv'-Status hinweg,
+    z.B. wenn test_voice_router.py vorher lief und mark_conversation_active() real aufgerufen hat."""
+    voice._conversation_active_until = 0.0
+    yield
+    voice._conversation_active_until = 0.0
 
 
 class TestTranscribeAudio:
@@ -85,3 +95,31 @@ class TestIsAddressedToAlfred:
             result = asyncio.run(voice.is_addressed_to_alfred(""))
         assert result is False
         mock_yes_no.assert_not_called()
+
+
+class TestConversationFollowup:
+    """Nach einer Alfred-Antwort gilt ein kurzes Zeitfenster, in dem Folge-Sprache
+    automatisch als adressiert gilt — sonst ignoriert Alfred kurze Antworten wie
+    'ja', 'zeig mir das' oder 'und morgen?', die keinen Namen/klaren Befehl enthalten."""
+
+    def setup_method(self):
+        voice._conversation_active_until = 0.0
+
+    def test_folge_antwort_innerhalb_des_fensters_gilt_als_adressiert(self):
+        voice.mark_conversation_active()
+        with patch("core.fast.yes_no", new=AsyncMock()) as mock_yes_no:
+            result = asyncio.run(voice.is_addressed_to_alfred("ja genau das meinte ich"))
+        assert result is True
+        mock_yes_no.assert_not_called()
+
+    def test_ausserhalb_des_fensters_normaler_check(self):
+        voice._conversation_active_until = 0.0  # Fenster abgelaufen/nie aktiv
+        with patch("core.fast.yes_no", new=AsyncMock(return_value=False)) as mock_yes_no:
+            result = asyncio.run(voice.is_addressed_to_alfred("ja genau das meinte ich"))
+        assert result is False
+        mock_yes_no.assert_called_once()
+
+    def test_leerer_text_bleibt_false_auch_im_fenster(self):
+        voice.mark_conversation_active()
+        result = asyncio.run(voice.is_addressed_to_alfred(""))
+        assert result is False

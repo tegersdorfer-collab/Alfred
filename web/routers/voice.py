@@ -4,7 +4,7 @@ Agent-Anbindung + TTS-Antwort).
 Nimmt vom Tauri-Client hochgeladene Audio-Segmente entgegen, transkribiert sie
 lokal, prüft ob sie an Alfred gerichtet sind, und lässt bei Adressierung den
 echten Agenten (orch.dashboard_respond) antworten — Antwort kommt als Text UND
-als synthetisierte Sprache (Kokoro-TTS, base64) zurück, damit der Desktop-Client
+als synthetisierte Sprache (Piper-TTS, base64) zurück, damit der Desktop-Client
 sie direkt abspielen kann.
 """
 import base64
@@ -14,7 +14,7 @@ from pathlib import Path
 
 from fastapi import APIRouter, UploadFile, File
 
-from core.voice import transcribe_audio, is_addressed_to_alfred
+from core.voice import transcribe_audio, is_addressed_to_alfred, mark_conversation_active
 from core.tts import synthesize
 
 log = logging.getLogger("alfred.api")
@@ -37,6 +37,7 @@ def build_router(orch=None) -> APIRouter:
         audio_b64 = None
         if addressed and orch is not None:
             reply, _trace = await orch.dashboard_respond(text)
+            mark_conversation_active()
             try:
                 ogg = await synthesize(reply)
             except Exception as e:
