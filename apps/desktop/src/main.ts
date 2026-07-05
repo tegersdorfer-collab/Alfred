@@ -137,7 +137,11 @@ function renderVoiceStatus(result: VoiceSegmentResult): void {
   const el = document.getElementById('voice-status');
   if (!el) return;
   const marker = result.addressed ? '🎙️ an Alfred' : '🎙️ ignoriert';
-  el.textContent = `${marker}: "${result.text}"`;
+  let text = `${marker}: "${result.text}"`;
+  if (result.addressed && result.reply) {
+    text += `\n🔊 Alfred: "${result.reply}"`;
+  }
+  el.textContent = text;
 }
 
 startVoiceCapture(getBaseUrl(), renderVoiceStatus);

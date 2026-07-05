@@ -1,4 +1,9 @@
-export type VoiceSegmentResult = { text: string; addressed: boolean };
+export type VoiceSegmentResult = {
+  text: string;
+  addressed: boolean;
+  reply?: string | null;
+  audio_b64?: string | null;
+};
 
 const SILENCE_THRESHOLD = 0.02;   // RMS-Lautstärke-Schwelle (0..1)
 const SILENCE_MS_TO_STOP = 800;   // so lange Stille beendet ein Sprachsegment
@@ -32,12 +37,22 @@ export function startVoiceCapture(
     return 'webm';
   }
 
+  function playReplyAudio(audioB64: string): void {
+    try {
+      const audio = new Audio(`data:audio/ogg;base64,${audioB64}`);
+      audio.play().catch(() => {});
+    } catch {
+      // Wiedergabe fehlgeschlagen — Text-Antwort bleibt trotzdem sichtbar
+    }
+  }
+
   async function uploadSegment(blob: Blob, mimeType: string): Promise<void> {
     try {
       const form = new FormData();
       form.append('audio', blob, `segment.${extensionFor(mimeType)}`);
       const res = await fetch(`${baseUrl}/api/voice/segment`, { method: 'POST', body: form });
       const data = (await res.json()) as VoiceSegmentResult;
+      if (data.audio_b64) playReplyAudio(data.audio_b64);
       onSegment(data);
     } catch {
       // Netzwerkfehler beim Upload — Segment geht verloren, kein Absturz
