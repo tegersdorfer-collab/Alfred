@@ -1,9 +1,33 @@
+:root {
+  --bg-base: #04070d;
+
+  --c-idle: #00e5ff;
+  --c-idle-dim: rgba(0, 229, 255, 0.4);
+  --c-active: #00e5ff;
+  --c-speaking: #7cf5ff;
+  --c-warn: #ffb84d;
+  --c-error: #ff3860;
+  --c-ok: #4dffb8;
+
+  --glow-idle: 0 0 16px rgba(0, 229, 255, 0.25);
+  --glow-active: 0 0 30px currentColor, inset 0 0 25px currentColor;
+  --glow-warn: 0 0 16px rgba(255, 184, 77, 0.3);
+  --glow-error: 0 0 16px rgba(255, 56, 96, 0.3);
+  --glow-ok: 0 0 16px rgba(77, 255, 184, 0.3);
+
+  --fs-micro: 10px;
+  --fs-label: 11px;
+  --fs-body: 13px;
+  --fs-value: 20px;
+  --fs-hero: 32px;
+}
+
 html, body {
   margin: 0;
   height: 100%;
-  background: #04070d;
+  background: var(--bg-base);
   font-family: 'SF Mono', 'Consolas', monospace;
-  color: #00e5ff;
+  color: var(--c-idle);
   overflow: hidden;
   position: relative;
 }
