@@ -171,8 +171,10 @@
   maybe_update_ui() auf async umgebaut (inspect.iscoroutinefunction erkennt
   automatisch sync/async Builder), damit domains.weather.get_weather() (Live
   Open-Meteo-API) als Widget läuft. Live verifiziert (echte Nürnberg-Daten).
-- [ ] Weitere Widget-Typen: Second-Brain-Graph (visuell, nicht nur Liste),
-  Standort/Karte
+- [x] **Second-Brain-Graph-Widget** (Commit 4231c9b): visuell statt nur
+  Liste, nutzt bereits bestehendes domains.second_brain.get_graph_data(),
+  SVG-Kreis-Layout im Frontend, live verifiziert.
+- [ ] Weitere Widget-Typen: Standort/Karte (keine klare Datenquelle bekannt)
 - [x] Benachrichtigungs-/Alert-Overlay (Commit 1b3b38b): Autopilot._send()
   emittiert jetzt auf den bestehenden StatusBus, Desktop-HUD zeigt jede
   proaktive Nachricht (Morgen-Briefing, Smart Notifications, ...) als
@@ -237,8 +239,13 @@
 - [x] **Kalender-Konflikt-Erkennung** — existierte bereits (`_calendar_check()`
   in core/autopilot.py, nutzt domains/calendar_optimizer.py::analyze_day),
   läuft jeden Morgen proaktiv, keine Umsetzung nötig gewesen.
-- [ ] Sprach-Emotionserkennung (Tonfall) für empathischere Antworten
-  (nur wenn ein leichtgewichtiges lokales Modell existiert)
+- [x] **Sprach-Emotionserkennung recherchiert, bewusst zurückgestellt:**
+  DistilHuBERT/emotion2vec sind zwar klein (~19M Parameter), aber nur über
+  die schwere FunASR/ModelScope-Toolchain ladbar (kein eigenständiges PyPI-
+  Paket) — ähnliches Risiko wie der gescheiterte Chatterbox-Versuch (siehe
+  TTS-Wahl oben), der starlette/transformers durcheinandergebracht hat. Bei
+  "nur wenn leichtgewichtig verfügbar" die Kosten-Nutzen-Abwägung nicht wert;
+  aufgeschoben statt eine fragile schwere Abhängigkeit zu riskieren.
 - [x] Multi-Turn-Konversations-Historie im HUD (Commit 7b265a9):
   conversation-log.ts zeigt die letzten 12 Turns (Nutzer + Alfred) oben
   links, statt nur den letzten Austausch zu überschreiben
