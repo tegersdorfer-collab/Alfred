@@ -346,7 +346,8 @@ function renderChatReply(reply: string, userText: string): void {
   triggerSpeakingState();
   const el = document.getElementById('chat-status');
   if (!el) return;
-  el.innerHTML = `${icon('chat')} Alfred: "${reply}"`;
+  el.innerHTML = icon('chat');
+  el.appendChild(document.createTextNode(` Alfred: "${reply}"`));
 
   appendToLog({ speaker: 'user', text: userText });
   appendToLog({ speaker: 'alfred', text: reply });

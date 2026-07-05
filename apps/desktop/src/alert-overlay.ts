@@ -31,7 +31,8 @@ export function renderAlert(evt: StatusEvent): void {
       : config.extraClass === 'alert-error'
         ? icon('error')
         : config.icon;
-  toast.innerHTML = `${prefix} ${evt.text}`;
+  toast.innerHTML = prefix;
+  toast.appendChild(document.createTextNode(` ${evt.text}`));
   container.appendChild(toast);
 
   setTimeout(() => {

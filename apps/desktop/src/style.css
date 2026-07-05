@@ -544,7 +544,7 @@ body::after {
   animation: node-pulse 2.6s ease-in-out infinite;
 }
 @keyframes node-pulse {
-  0%, 100% { r: var(--r, 8); opacity: 0.25; }
+  0%, 100% { opacity: 0.25; }
   50%      { opacity: 0.5; }
 }
 
