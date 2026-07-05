@@ -146,8 +146,9 @@
 ### Desktop-App: großzügiger Ausbau (Jarvis-Look + Funktionen)
 - [x] Chat-Texteingabe im HUD (Commit f3a3836) — Eingabefeld unten im
   Fenster, sendet an POST /api/chat, Antwort im chat-status-Bereich
-- [ ] Echtes Holographic-HUD-Design verfeinern (Scanlines, Glow-Effekte,
-  Partikel/Grid-Textur-Hintergrund, Sound-Feedback bei Interaktionen)
+- [x] Holographic-HUD-Feinschliff (Commit a7e3eb5): Scanline-Animation,
+  Grid-Textur-Hintergrund, Vignette, Ring-Puls-Animation. Sound-Feedback
+  noch offen (kein Audio-Feedback-System implementiert).
 - [ ] Modulare/adaptive Screens: Alfred wählt selbst Layout + Widgets je nach
   Kontext (Basis existiert seit Phase 2-4, aber noch nicht "großzügig" genug
   ausgebaut — mehr Widget-Typen, dynamischere Übergänge/Animationen)
@@ -168,7 +169,10 @@
   emittiert jetzt auf den bestehenden StatusBus, Desktop-HUD zeigt jede
   proaktive Nachricht (Morgen-Briefing, Smart Notifications, ...) als
   stapelbaren 12s-Toast oben rechts
-- [ ] Persistente Fenster-Position/-Größe, Tray-Icon, Autostart
+- [x] Persistente Fenster-Position/-Größe, Tray-Icon, Autostart (Commit
+  c7ef01a): tauri-plugin-window-state, tauri-plugin-autostart, Tray-Icon
+  mit Show/Quit-Menü. Build erfolgreich; volle visuelle Verifikation der
+  Tray-Interaktion steht noch aus (Bildschirm war zum Testzeitpunkt gesperrt).
 
 ### Windows-Readiness
 - [x] **Architektur-Klarstellung + Assessment (Recherche abgeschlossen):**
