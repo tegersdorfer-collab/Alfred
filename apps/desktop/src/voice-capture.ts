@@ -5,12 +5,20 @@ export type VoiceSegmentResult = {
   audio_b64?: string | null;
 };
 
-const SILENCE_THRESHOLD = 0.02;   // RMS-Lautstärke-Schwelle (0..1)
 const SILENCE_MS_TO_STOP = 800;   // so lange Stille beendet ein Sprachsegment
 const MIN_SEGMENT_MS = 300;       // kürzere "Segmente" werden verworfen (Rauschen)
 const PREROLL_MS = 400;           // Vorlauf vor Lautstärke-Trigger, damit der Wortanfang nicht abgeschnitten wird
 const CHUNK_TIMESLICE_MS = 100;   // Aufnahme-Intervall des durchgehenden Recorders
 const BUFFER_RETENTION_MS = 4000; // wie lange gepufferte Chunks für den Vorlauf vorgehalten werden
+const CALIBRATION_MS = 600;       // Dauer der Rauschpegel-Messung beim Start
+const NOISE_FLOOR_MULTIPLIER = 2.5; // Schwellwert = Rauschpegel * Multiplikator
+const MIN_THRESHOLD = 0.006;      // Sicherheits-Untergrenze, falls der Raum extrem leise ist
+
+export function computeCalibratedThreshold(samples: number[]): number {
+  if (samples.length === 0) return MIN_THRESHOLD;
+  const mean = samples.reduce((sum, v) => sum + v, 0) / samples.length;
+  return Math.max(NOISE_FLOOR_MULTIPLIER * mean, MIN_THRESHOLD);
+}
 
 type TimedChunk = { ts: number; data: Blob };
 
@@ -101,55 +109,74 @@ export function startVoiceCapture(
       source.connect(analyser);
       const data = new Uint8Array(analyser.fftSize);
 
-      // Durchgehender Recorder (nie gestoppt/neugestartet pro Segment) — vermeidet, dass der
-      // Wortanfang verloren geht, während MediaRecorder erst nach dem Lautstärke-Trigger anläuft.
-      recorder = new MediaRecorder(stream);
-      recorder.ondataavailable = (e) => {
-        const now = performance.now();
-        if (!initSegment) {
-          // Erster Chunk enthält bei fragmentiertem MP4 (ftyp/moov/trex) die einmalige
-          // Initialisierung, ohne die spätere Fragmente nicht decodierbar sind — nie verwerfen.
-          initSegment = e.data;
-          return;
-        }
-        buffer.push({ ts: now, data: e.data });
-        buffer = buffer.filter((c) => now - c.ts <= BUFFER_RETENTION_MS);
-      };
-      recorder.start(CHUNK_TIMESLICE_MS);
+      let effectiveThreshold = MIN_THRESHOLD;
+      const calibrationSamples: number[] = [];
+      const calibrationStart = performance.now();
 
-      function tick(): void {
+      function calibrationTick(): void {
         if (stopped || !audioCtx) return;
-        if (isPlayingReply) {
-          // Mikrofon-Auswertung pausiert solange Alfred selbst spricht (Echo-Vermeidung).
-          rafId = requestAnimationFrame(tick);
-          return;
-        }
         analyser.getByteTimeDomainData(data);
-        const level = rms(data);
-        const now = performance.now();
+        calibrationSamples.push(rms(data));
+        if (performance.now() - calibrationStart < CALIBRATION_MS) {
+          rafId = requestAnimationFrame(calibrationTick);
+        } else {
+          effectiveThreshold = computeCalibratedThreshold(calibrationSamples);
+          startRecordingAndDetection();
+        }
+      }
 
-        if (level > SILENCE_THRESHOLD) {
-          silenceStartedAt = null;
-          if (!speaking) {
-            speaking = true;
-            segmentStartedAt = now;
-            segmentStartTs = now - PREROLL_MS;
+      function startRecordingAndDetection(): void {
+        // Durchgehender Recorder (nie gestoppt/neugestartet pro Segment) — vermeidet, dass der
+        // Wortanfang verloren geht, während MediaRecorder erst nach dem Lautstärke-Trigger anläuft.
+        recorder = new MediaRecorder(stream!);
+        recorder.ondataavailable = (e) => {
+          const now = performance.now();
+          if (!initSegment) {
+            // Erster Chunk enthält bei fragmentiertem MP4 (ftyp/moov/trex) die einmalige
+            // Initialisierung, ohne die spätere Fragmente nicht decodierbar sind — nie verwerfen.
+            initSegment = e.data;
+            return;
           }
-        } else if (speaking) {
-          if (silenceStartedAt === null) silenceStartedAt = now;
-          if (now - silenceStartedAt >= SILENCE_MS_TO_STOP) {
-            speaking = false;
-            const duration = now - segmentStartedAt;
-            if (duration >= MIN_SEGMENT_MS && recorder && initSegment) {
-              const parts = [initSegment, ...buffer.filter((c) => c.ts >= segmentStartTs).map((c) => c.data)];
-              const mimeType = recorder.mimeType || 'audio/webm';
-              uploadSegment(new Blob(parts, { type: mimeType }), mimeType);
+          buffer.push({ ts: now, data: e.data });
+          buffer = buffer.filter((c) => now - c.ts <= BUFFER_RETENTION_MS);
+        };
+        recorder.start(CHUNK_TIMESLICE_MS);
+
+        function tick(): void {
+          if (stopped || !audioCtx) return;
+          if (isPlayingReply) {
+            // Mikrofon-Auswertung pausiert solange Alfred selbst spricht (Echo-Vermeidung).
+            rafId = requestAnimationFrame(tick);
+            return;
+          }
+          analyser.getByteTimeDomainData(data);
+          const level = rms(data);
+          const now = performance.now();
+
+          if (level > effectiveThreshold) {
+            silenceStartedAt = null;
+            if (!speaking) {
+              speaking = true;
+              segmentStartedAt = now;
+              segmentStartTs = now - PREROLL_MS;
+            }
+          } else if (speaking) {
+            if (silenceStartedAt === null) silenceStartedAt = now;
+            if (now - silenceStartedAt >= SILENCE_MS_TO_STOP) {
+              speaking = false;
+              const duration = now - segmentStartedAt;
+              if (duration >= MIN_SEGMENT_MS && recorder && initSegment) {
+                const parts = [initSegment, ...buffer.filter((c) => c.ts >= segmentStartTs).map((c) => c.data)];
+                const mimeType = recorder.mimeType || 'audio/webm';
+                uploadSegment(new Blob(parts, { type: mimeType }), mimeType);
+              }
             }
           }
+          rafId = requestAnimationFrame(tick);
         }
         rafId = requestAnimationFrame(tick);
       }
-      rafId = requestAnimationFrame(tick);
+      rafId = requestAnimationFrame(calibrationTick);
     })
     .catch(() => {
       // Mikrofon-Zugriff verweigert/nicht verfügbar — Voice-Capture bleibt inaktiv, kein Absturz
