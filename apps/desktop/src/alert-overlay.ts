@@ -1,4 +1,5 @@
 import type { StatusEvent } from './status-stream';
+import { icon } from './fx/icons';
 
 const DISPLAY_MS = 12_000;
 
@@ -24,7 +25,13 @@ export function renderAlert(evt: StatusEvent): void {
   const container = ensureContainer();
   const toast = document.createElement('div');
   toast.className = `alert-toast${config.extraClass ? ` ${config.extraClass}` : ''}`;
-  toast.textContent = `${config.icon} ${evt.text}`;
+  const prefix =
+    config.extraClass === 'alert-warning'
+      ? icon('warning')
+      : config.extraClass === 'alert-error'
+        ? icon('error')
+        : config.icon;
+  toast.innerHTML = `${prefix} ${evt.text}`;
   container.appendChild(toast);
 
   setTimeout(() => {

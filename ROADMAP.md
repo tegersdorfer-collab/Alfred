@@ -281,6 +281,27 @@ Plan: `docs/superpowers/plans/2026-07-05-ui-polish-ghost-protocol.md`
 
 ---
 
+## Ghost Protocol v2 — Cinematic HUD (2026-07-05)
+
+Spec: `docs/superpowers/specs/2026-07-05-ghost-protocol-v2-cinematic-hud-design.md`
+Plan: `docs/superpowers/plans/2026-07-05-ghost-protocol-v2-cinematic-hud.md`
+
+- [x] Shared framework: particle field, panel-chrome corner brackets, bespoke SVG icon set,
+      staggerIn/drawIn motion choreography, depth/bracket/blur tokens
+- [x] HUD core: radar bezel, particle halo, chrome info panel
+- [x] System-Status/Nutrition gauges: panel chrome, greeble min/max readouts, icons
+      (needle-sweep + load-based particle tint from the spec's §3 were descoped — no shared
+      per-widget RAF abstraction existed for it and no acceptance criterion required it)
+- [x] Second Brain: animated graph edges + pulsing node halos, staggered list
+- [x] Sleep/Training/Tasks/Calendar: chrome, icons, staggered rows, liquid-fill bars
+- [x] Habits/Nutrition/Skills/Weather: icons, streak-to-milestone ring, per-condition weather icon
+- [x] Nav overlay: chrome-framed tiles, staggered grid on open
+- [x] Settings panel: connection-status dot
+- [x] Chat reply / alert toasts: icon set replacing emoji
+- [ ] Live Tauri build + relaunch verified
+
+---
+
 ## Offen — externe Abhängigkeiten
 
 Diese Items brauchen externe Infrastruktur oder Hardware die nicht im Code lösbar ist:
