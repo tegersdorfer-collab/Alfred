@@ -39,3 +39,15 @@ class TestSeeScreen:
             mock_run.return_value = MagicMock(returncode=1, stderr=b"permission denied")
             result = asyncio.run(vision_skills._see_screen())
         assert "FEHLER" in result
+
+    def test_fehlende_bildschirmaufnahme_berechtigung_gibt_konkreten_hinweis(self):
+        """'could not create image from display' ist macOS' Standardfehler wenn
+        die App keine Screen-Recording-Berechtigung hat (Privacy & Security) —
+        Alfred soll das erkennen und Timo konkret sagen was zu tun ist."""
+        with patch("core.skills.vision.subprocess.run") as mock_run, \
+             patch("core.skills.vision.tempfile.NamedTemporaryFile") as mock_tmp:
+            mock_tmp.return_value.__enter__.return_value.name = "/tmp/fake_nonexistent_screen.png"
+            mock_run.return_value = MagicMock(returncode=1, stderr=b"could not create image from display 0x00000000")
+            result = asyncio.run(vision_skills._see_screen())
+        assert "Bildschirmaufnahme" in result
+        assert "Privacy" in result or "Datenschutz" in result

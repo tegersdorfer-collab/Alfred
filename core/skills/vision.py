@@ -42,6 +42,12 @@ async def _see_screen() -> str:
         )
         if result.returncode != 0:
             err = (result.stderr or b"").decode(errors="replace")
+            if "could not create image from display" in err:
+                return (
+                    "FEHLER: Keine Bildschirmaufnahme-Berechtigung. Bitte in "
+                    "Systemeinstellungen → Privacy & Security → Bildschirmaufnahme "
+                    "den Alfred-Prozess (Python) erlauben und Alfred neu starten."
+                )
             return f"FEHLER: Screenshot fehlgeschlagen: {err}"
         image_bytes = Path(path).read_bytes()
         return await describe_image(image_bytes, _SCREEN_PROMPT)
