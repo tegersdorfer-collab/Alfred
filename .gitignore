@@ -30,3 +30,4 @@ xcuserdata/
 DerivedData/
 build/
 *.xcscmblueprint
+.worktrees/
