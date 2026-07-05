@@ -7,7 +7,6 @@ from __future__ import annotations
 
 import tempfile
 import wave
-from pathlib import Path
 from typing import Callable
 
 from core.vad import VadSegmenter
