@@ -206,16 +206,19 @@ function renderWidget(container: HTMLElement, slot: WidgetSlot): void {
     case 'habits':
       renderList(
         container,
-        'Gewohnheiten',
+        `${icon('habit')} Gewohnheiten`,
         (p.habits ?? []).map((h: any) => {
-          const dotColor = h.streak >= 7 ? 'var(--c-ok)' : 'var(--c-idle-dim)';
-          return `<span class="list-dot" style="background:${dotColor}"></span>${h.name} (${h.streak}d)`;
+          const milestone = 7;
+          const pct = Math.min(100, ((h.streak ?? 0) / milestone) * 100);
+          const dotColor = h.streak >= milestone ? 'var(--c-ok)' : 'var(--c-idle-dim)';
+          const ringDeg = (pct / 100) * 360;
+          return `<span class="list-dot-ring" style="background: conic-gradient(var(--c-active) ${ringDeg}deg, transparent ${ringDeg}deg)"><span class="list-dot" style="background:${dotColor}"></span></span>${h.name} (${h.streak}d)`;
         }),
       );
       break;
     case 'nutrition': {
       const kcalGoal = p.kcal_goal ?? p.kcal ?? 1;
-      renderGauge(container, `Ernährung heute — ${p.kcal ?? 0} kcal`, [
+      renderGauge(container, `${icon('nutrition')} Ernährung heute — ${p.kcal ?? 0} kcal`, [
         { label: 'Protein', pct: ((p.protein ?? 0) * 4 * 100) / kcalGoal, color: 'var(--c-ok)' },
         { label: 'Carbs', pct: ((p.carbs ?? 0) * 4 * 100) / kcalGoal, color: 'var(--c-active)' },
         { label: 'Fat', pct: ((p.fat ?? 0) * 9 * 100) / kcalGoal, color: 'var(--c-warn)' },
@@ -244,22 +247,30 @@ function renderWidget(container: HTMLElement, slot: WidgetSlot): void {
     case 'skills':
       renderList(
         container,
-        `Skill-Factory — ${p.total_tools} Tools gesamt`,
+        `${icon('skills')} Skill-Factory — ${p.total_tools} Tools gesamt`,
         (p.dynamic_skills ?? []).length > 0
           ? p.dynamic_skills.map((s: string) => `🛠️ ${s}`)
           : ['Noch keine selbst erstellten Skills.'],
       );
       break;
-    case 'weather':
+    case 'weather': {
+      const conditionIcon = (code: string | undefined): string => {
+        const c = (code ?? '').toLowerCase();
+        if (c.includes('rain') || c.includes('regen')) return icon('weather-rain');
+        if (c.includes('snow') || c.includes('schnee')) return icon('weather-snow');
+        if (c.includes('cloud') || c.includes('wolke')) return icon('weather-cloud');
+        return icon('weather-sun');
+      };
       renderList(
         container,
-        `Wetter — ${p.city ?? ''}`,
+        `${conditionIcon(p.now?.desc)} Wetter — ${p.city ?? ''}`,
         [
           `Jetzt: ${p.now?.temp ?? '–'}°C (gefühlt ${p.now?.feels ?? '–'}°C), ${p.now?.desc ?? ''}`,
           ...(p.forecast ?? []).map((d: any) => `${d.date}: ${d.min}° – ${d.max}°, ${d.code} (${d.rain_prob ?? 0}% Regen)`),
         ],
       );
       break;
+    }
     case 'brain_graph':
       renderGraph(container, 'Second Brain — Graph', p.nodes ?? [], p.edges ?? []);
       break;
