@@ -8,6 +8,7 @@ als synthetisierte Sprache (Piper-TTS, base64) zurück, damit der Desktop-Client
 sie direkt abspielen kann.
 """
 import base64
+import json
 import logging
 import tempfile
 from pathlib import Path
@@ -77,7 +78,6 @@ def build_router(orch=None) -> APIRouter:
                 if "bytes" in message and message["bytes"] is not None:
                     result = await session.handle_chunk(message["bytes"], muted=muted)
                 elif "text" in message and message["text"] is not None:
-                    import json
                     control = json.loads(message["text"])
                     if control.get("type") == "mute":
                         muted = bool(control.get("value", True))
@@ -102,11 +102,20 @@ def build_router(orch=None) -> APIRouter:
                     if ogg:
                         audio_b64 = base64.b64encode(ogg).decode("ascii")
 
-                await websocket.send_json({
-                    "text": text, "addressed": True, "reply": reply, "audio_b64": audio_b64,
-                })
+                try:
+                    await websocket.send_json({
+                        "text": text, "addressed": True, "reply": reply, "audio_b64": audio_b64,
+                    })
+                except (WebSocketDisconnect, RuntimeError) as e:
+                    # Client kann zwischen Antwortberechnung und send_json getrennt haben —
+                    # Starlette meldet das je nach ASGI-Server als WebSocketDisconnect oder
+                    # RuntimeError statt es beim nächsten receive() zu werfen.
+                    log.info(f"Voice-WebSocket beim Antwortversand getrennt: {e}")
+                    break
         except WebSocketDisconnect:
             log.info("Voice-WebSocket-Verbindung geschlossen")
+        except Exception as e:
+            log.error(f"Voice-WebSocket-Handler abgebrochen: {e}")
 
     return router
 
