@@ -11,6 +11,7 @@ import { initSettingsPanel } from './settings-panel';
 import { subscribeStatus } from './status-stream';
 import { renderAlert } from './alert-overlay';
 import { appendToLog } from './conversation-log';
+import { playTone, TONES } from './sound-feedback';
 
 const POLL_INTERVAL_MS = 10_000;
 
@@ -199,6 +200,7 @@ function applyUiEvent(evt: UiEvent): void {
     const slot = evt.slots[name];
     if (slot) {
       renderWidget(slotEl, slot);
+      playTone(TONES.widget);
     } else {
       slotEl.innerHTML = '<div class="widget-title">leer</div>';
     }
@@ -222,6 +224,7 @@ function renderVoiceStatus(result: VoiceSegmentResult): void {
   if (result.addressed) {
     appendToLog({ speaker: 'user', text: result.text });
     if (result.reply) appendToLog({ speaker: 'alfred', text: result.reply });
+    playTone(TONES.addressed);
   }
 }
 
@@ -239,4 +242,7 @@ function renderChatReply(reply: string, userText: string): void {
 
 initChatInput(getBaseUrl(), renderChatReply);
 initSettingsPanel();
-subscribeStatus(getBaseUrl(), renderAlert);
+subscribeStatus(getBaseUrl(), (evt) => {
+  renderAlert(evt);
+  if (evt.type === 'autopilot' || evt.type === 'tool_failure') playTone(TONES.alert);
+});
