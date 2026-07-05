@@ -332,3 +332,13 @@ body::after {
   box-shadow: 0 0 16px rgba(255, 184, 77, 0.15);
   color: #ffd9a0;
 }
+
+@keyframes charge-pulse {
+  0%   { box-shadow: var(--glow-idle); }
+  40%  { box-shadow: var(--glow-active); }
+  100% { box-shadow: var(--glow-idle); }
+}
+
+.charge-pulse {
+  animation: charge-pulse 200ms ease-out;
+}
