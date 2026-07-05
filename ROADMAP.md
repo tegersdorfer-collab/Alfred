@@ -302,6 +302,23 @@ Plan: `docs/superpowers/plans/2026-07-05-ghost-protocol-v2-cinematic-hud.md`
 
 ---
 
+## Voice-Sensitivity, TTS-Stimmen, Wetter-Radar-Karte (2026-07-05)
+
+Spec: `docs/superpowers/specs/2026-07-05-voice-tts-weather-radar-design.md`
+Plan: `docs/superpowers/plans/2026-07-05-voice-tts-weather-radar.md`
+
+- [x] VAD-Schwellwert kalibriert sich jetzt selbst aus dem Umgebungsrauschpegel statt eines
+      festen Werts (`computeCalibratedThreshold` in `voice-capture.ts`)
+- [x] Drei zusätzliche männliche Piper-Stimmen heruntergeladen und über die
+      `tts_voice`-Einstellung umschaltbar (thorsten_emotional-medium, karlsson-low,
+      pavoque-low) — Auswahl bisher nur per direktem Settings-Aufruf, kein UI-Dropdown
+- [x] Wetter-Widget zeigt jetzt eine OSM-Karte mit RainViewer-Regenradar-Overlay
+      (letzte 4 Frames, ~800ms-Loop) statt der reinen Text-/Forecast-Liste
+- [ ] TTS-Stimmen-Auswahl im Settings-Panel als Dropdown (Folgearbeit, sobald Timo eine
+      Favoritenstimme gewählt hat)
+
+---
+
 ## Offen — externe Abhängigkeiten
 
 Diese Items brauchen externe Infrastruktur oder Hardware die nicht im Code lösbar ist:
