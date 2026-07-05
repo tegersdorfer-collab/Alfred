@@ -16,6 +16,8 @@ import { tweenNumber, drawIn, staggerIn } from './motion';
 import { startParticleField } from './fx/particle-field';
 import { applyPanelChrome } from './fx/panel-chrome';
 import { icon } from './fx/icons';
+import { latLonToTile, tileGrid } from './fx/map-tiles';
+import { fetchRadarFrameTimes, radarTileUrl } from './fx/radar-frames';
 
 const POLL_INTERVAL_MS = 10_000;
 
@@ -166,8 +168,80 @@ export function renderGauge(
   });
 }
 
+const MAP_ZOOM = 8;
+const MAP_RADIUS = 1; // 1 => 3x3 grid
+
+function renderWeatherMap(container: HTMLElement, payload: any): void {
+  const lat = payload.lat;
+  const lon = payload.lon;
+  const city = payload.city ?? '';
+  const now = payload.now ?? {};
+
+  if (typeof lat !== 'number' || typeof lon !== 'number') {
+    container.innerHTML = `<div class="widget-title">${icon('weather-cloud')} Wetter — ${city}</div><div class="list-line">Keine Standortdaten verfügbar.</div>`;
+    applyPanelChrome(container);
+    return;
+  }
+
+  const center = latLonToTile(lat, lon, MAP_ZOOM);
+  const grid = tileGrid(center.x, center.y, MAP_RADIUS);
+  const gridSize = MAP_RADIUS * 2 + 1;
+
+  const baseTiles = grid
+    .map(
+      (t) =>
+        `<img class="map-tile" src="https://tile.openstreetmap.org/${MAP_ZOOM}/${t.x}/${t.y}.png" />`,
+    )
+    .join('');
+
+  container.innerHTML = `
+    <div class="widget-title">${icon('weather-cloud')} Wetter — ${city}</div>
+    <div class="map-header">${now.temp ?? '–'}°C (gefühlt ${now.feels ?? '–'}°C), ${now.desc ?? ''}</div>
+    <div class="map-grid" style="grid-template-columns: repeat(${gridSize}, 1fr);">
+      ${baseTiles}
+      <div class="map-radar-layer" style="grid-template-columns: repeat(${gridSize}, 1fr);"></div>
+    </div>
+    <div class="map-attribution">© OpenStreetMap contributors</div>
+  `;
+  applyPanelChrome(container);
+
+  const radarLayer = container.querySelector('.map-radar-layer');
+  if (!radarLayer) return;
+
+  fetchRadarFrameTimes().then((times) => {
+    if (times.length === 0) return; // kein Radar-Overlay verfügbar — Basiskarte bleibt sichtbar
+    const frames = times.map(
+      (time) =>
+        `<div class="map-radar-frame">${grid
+          .map(
+            (t) =>
+              `<img class="map-tile map-radar-tile" src="${radarTileUrl(time, MAP_ZOOM, t.x, t.y)}" />`,
+          )
+          .join('')}</div>`,
+    );
+    radarLayer.innerHTML = frames.join('');
+    const frameEls = radarLayer.querySelectorAll<HTMLElement>('.map-radar-frame');
+    let activeIndex = 0;
+    frameEls.forEach((el, i) => {
+      el.style.display = i === 0 ? 'grid' : 'none';
+    });
+    const intervalId = setInterval(() => {
+      frameEls[activeIndex].style.display = 'none';
+      activeIndex = (activeIndex + 1) % frameEls.length;
+      frameEls[activeIndex].style.display = 'grid';
+    }, 800);
+    // Intervall an das Element hängen, damit es beim nächsten renderWidget-Aufruf
+    // für dieses Slot (siehe Step 3 der applyUiEvent-Neuzeichnung) gestoppt werden kann.
+    (container as any)._radarIntervalId = intervalId;
+  });
+}
+
 function renderWidget(container: HTMLElement, slot: WidgetSlot): void {
   const p: any = slot.payload;
+  if ((container as any)._radarIntervalId) {
+    clearInterval((container as any)._radarIntervalId);
+    (container as any)._radarIntervalId = null;
+  }
   switch (slot.widget) {
     case 'sleep':
       renderBars(
@@ -253,39 +327,9 @@ function renderWidget(container: HTMLElement, slot: WidgetSlot): void {
           : ['Noch keine selbst erstellten Skills.'],
       );
       break;
-    case 'weather': {
-      const conditionIcon = (code: string | undefined): string => {
-        const c = (code ?? '').toLowerCase();
-        if (c.includes('schnee') || c.includes('snow')) return icon('weather-snow');
-        if (
-          c.includes('regen') ||
-          c.includes('rain') ||
-          c.includes('niesel') ||
-          c.includes('schauer') ||
-          c.includes('gewitter') ||
-          c.includes('storm')
-        )
-          return icon('weather-rain');
-        if (
-          c.includes('bewölkt') ||
-          c.includes('bedeckt') ||
-          c.includes('nebel') ||
-          c.includes('cloud') ||
-          c.includes('wolke')
-        )
-          return icon('weather-cloud');
-        return icon('weather-sun');
-      };
-      renderList(
-        container,
-        `${conditionIcon(p.now?.desc)} Wetter — ${p.city ?? ''}`,
-        [
-          `Jetzt: ${p.now?.temp ?? '–'}°C (gefühlt ${p.now?.feels ?? '–'}°C), ${p.now?.desc ?? ''}`,
-          ...(p.forecast ?? []).map((d: any) => `${d.date}: ${d.min}° – ${d.max}°, ${d.code} (${d.rain_prob ?? 0}% Regen)`),
-        ],
-      );
+    case 'weather':
+      renderWeatherMap(container, p);
       break;
-    }
     case 'brain_graph':
       renderGraph(container, 'Second Brain — Graph', p.nodes ?? [], p.edges ?? []);
       break;

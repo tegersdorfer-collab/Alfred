@@ -575,3 +575,47 @@ body::after {
 .nav-tile {
   position: relative;
 }
+
+.map-header {
+  font-size: var(--fs-body);
+  color: var(--c-idle);
+  text-align: center;
+  margin-bottom: 8px;
+}
+.map-grid {
+  display: grid;
+  gap: 0;
+  position: relative;
+  width: 100%;
+  max-width: 384px;
+  margin: 0 auto;
+}
+.map-tile {
+  width: 100%;
+  display: block;
+  filter: saturate(0.6) brightness(0.7);
+}
+.map-radar-layer {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  gap: 0;
+}
+.map-radar-frame {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  gap: 0;
+}
+.map-radar-tile {
+  width: 100%;
+  display: block;
+  filter: hue-rotate(140deg) saturate(1.4) brightness(1.1);
+  mix-blend-mode: screen;
+}
+.map-attribution {
+  font-size: var(--fs-micro);
+  color: var(--c-idle-dim);
+  text-align: right;
+  margin-top: 4px;
+}
