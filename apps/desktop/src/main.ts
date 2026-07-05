@@ -6,6 +6,7 @@ import type { UiEvent, WidgetSlot } from './ui-state-client';
 import { startVoiceCapture } from './voice-capture';
 import type { VoiceSegmentResult } from './voice-capture';
 import { initNavOverlay } from './nav-overlay';
+import { initChatInput } from './chat-input';
 
 const POLL_INTERVAL_MS = 10_000;
 
@@ -146,3 +147,11 @@ function renderVoiceStatus(result: VoiceSegmentResult): void {
 
 startVoiceCapture(getBaseUrl(), renderVoiceStatus);
 initNavOverlay(getBaseUrl());
+
+function renderChatReply(reply: string): void {
+  const el = document.getElementById('chat-status');
+  if (!el) return;
+  el.textContent = `💬 Alfred: "${reply}"`;
+}
+
+initChatInput(getBaseUrl(), renderChatReply);

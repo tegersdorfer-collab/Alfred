@@ -117,3 +117,30 @@ html, body {
   cursor: pointer; border-radius: 4px;
 }
 .nav-tile:hover { background: #00e5ff22; }
+
+#chat-input-wrap {
+  position: fixed;
+  bottom: 8px;
+  left: 8px;
+  right: 8px;
+  z-index: 10;
+}
+#chat-input {
+  width: 100%;
+  box-sizing: border-box;
+  background: rgba(0, 229, 255, 0.06);
+  border: 1px solid #00e5ff33;
+  border-radius: 4px;
+  color: #00e5ff;
+  font-family: 'SF Mono', monospace;
+  font-size: 12px;
+  padding: 6px 10px;
+  outline: none;
+}
+#chat-input:focus {
+  border-color: #00e5ff88;
+  background: rgba(0, 229, 255, 0.1);
+}
+#chat-input::placeholder {
+  color: #00e5ff55;
+}
