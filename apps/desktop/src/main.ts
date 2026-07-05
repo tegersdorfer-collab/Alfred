@@ -177,9 +177,15 @@ function renderWidget(container: HTMLElement, slot: WidgetSlot): void {
         (p.habits ?? []).map((h: any) => `${h.emoji} ${h.name} (${h.streak}d)`),
       );
       break;
-    case 'nutrition':
-      container.innerHTML = `<div class="widget-title">Ernährung heute</div><div class="widget-title">${p.kcal} kcal · ${p.protein}g P · ${p.carbs}g C · ${p.fat}g F</div>`;
+    case 'nutrition': {
+      const kcalGoal = p.kcal_goal ?? p.kcal ?? 1;
+      renderGauge(container, `Ernährung heute — ${p.kcal ?? 0} kcal`, [
+        { label: 'Protein', pct: ((p.protein ?? 0) * 4 * 100) / kcalGoal, color: 'var(--c-ok)' },
+        { label: 'Carbs', pct: ((p.carbs ?? 0) * 4 * 100) / kcalGoal, color: 'var(--c-active)' },
+        { label: 'Fat', pct: ((p.fat ?? 0) * 9 * 100) / kcalGoal, color: 'var(--c-warn)' },
+      ]);
       break;
+    }
     case 'system':
       renderGauge(container, 'System-Status', [
         { label: 'CPU', pct: p.cpu_pct ?? 0, color: 'var(--c-active)' },
