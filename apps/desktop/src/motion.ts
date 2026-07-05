@@ -5,6 +5,11 @@ export function tweenNumber(
   durationMs: number,
   format: (n: number) => string = (n) => String(n),
 ): void {
+  if (durationMs <= 0) {
+    el.textContent = format(to);
+    return;
+  }
+
   const start = performance.now();
   el.textContent = format(from);
 

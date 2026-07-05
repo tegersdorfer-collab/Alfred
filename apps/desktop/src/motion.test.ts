@@ -54,4 +54,18 @@ describe('tweenNumber', () => {
     flush(250);
     expect(el.textContent).toBe('50%');
   });
+
+  it('setzt den Zielwert sofort wenn durationMs = 0', () => {
+    const el = document.createElement('div');
+    tweenNumber(el, 10, 100, 0);
+    expect(el.textContent).toBe('100');
+    expect(rafCallbacks.length).toBe(0);
+  });
+
+  it('interpoliert korrekt wenn from === to', () => {
+    const el = document.createElement('div');
+    tweenNumber(el, 50, 50, 200);
+    flush(250);
+    expect(el.textContent).toBe('50');
+  });
 });
