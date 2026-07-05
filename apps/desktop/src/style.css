@@ -260,3 +260,31 @@ body::after {
   from { opacity: 0; transform: translateX(20px); }
   to   { opacity: 1; transform: translateX(0); }
 }
+
+#conversation-log {
+  position: fixed;
+  top: 44px;
+  left: 8px;
+  z-index: 5;
+  max-width: 340px;
+  max-height: 200px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.log-entry {
+  font-size: 10px;
+  font-family: 'SF Mono', monospace;
+  padding: 3px 6px;
+  border-radius: 3px;
+  line-height: 1.4;
+}
+.log-user {
+  color: #e0f7ff;
+  background: rgba(255, 255, 255, 0.03);
+}
+.log-alfred {
+  color: #00e5ffcc;
+  background: rgba(0, 229, 255, 0.05);
+}

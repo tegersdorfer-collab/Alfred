@@ -10,6 +10,7 @@ import { initChatInput } from './chat-input';
 import { initSettingsPanel } from './settings-panel';
 import { subscribeStatus } from './status-stream';
 import { renderAlert } from './alert-overlay';
+import { appendToLog } from './conversation-log';
 
 const POLL_INTERVAL_MS = 10_000;
 
@@ -156,15 +157,23 @@ function renderVoiceStatus(result: VoiceSegmentResult): void {
     text += `\n🔊 Alfred: "${result.reply}"`;
   }
   el.textContent = text;
+
+  if (result.addressed) {
+    appendToLog({ speaker: 'user', text: result.text });
+    if (result.reply) appendToLog({ speaker: 'alfred', text: result.reply });
+  }
 }
 
 startVoiceCapture(getBaseUrl(), renderVoiceStatus);
 initNavOverlay(getBaseUrl());
 
-function renderChatReply(reply: string): void {
+function renderChatReply(reply: string, userText: string): void {
   const el = document.getElementById('chat-status');
   if (!el) return;
   el.textContent = `💬 Alfred: "${reply}"`;
+
+  appendToLog({ speaker: 'user', text: userText });
+  appendToLog({ speaker: 'alfred', text: reply });
 }
 
 initChatInput(getBaseUrl(), renderChatReply);

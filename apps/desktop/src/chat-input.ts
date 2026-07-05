@@ -1,4 +1,7 @@
-export function initChatInput(baseUrl: string, onReply: (text: string) => void): void {
+export function initChatInput(
+  baseUrl: string,
+  onReply: (reply: string, userText: string) => void,
+): void {
   const wrap = document.createElement('div');
   wrap.id = 'chat-input-wrap';
   wrap.innerHTML = `<input type="text" id="chat-input" placeholder="Nachricht an Alfred …" autocomplete="off" />`;
@@ -20,9 +23,9 @@ export function initChatInput(baseUrl: string, onReply: (text: string) => void):
         body: JSON.stringify({ text }),
       });
       const data = await res.json();
-      onReply(data.response ?? '');
+      onReply(data.response ?? '', text);
     } catch {
-      onReply('Fehler beim Senden — Verbindung zu Alfred geprüft?');
+      onReply('Fehler beim Senden — Verbindung zu Alfred geprüft?', text);
     } finally {
       input.disabled = false;
       input.focus();

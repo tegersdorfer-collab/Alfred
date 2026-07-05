@@ -31,7 +31,7 @@ describe('chat-input', () => {
         body: JSON.stringify({ text: 'Wie war mein Schlaf?' }),
       }),
     );
-    expect(onReply).toHaveBeenCalledWith('Alles klar.');
+    expect(onReply).toHaveBeenCalledWith('Alles klar.', 'Wie war mein Schlaf?');
     expect(input.value).toBe('');
   });
 
@@ -57,6 +57,6 @@ describe('chat-input', () => {
     await Promise.resolve();
     await Promise.resolve();
     await Promise.resolve();
-    expect(onReply).toHaveBeenCalledWith(expect.stringContaining('Fehler'));
+    expect(onReply).toHaveBeenCalledWith(expect.stringContaining('Fehler'), 'Test');
   });
 });
