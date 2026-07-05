@@ -25,3 +25,28 @@ export function tweenNumber(
 
   requestAnimationFrame(step);
 }
+
+export function staggerIn(
+  elements: NodeListOf<HTMLElement> | HTMLElement[],
+  delayStepMs = 60,
+): void {
+  Array.from(elements).forEach((el, i) => {
+    el.classList.add('stagger-in');
+    el.style.animationDelay = `${i * delayStepMs}ms`;
+  });
+}
+
+export function drawIn(pathEl: SVGPathElement, durationMs = 600): void {
+  let length = 200;
+  try {
+    length = pathEl.getTotalLength();
+  } catch {
+    // jsdom has no SVG geometry engine; fallback length only affects test environments.
+  }
+  pathEl.style.strokeDasharray = `${length}`;
+  pathEl.style.strokeDashoffset = `${length}`;
+  pathEl.style.transition = `stroke-dashoffset ${durationMs}ms ease-out`;
+  requestAnimationFrame(() => {
+    pathEl.style.strokeDashoffset = '0';
+  });
+}

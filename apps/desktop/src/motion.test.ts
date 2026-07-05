@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { tweenNumber } from './motion';
+import { tweenNumber, staggerIn, drawIn } from './motion';
 
 describe('tweenNumber', () => {
   let rafCallbacks: FrameRequestCallback[] = [];
@@ -67,5 +67,43 @@ describe('tweenNumber', () => {
     tweenNumber(el, 50, 50, 200);
     flush(250);
     expect(el.textContent).toBe('50');
+  });
+});
+
+describe('staggerIn', () => {
+  it('setzt animation-delay aufsteigend pro Element', () => {
+    const els = [document.createElement('div'), document.createElement('div'), document.createElement('div')];
+    staggerIn(els, 50);
+    expect(els[0].style.animationDelay).toBe('0ms');
+    expect(els[1].style.animationDelay).toBe('50ms');
+    expect(els[2].style.animationDelay).toBe('100ms');
+  });
+
+  it('fügt jedem Element die stagger-in-Klasse hinzu', () => {
+    const els = [document.createElement('div')];
+    staggerIn(els);
+    expect(els[0].classList.contains('stagger-in')).toBe(true);
+  });
+
+  it('nutzt 60ms als Default-Schrittweite', () => {
+    const els = [document.createElement('div'), document.createElement('div')];
+    staggerIn(els);
+    expect(els[1].style.animationDelay).toBe('60ms');
+  });
+});
+
+describe('drawIn', () => {
+  it('setzt initial stroke-dasharray/-dashoffset auf die Pfadlänge', () => {
+    const path = document.createElementNS('http://www.w3.org/2000/svg', 'path') as SVGPathElement;
+    vi.spyOn(path, 'getTotalLength').mockReturnValue(120);
+    drawIn(path);
+    expect(path.style.strokeDasharray).toBe('120');
+  });
+
+  it('setzt transition-duration entsprechend durationMs', () => {
+    const path = document.createElementNS('http://www.w3.org/2000/svg', 'path') as SVGPathElement;
+    vi.spyOn(path, 'getTotalLength').mockReturnValue(80);
+    drawIn(path, 300);
+    expect(path.style.transition).toContain('300ms');
   });
 });

@@ -27,6 +27,19 @@ if (typeof navigator !== 'undefined' && !(navigator as any).mediaDevices) {
   });
 }
 
+// jsdom has no SVG geometry engine; stub getTotalLength so tests can spy on it.
+// jsdom doesn't expose SVGPathElement as a global constructor, so patch via
+// an actual instance's prototype chain instead.
+{
+  const probe = document.createElementNS('http://www.w3.org/2000/svg', 'path') as unknown as {
+    getTotalLength?: () => number;
+  };
+  const proto = Object.getPrototypeOf(probe);
+  if (proto && typeof proto.getTotalLength === 'undefined') {
+    proto.getTotalLength = () => 0;
+  }
+}
+
 // Ensure localStorage is available in tests
 if (typeof localStorage === 'undefined') {
   Object.defineProperty(global, 'localStorage', {
