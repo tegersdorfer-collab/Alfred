@@ -222,8 +222,18 @@
 
 ### Weitere gesammelte Ideen (Brainstorm, nicht priorisiert)
 - [ ] Smart-Home-Steuerung (falls HomeKit/HomeAssistant vorhanden — prüfen)
-- [ ] Bildschirm-Freigabe/Screen-Context: Alfred sieht was gerade am
-  Bildschirm passiert (Screenshot-Analyse) für kontextbezogene Hilfe
+- [x] **Screen-Context-Awareness** (Commits cc0852b, 05a6760, b694472): neues
+  Tool `see_screen` — macOS `screencapture` (core/skills/vision.py) +
+  Ollama-Vision (core/vision.py, aus Telegram-Foto-Analyse extrahiert und
+  zentralisiert). Zwei Live-Bugs gefunden und gefixt: (1) `screencapture` lag
+  in /usr/sbin, das der launchd-Prozess nicht im PATH hat → absoluter Pfad;
+  (2) Tool-Routing kannte die Kategorie 'vision' nicht (derselbe Bug-Typ wie
+  bei filesystem) → Keywords ergänzt. **Verbleibende Blockade (braucht Timo):**
+  macOS verweigert den Screenshot mit "could not create image from display" —
+  fehlende Bildschirmaufnahme-Berechtigung (Privacy & Security). Das ist eine
+  Systemeinstellung, die ich nicht selbst ändern darf/kann — Alfred gibt jetzt
+  eine konkrete Anleitung dazu aus, aber Timo muss die Berechtigung einmalig
+  manuell erteilen und Alfred neu starten, damit das Tool nutzbar wird.
 - [x] **Kalender-Konflikt-Erkennung** — existierte bereits (`_calendar_check()`
   in core/autopilot.py, nutzt domains/calendar_optimizer.py::analyze_day),
   läuft jeden Morgen proaktiv, keine Umsetzung nötig gewesen.
