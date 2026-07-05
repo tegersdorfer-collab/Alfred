@@ -44,6 +44,13 @@ async def transcribe_audio(audio_path: str) -> str:
         log.warning("pywhispercpp nicht installiert – Audio kann nicht transkribiert werden")
         return ""
 
+    # whisper.cpp/ggml ist nicht thread-/reentrancy-sicher für parallele
+    # transcribe()-Aufrufe auf demselben Modell-Kontext (concurrent Calls in den
+    # Metal-Compute-Graph führen zu ggml_abort/SIGABRT, siehe Crash-Log vom
+    # 2026-07-05 nach der VAD-Kalibrierungs-Änderung — die sensiblere Erkennung
+    # löst häufiger überlappende Segmente aus, die vorher selten gleichzeitig
+    # eintrafen). Modell-Laden UND Transkription laufen daher beide unter
+    # demselben Lock, nicht nur das Laden.
     async with _whisper_lock:
         if _whisper_model is None:
             log.info("🔊 Lade whisper.cpp-Modell 'medium' …")
@@ -51,12 +58,12 @@ async def transcribe_audio(audio_path: str) -> str:
                 Model, "medium", language="de", print_realtime=False, print_progress=False
             )
 
-    try:
-        segments = await asyncio.to_thread(_whisper_model.transcribe, audio_path)
-        return " ".join(s.text for s in segments).strip()
-    except Exception as e:
-        log.error(f"Whisper-Transkription fehlgeschlagen: {e}")
-        return ""
+        try:
+            segments = await asyncio.to_thread(_whisper_model.transcribe, audio_path)
+            return " ".join(s.text for s in segments).strip()
+        except Exception as e:
+            log.error(f"Whisper-Transkription fehlgeschlagen: {e}")
+            return ""
 
 
 async def is_addressed_to_alfred(text: str) -> bool:

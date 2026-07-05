@@ -44,6 +44,39 @@ class TestTranscribeAudio:
             asyncio.run(voice.transcribe_audio("/tmp/b.wav"))
         mock_load.assert_called_once()
 
+    def test_transkribiert_nicht_parallel_bei_gleichzeitigen_aufrufen(self):
+        """whisper.cpp/ggml crasht (SIGABRT) bei parallelen transcribe()-Aufrufen auf
+        demselben Modell-Kontext — beide Aufrufe müssen serialisiert laufen, auch wenn
+        transcribe_audio() gleichzeitig für zwei Segmente aufgerufen wird."""
+        import threading
+        import time
+
+        max_concurrent = 0
+        current = 0
+        lock = threading.Lock()
+
+        def fake_transcribe(path):
+            nonlocal max_concurrent, current
+            with lock:
+                current += 1
+                max_concurrent = max(max_concurrent, current)
+            time.sleep(0.05)
+            with lock:
+                current -= 1
+            return [MagicMock(text=path)]
+
+        fake_model = MagicMock()
+        fake_model.transcribe.side_effect = fake_transcribe
+        with patch("pywhispercpp.model.Model", return_value=fake_model):
+            async def run_both():
+                await asyncio.gather(
+                    voice.transcribe_audio("/tmp/a.wav"),
+                    voice.transcribe_audio("/tmp/b.wav"),
+                )
+            asyncio.run(run_both())
+
+        assert max_concurrent == 1
+
     def test_transkriptions_fehler_gibt_leeren_string(self):
         fake_model = MagicMock()
         fake_model.transcribe.side_effect = RuntimeError("kaputt")
