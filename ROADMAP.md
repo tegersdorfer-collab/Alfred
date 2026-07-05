@@ -164,12 +164,30 @@
 - [ ] Persistente Fenster-Position/-Größe, Tray-Icon, Autostart
 
 ### Windows-Readiness
-- [ ] Prüfen was für einen Windows-Build fehlt: Tauri-Windows-Target,
-  plattformspezifische Pfade/Berechtigungen (Mikrofon-Permission unter
-  Windows anders als macOS TCC), Cross-Compile vs. echte Windows-Maschine
-  nötig, Code-Signing-Anforderungen
-- [ ] CI/Build-Pipeline-Bedarf dokumentieren (dieses Environment ist nur
-  macOS — Windows-Build kann hier nicht nativ getestet werden)
+- [x] **Architektur-Klarstellung + Assessment (Recherche abgeschlossen):**
+  Backend (Whisper/Piper/Ollama/DB) bleibt laut Spec zentral auf dem Mac —
+  Windows ist ein **reiner Client**, braucht also KEIN Python/whisper.cpp/
+  Piper lokal. Das vereinfacht Windows-Readiness auf:
+  1. **Tauri-Windows-Build** — kann in diesem (macOS-only) Environment nicht
+     nativ gebaut/getestet werden. Braucht entweder eine echte Windows-
+     Maschine oder einen Windows-CI-Runner (z.B. GitHub Actions
+     `windows-latest`). `tauri.conf.json` hat bereits `.ico`-Icon hinterlegt,
+     `bundle.targets: "all"` sollte auf Windows automatisch MSI/NSIS bauen.
+  2. **Mikrofon-Berechtigung** — anders als macOS TCC/Info.plist läuft das
+     unter Windows über WebView2s Standard-Berechtigungsdialog (kein
+     Manifest-Eintrag nötig, sollte "einfach funktionieren" — aber ungetestet).
+  3. **MediaRecorder-Format** — bereits robust: voice-capture.ts liest
+     `recorder.mimeType` dynamisch aus statt einen Wert fest anzunehmen
+     (siehe Fix aus der Voice-Capture-Session), Chromium/WebView2 liefert
+     vermutlich `audio/webm;codecs=opus` statt macOS' `audio/mp4` — beides
+     wird bereits korrekt behandelt.
+  4. **Backend-Adresse konfigurierbar gemacht** (Commit c5db573): neues
+     Cmd/Ctrl+,-Einstellungs-Panel, damit ein Windows-Client die Tailscale-
+     Adresse des Mac-Backends eintragen kann, statt nur per Devtools-Hack.
+  5. **CORS bereits gefixt** (aus Voice-Capture-Session) — cross-origin von
+     einer anderen Maschine funktioniert bereits (`allow_origins: "*"`).
+  6. **Nicht behoben/offen:** Code-Signing/Notarization für Windows (explizit
+     Nicht-Ziel der Master-Spec), echter Build+Test auf einer Windows-Maschine.
 
 ### Jarvis-Feature-Parität (Recherche + Implementierung)
 - [ ] Web-Recherche: welche Jarvis-Fähigkeiten (Iron-Man-Filme/Fiktion) hat
