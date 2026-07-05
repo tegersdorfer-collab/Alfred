@@ -518,3 +518,12 @@ body::after {
   align-items: center;
   gap: 2px;
 }
+
+.gauge-readout {
+  display: flex;
+  justify-content: space-between;
+  width: 60px;
+  font-size: var(--fs-micro);
+  color: var(--c-idle-dim);
+  margin-top: -2px;
+}

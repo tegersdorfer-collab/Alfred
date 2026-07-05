@@ -15,6 +15,7 @@ import { playTone, TONES } from './sound-feedback';
 import { tweenNumber } from './motion';
 import { startParticleField } from './fx/particle-field';
 import { applyPanelChrome } from './fx/panel-chrome';
+import { icon } from './fx/icons';
 
 const POLL_INTERVAL_MS = 10_000;
 
@@ -134,11 +135,13 @@ export function renderGauge(
           </svg>
           <div class="gauge-label">${m.label}</div>
           <div class="gauge-value-text" data-gauge-text-id="${i}">0</div>
+          <div class="gauge-readout"><span>0</span><span>100</span></div>
         </div>`;
     })
     .join('');
 
   container.innerHTML = `<div class="widget-title">${title}</div><div class="gauge-row">${gauges}</div>`;
+  applyPanelChrome(container, { greeble: true });
 
   metrics.forEach((m, i) => {
     const textEl = container.querySelector(`[data-gauge-text-id="${i}"]`) as HTMLElement | null;
@@ -211,7 +214,7 @@ function renderWidget(container: HTMLElement, slot: WidgetSlot): void {
       break;
     }
     case 'system':
-      renderGauge(container, 'System-Status', [
+      renderGauge(container, `${icon('system')} System-Status`, [
         { label: 'CPU', pct: p.cpu_pct ?? 0, color: 'var(--c-active)' },
         { label: 'RAM', pct: p.ram_pct ?? 0, color: 'var(--c-active)' },
         {
