@@ -42,7 +42,35 @@ Stattdessen exportiert das Paket:
        gelabelten Fenstern (1=Mantis, 0=kein Mantis) trainieren - einfache
        Trainingsschleife mit Adam, ohne die aufwändige auto_train-Sequenz.
     5. Mit Model.export_to_onnx(...) nach data/wakeword/mantis.onnx
-       exportieren.
+       exportieren, danach per onnxruntime-Selbsttest (ein Forward-Pass mit
+       Dummy-Input) verifizieren, dass die exportierte Datei tatsächlich lädt
+       und funktioniert.
+
+  Train/Val-Split (WICHTIG, Review-Fix): Der Split in Trainings- und
+  Validierungsanteil (80/20, stratifiziert nach Klasse) passiert AUF
+  CLIP-EBENE, VOR der Fenster-Extraktion (siehe split_clips_train_val).
+  Ursprünglich wurde zuerst über alle Clips hinweg gefenstert (Sliding
+  Window, Schrittweite 1) und danach rein positionsbasiert über die
+  gesamte, flache Fenster-Liste gesplittet. Das ist Data Leakage: bei
+  Schrittweite 1 sind benachbarte Fenster aus demselben Clip fast
+  identisch, und ein rein positionsbasierter Split verteilt sie trotzdem
+  auf Train UND Val. Das Modell "erkennt" dann denselben Clip wieder,
+  statt zu generalisieren - Ergebnis war eine künstlich perfekte
+  val_acc=1.0, die nichts über echte Generalisierung aussagt. Nach der
+  Korrektur (ganze WAV-Dateien werden VOR dem Fenstern Train oder Val
+  zugeordnet) beobachten wir aktuell val_acc=1.000 / val_recall=1.000 mit
+  Seed 42 (13 Val-Clips positiv -> 13 Fenster, 1 Val-Clip negativ -> 48
+  Fenster). Das ist NICHT dieselbe Zahl wie vorher aus denselben Gründen wie
+  vorher: hier ist es der ehrliche Wert eines winzigen, leicht trennbaren
+  Val-Sets (Mantis-Rufe klingen sehr unterschiedlich von den 6
+  Hintergrundgeräusch-Negativen), nicht das Resultat von Fenster-Leakage.
+  Mit nur 6 Negativ-Clips insgesamt bedeutet ein 80/20-Split, dass nur 1
+  Negativ-Clip in Val landet; das ist eine bekannte Limitation des kleinen
+  Datensatzes (hohe Varianz: ein einziger unglücklich gewählter Val-Clip
+  kann das Ergebnis kippen) und wird hier bewusst nicht künstlich umgangen
+  (siehe Warnung zur Laufzeit sowie split_clips_train_val). Mit mehr
+  Negativ-Clips wäre eine robustere Einschätzung möglich (z.B. K-Fold über
+  Clips statt Einzelsplit).
 
   Dies ist EXPLIZIT eine vereinfachte Pipeline (siehe Task-Brief): ohne
   Augmentierung, ohne Negative-Mining, ohne große Negativ-Validierungsmenge,
@@ -113,6 +141,34 @@ def extract_windows(features: np.ndarray, n_frames: int = N_FRAMES) -> np.ndarra
     return np.array(windows, dtype=np.float32)
 
 
+def split_clips_train_val(files, val_fraction: float = 0.2, seed: int = 42):
+    """Teilt eine Liste von Clip-Pfaden AUF CLIP-EBENE in Train- und Val-Anteil auf
+    (~80/20), BEVOR irgendwelche Fenster extrahiert werden. Das ist entscheidend:
+    würde man stattdessen erst alle Fenster aller Clips zusammenwerfen und danach
+    zufällig auf Positionsebene splitten, landen bei Schrittweite-1-Sliding-Windows
+    fast identische, überlappende Fenster desselben Clips sowohl in Train als auch
+    in Val (Data Leakage) - das Modell "erinnert" sich dann an den Clip statt zu
+    generalisieren, was künstlich hohe/perfekte Val-Metriken erzeugt.
+
+    Rundung: mind. 1 Clip landet in Val, sofern mind. 2 Clips vorhanden sind (sonst
+    bleibt alles in Train - ein einzelner Clip lässt sich nicht sinnvoll splitten).
+    """
+    files = list(files)
+    rng = np.random.RandomState(seed)
+    idx = np.arange(len(files))
+    rng.shuffle(idx)
+
+    if len(files) < 2:
+        return [files[i] for i in idx], []
+
+    n_val = max(1, round(len(files) * val_fraction))
+    n_val = min(n_val, len(files) - 1)  # mind. 1 Clip muss in Train bleiben
+
+    val_files = [files[i] for i in idx[:n_val]]
+    train_files = [files[i] for i in idx[n_val:]]
+    return train_files, val_files
+
+
 def build_feature_dataset(files, audio_features, label: int):
     """Lädt alle WAV-Dateien, berechnet openWakeWord-Embeddings und schneidet
     daraus gelabelte Trainingsfenster heraus."""
@@ -157,41 +213,47 @@ def main() -> None:
     log.info("Lade openWakeWord-Feature-Extraktor (Melspektrogramm + Google speech_embedding, ONNX)...")
     audio_features = AudioFeatures(inference_framework="onnx", device="cpu")
 
-    log.info("Berechne Embeddings und Trainingsfenster für Positiv-Samples...")
-    X_pos, y_pos = build_feature_dataset(positive_files, audio_features, label=1)
-    log.info(f"  -> {X_pos.shape[0]} positive Fenster aus {len(positive_files)} Clips")
+    # Split AUF CLIP-EBENE (80/20, stratifiziert nach Klasse) - VOR der Fenster-Extraktion.
+    # Damit landen alle Fenster eines Clips garantiert komplett in Train ODER Val, nie in
+    # beiden (siehe split_clips_train_val-Docstring für die Begründung/Data-Leakage-Problem).
+    pos_train_files, pos_val_files = split_clips_train_val(positive_files)
+    neg_train_files, neg_val_files = split_clips_train_val(negative_files)
+    log.info(f"Clip-Split: Positiv {len(pos_train_files)} train / {len(pos_val_files)} val Clips, "
+             f"Negativ {len(neg_train_files)} train / {len(neg_val_files)} val Clips")
+    if len(neg_val_files) <= 1:
+        log.warning("Nur 1 Negativ-Clip in Val (von insgesamt 6 Negativ-Clips) - bekannte Limitation "
+                    "des kleinen Datensatzes. Val-Metriken für die Negativ-Klasse sind entsprechend "
+                    "hochvarianz/wenig aussagekräftig; wird hier absichtlich nicht künstlich umgangen.")
 
-    log.info("Berechne Embeddings und Trainingsfenster für Negativ-Samples...")
-    X_neg, y_neg = build_feature_dataset(negative_files, audio_features, label=0)
-    log.info(f"  -> {X_neg.shape[0]} negative Fenster aus {len(negative_files)} Clips")
+    log.info("Berechne Embeddings und Trainingsfenster für Positiv-Train-Clips...")
+    X_pos_train, y_pos_train = build_feature_dataset(pos_train_files, audio_features, label=1)
+    log.info("Berechne Embeddings und Trainingsfenster für Positiv-Val-Clips...")
+    X_pos_val, y_pos_val = build_feature_dataset(pos_val_files, audio_features, label=1)
+    log.info(f"  -> {X_pos_train.shape[0]} train / {X_pos_val.shape[0]} val positive Fenster "
+             f"aus {len(positive_files)} Clips")
 
-    if X_pos.shape[0] == 0 or X_neg.shape[0] == 0:
+    log.info("Berechne Embeddings und Trainingsfenster für Negativ-Train-Clips...")
+    X_neg_train, y_neg_train = build_feature_dataset(neg_train_files, audio_features, label=0)
+    log.info("Berechne Embeddings und Trainingsfenster für Negativ-Val-Clips...")
+    X_neg_val, y_neg_val = build_feature_dataset(neg_val_files, audio_features, label=0)
+    log.info(f"  -> {X_neg_train.shape[0]} train / {X_neg_val.shape[0]} val negative Fenster "
+             f"aus {len(negative_files)} Clips")
+
+    if X_pos_train.shape[0] == 0 or X_neg_train.shape[0] == 0:
         raise RuntimeError("Keine gültigen Trainingsfenster für Positiv- oder Negativ-Klasse extrahiert - "
                            "Samples zu kurz oder Feature-Extraktion fehlgeschlagen")
 
-    X = np.concatenate([X_pos, X_neg], axis=0)
-    y = np.concatenate([y_pos, y_neg], axis=0)
+    X_train_np = np.concatenate([X_pos_train, X_neg_train], axis=0)
+    y_train_np = np.concatenate([y_pos_train, y_neg_train], axis=0)
+    X_val_np = np.concatenate([X_pos_val, X_neg_val], axis=0)
+    y_val_np = np.concatenate([y_pos_val, y_neg_val], axis=0)
 
-    # Einfacher Train/Val-Split (80/20), stratifiziert nach Klasse
     rng = np.random.RandomState(42)
-    pos_idx = np.where(y == 1)[0]
-    neg_idx = np.where(y == 0)[0]
-    rng.shuffle(pos_idx)
-    rng.shuffle(neg_idx)
+    train_perm = rng.permutation(X_train_np.shape[0])
+    val_perm = rng.permutation(X_val_np.shape[0]) if X_val_np.shape[0] > 0 else np.array([], dtype=int)
 
-    def split(idx):
-        n_val = max(1, int(len(idx) * 0.2))
-        return idx[n_val:], idx[:n_val]
-
-    pos_train, pos_val = split(pos_idx)
-    neg_train, neg_val = split(neg_idx)
-    train_idx = np.concatenate([pos_train, neg_train])
-    val_idx = np.concatenate([pos_val, neg_val])
-    rng.shuffle(train_idx)
-    rng.shuffle(val_idx)
-
-    X_train, y_train = torch.from_numpy(X[train_idx]), torch.from_numpy(y[train_idx])
-    X_val, y_val = torch.from_numpy(X[val_idx]), torch.from_numpy(y[val_idx])
+    X_train, y_train = torch.from_numpy(X_train_np[train_perm]), torch.from_numpy(y_train_np[train_perm])
+    X_val, y_val = torch.from_numpy(X_val_np[val_perm]), torch.from_numpy(y_val_np[val_perm])
 
     log.info(f"Trainingsfenster: {X_train.shape[0]} (davon {int(y_train.sum())} positiv), "
              f"Validierungsfenster: {X_val.shape[0]} (davon {int(y_val.sum())} positiv)")
@@ -245,6 +307,15 @@ def main() -> None:
 
     log.info(f"Exportiere Modell nach {OUTPUT_PATH}...")
     model.export_to_onnx(str(OUTPUT_PATH), class_mapping="mantis")
+
+    log.info("Selbsttest: lade exportiertes ONNX-Modell erneut und prüfe Forward-Pass mit Dummy-Input...")
+    import onnxruntime as ort
+    ort_session = ort.InferenceSession(str(OUTPUT_PATH))
+    dummy_input = np.random.randn(1, N_FRAMES, EMBEDDING_DIM).astype(np.float32)
+    input_name = ort_session.get_inputs()[0].name
+    ort_out = ort_session.run(None, {input_name: dummy_input})
+    assert ort_out and ort_out[0].shape[0] == 1, f"Unerwartete ONNX-Ausgabe: {ort_out}"
+    log.info(f"  -> ONNX-Selbsttest OK, Ausgabe-Shape {ort_out[0].shape}")
 
     elapsed = time.time() - start_time
     log.info(f"Training abgeschlossen in {elapsed:.1f}s. Modell gespeichert unter {OUTPUT_PATH}")
