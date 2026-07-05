@@ -128,6 +128,9 @@ _CATEGORY_KEYWORDS = {
     "health":       ["schlaf", "schritte", "hrv", "puls", "gewicht", "gesundheit"],
     "system":       ["api-kosten", "api kosten", "api-ausgaben", "token", "llm-kosten",
                      "was kostest du", "deine kosten", "claude-kosten"],
+    "filesystem":   ["datei", "ordner", "verzeichnis", "öffne", "öffnen", "dokument",
+                     "app öffnen", "app starten", "starte die app", "zeig mir den ordner",
+                     "lies die datei", "pdf", "downloads", "schreibtisch", "desktop"],
 }
 
 # Generelle Aktionsverben → es soll etwas GETAN werden

@@ -28,6 +28,9 @@ def registry():
         ("list_dynamic_skills", "Listet dynamische Skills",              "system"),
         ("delete_skill",        "Löscht ein dynamisches Skill",          "system"),
         ("calculate",           "Rechnet einen Ausdruck aus",            "general"),
+        ("read_any_file",       "Liest den Inhalt einer beliebigen Datei", "filesystem"),
+        ("list_directory",      "Listet Dateien eines Verzeichnisses auf", "filesystem"),
+        ("open_app",            "Startet eine Mac-Anwendung",             "filesystem"),
     ]
     for name, desc, cat in fakes:
         T.REGISTRY[name] = T.Tool(name=name, description=desc, parameters={},
@@ -69,6 +72,18 @@ class TestSelectTools:
     def test_api_kosten_frage_liefert_system_tools(self, registry):
         names = T.select_tools("Was haben deine API-Kosten diesen Monat verursacht?")
         assert "api_costs" in names
+
+    def test_datei_anfrage_liefert_filesystem_tools(self, registry):
+        names = T.select_tools("Liste bitte die Dateien im Ordner ~/Desktop auf")
+        assert "list_directory" in names
+
+    def test_oeffne_anfrage_liefert_filesystem_tools(self, registry):
+        names = T.select_tools("Öffne bitte die Datei ~/Dokumente/rechnung.pdf")
+        assert "read_any_file" in names or "list_directory" in names
+
+    def test_app_starten_liefert_filesystem_tools(self, registry):
+        names = T.select_tools("Kannst du mir Notizen öffnen")
+        assert "open_app" in names
 
     def test_cap_liegt_bei_14_plus_skill_garantie(self, registry):
         # 20 zusätzliche productivity-Tools → Auswahl bleibt gedeckelt
