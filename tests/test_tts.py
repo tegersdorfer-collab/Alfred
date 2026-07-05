@@ -14,14 +14,36 @@ class TestIsAvailable:
         cfg = tmp_path / "de_DE-thorsten-high.onnx.json"
         onnx.write_bytes(b"x")
         cfg.write_bytes(b"{}")
-        monkeypatch.setattr(tts, "_ONNX_PATH", onnx)
-        monkeypatch.setattr(tts, "_CONFIG_PATH", cfg)
+        monkeypatch.setattr(tts, "_MODEL_DIR", tmp_path)
+        monkeypatch.setattr(tts.db, "get_setting", lambda key, default=None: "thorsten-high")
         assert tts.is_available() is True
 
     def test_nicht_verfuegbar_wenn_dateien_fehlen(self, tmp_path, monkeypatch):
-        monkeypatch.setattr(tts, "_ONNX_PATH", tmp_path / "fehlt.onnx")
-        monkeypatch.setattr(tts, "_CONFIG_PATH", tmp_path / "fehlt.onnx.json")
+        monkeypatch.setattr(tts, "_MODEL_DIR", tmp_path)
+        monkeypatch.setattr(tts.db, "get_setting", lambda key, default=None: "thorsten-high")
         assert tts.is_available() is False
+
+    def test_nicht_verfuegbar_bei_unbekanntem_stimmen_namen(self, monkeypatch):
+        monkeypatch.setattr(tts.db, "get_setting", lambda key, default=None: "unbekannt")
+        assert tts.is_available() is False
+
+
+class TestResolveVoicePaths:
+    def test_loest_bekannte_stimme_auf(self):
+        onnx, cfg = tts.resolve_voice_paths("thorsten-high")
+        assert onnx.name == "de_DE-thorsten-high.onnx"
+        assert cfg.name == "de_DE-thorsten-high.onnx.json"
+
+    def test_loest_alle_vier_kandidaten_auf(self):
+        for name in ["thorsten-high", "thorsten_emotional-medium", "karlsson-low", "pavoque-low"]:
+            onnx, cfg = tts.resolve_voice_paths(name)
+            assert onnx.suffix == ".onnx"
+            assert cfg.name == onnx.name + ".json"
+
+    def test_wirft_bei_unbekannter_stimme(self):
+        import pytest
+        with pytest.raises(KeyError):
+            tts.resolve_voice_paths("nicht-existent")
 
 
 class TestCleanForSpeech:

@@ -19,35 +19,66 @@ import tempfile
 import wave
 from pathlib import Path
 
+from core import db
+
 log = logging.getLogger(__name__)
 
-_MODEL_DIR    = Path(__file__).parent.parent / "data" / "tts" / "piper"
-_ONNX_PATH    = _MODEL_DIR / "de_DE-thorsten-high.onnx"
-_CONFIG_PATH  = _MODEL_DIR / "de_DE-thorsten-high.onnx.json"
+_MODEL_DIR = Path(__file__).parent.parent / "data" / "tts" / "piper"
 
-DEFAULT_VOICE = "de_DE-thorsten-high"  # männlich, deutsch
+VOICE_MODELS: dict[str, str] = {
+    "thorsten-high": "de_DE-thorsten-high",
+    "thorsten_emotional-medium": "de_DE-thorsten_emotional-medium",
+    "karlsson-low": "de_DE-karlsson-low",
+    "pavoque-low": "de_DE-pavoque-low",
+}
+
+DEFAULT_VOICE = "thorsten-high"  # männlich, deutsch — unverändert ggü. bisherigem Verhalten
 DEFAULT_SPEED = 1.0
 
 _voice: object | None = None
+_loaded_voice_name: str | None = None
 _lock = asyncio.Lock()
 
 
+def resolve_voice_paths(voice_name: str) -> tuple[Path, Path]:
+    """Löst einen Stimmen-Schlüssel (z.B. 'karlsson-low') zu (onnx_path, config_path) auf.
+
+    Wirft KeyError für unbekannte Namen — ein falscher Stimmen-Name ist ein
+    Programmfehler (z.B. Tippfehler im Setting), kein zur Laufzeit erwarteter Zustand.
+    """
+    filename = VOICE_MODELS[voice_name]
+    onnx = _MODEL_DIR / f"{filename}.onnx"
+    config = _MODEL_DIR / f"{filename}.onnx.json"
+    return onnx, config
+
+
+def _active_voice_name() -> str:
+    return db.get_setting("tts_voice", DEFAULT_VOICE) or DEFAULT_VOICE
+
+
 def is_available() -> bool:
-    return _ONNX_PATH.exists() and _CONFIG_PATH.exists()
+    try:
+        onnx, config = resolve_voice_paths(_active_voice_name())
+    except KeyError:
+        return False
+    return onnx.exists() and config.exists()
 
 
 def _load_voice():
-    global _voice
-    if _voice is not None:
+    global _voice, _loaded_voice_name
+    voice_name = _active_voice_name()
+    if _voice is not None and _loaded_voice_name == voice_name:
         return _voice
-    if not is_available():
+    onnx, config = resolve_voice_paths(voice_name)
+    if not (onnx.exists() and config.exists()):
         raise RuntimeError(
-            f"Piper-Modell nicht gefunden in {_MODEL_DIR}. "
-            "Bitte de_DE-thorsten-high.onnx (+ .onnx.json) herunterladen."
+            f"Piper-Modell '{voice_name}' nicht gefunden in {_MODEL_DIR}. "
+            f"Bitte {onnx.name} (+ .onnx.json) herunterladen."
         )
     from piper import PiperVoice
-    _voice = PiperVoice.load(str(_ONNX_PATH), str(_CONFIG_PATH))
-    log.info("🔊 Piper TTS geladen (de_DE-thorsten-high)")
+    _voice = PiperVoice.load(str(onnx), str(config))
+    _loaded_voice_name = voice_name
+    log.info(f"🔊 Piper TTS geladen ({voice_name})")
     return _voice
 
 
