@@ -12,6 +12,7 @@ venv/
 *.log
 /tmp/
 data/
+data/vad/*.onnx
 *.old
 *.pid
 
