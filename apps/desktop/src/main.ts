@@ -297,7 +297,15 @@ function renderVoiceStatus(result: VoiceSegmentResult): void {
 startVoiceCapture(getBaseUrl(), renderVoiceStatus);
 initNavOverlay(getBaseUrl());
 
+export function triggerSpeakingState(durationMs = 2000): void {
+  const ring = document.getElementById('hud-ring');
+  if (!ring) return;
+  ring.classList.add('speaking');
+  setTimeout(() => ring.classList.remove('speaking'), durationMs);
+}
+
 function renderChatReply(reply: string, userText: string): void {
+  triggerSpeakingState();
   const el = document.getElementById('chat-status');
   if (!el) return;
   el.textContent = `💬 Alfred: "${reply}"`;

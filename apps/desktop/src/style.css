@@ -97,8 +97,12 @@ body::after {
 }
 
 #hud-label {
-  font-size: 13px;
+  font-size: var(--fs-hero);
   letter-spacing: 0.5px;
+}
+
+#hud-ring.speaking {
+  color: var(--c-speaking);
 }
 
 #hud-status {

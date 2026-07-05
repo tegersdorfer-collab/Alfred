@@ -1,5 +1,5 @@
-import { describe, it, expect } from 'vitest';
-import { renderGauge } from './main';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { renderGauge, triggerSpeakingState } from './main';
 
 describe('renderGauge', () => {
   it('rendert ein SVG mit einem Kreis pro Metrik', () => {
@@ -17,5 +17,32 @@ describe('renderGauge', () => {
     expect(() =>
       renderGauge(container, 'System-Status', [{ label: 'CPU', pct: 0, color: '#00e5ff' }]),
     ).not.toThrow();
+  });
+});
+
+describe('triggerSpeakingState', () => {
+  beforeEach(() => {
+    document.body.innerHTML = '<div id="hud-ring"></div>';
+    vi.useFakeTimers();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it('fügt die speaking-Klasse sofort hinzu', () => {
+    triggerSpeakingState();
+    expect(document.getElementById('hud-ring')!.classList.contains('speaking')).toBe(true);
+  });
+
+  it('entfernt die speaking-Klasse nach der angegebenen Dauer', () => {
+    triggerSpeakingState(2000);
+    vi.advanceTimersByTime(2000);
+    expect(document.getElementById('hud-ring')!.classList.contains('speaking')).toBe(false);
+  });
+
+  it('tut nichts wenn #hud-ring nicht existiert', () => {
+    document.body.innerHTML = '';
+    expect(() => triggerSpeakingState()).not.toThrow();
   });
 });
