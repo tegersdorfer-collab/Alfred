@@ -81,14 +81,14 @@ function renderGraph(
       const a = positions.get(e.from);
       const b = positions.get(e.to);
       if (!a || !b) return '';
-      return `<line x1="${a.x}" y1="${a.y}" x2="${b.x}" y2="${b.y}" stroke="#00e5ff33" stroke-width="1" />`;
+      return `<line x1="${a.x}" y1="${a.y}" x2="${b.x}" y2="${b.y}" stroke="rgba(0, 229, 255, 0.2)" stroke-width="1" class="graph-edge" />`;
     })
     .join('');
 
   const nodeCircles = nodes
     .map((n) => {
       const pos = positions.get(n.id)!;
-      return `<circle cx="${pos.x}" cy="${pos.y}" r="${Math.max(4, n.size / 2)}" fill="${n.color}" />
+      return `<circle cx="${pos.x}" cy="${pos.y}" r="${Math.max(4, n.size / 2)}" fill="${n.color}" class="graph-node" />
         <text x="${pos.x}" y="${pos.y + (n.size / 2) + 10}" text-anchor="middle" font-size="8" fill="#e0f7ff">${n.label}</text>`;
     })
     .join('');
