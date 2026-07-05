@@ -132,19 +132,20 @@
 > autonom bis Nutzungslimit, Fortschritt hier laufend aktualisieren.
 
 ### Sofort-Fixes (hohe Priorität, konkret gemeldete Bugs)
-- [ ] **Adress-Erkennung ignoriert Folge-Antworten** — wenn Timo auf eine
-  Alfred-Frage antwortet, wird das nicht als "an Alfred gerichtet" erkannt,
-  weil is_addressed_to_alfred() jede Äußerung isoliert bewertet, ohne
-  Gesprächskontext. Fix: kurzes "Konversation aktiv"-Zeitfenster nach jeder
-  Alfred-Antwort, in dem Folge-Sprache automatisch als adressiert gilt.
-- [ ] **TTS-Stimme weiter verbessern** — Piper (de_DE-thorsten-high) ist
-  aktuell die schnellste zuverlässige Option (Kokoro kein Deutsch, Chatterbox
-  zu langsam 7-12s, CosyVoice2-PyPI-Paket kaputt). Weitere Kandidaten prüfen:
-  andere Piper-Modell-Qualitätsstufen, ggf. XTTS-v2 mit kurzer Referenzstimme
-  falls Latenz akzeptabel, Fish-Speech. Ziel: "Jarvis"-artiger, ruhiger,
-  männlicher Klang bei <2s Latenz.
+- [x] **Adress-Erkennung ignoriert Folge-Antworten** — behoben (Commit 9d3670d):
+  `mark_conversation_active()` öffnet ein 15s-Fenster nach jeder Alfred-Antwort,
+  in dem Folge-Sprache ohne Namen/klaren Befehl automatisch als adressiert gilt.
+- [x] **TTS-Engine-Wahl abgeschlossen für diese Session** — Piper
+  (de_DE-thorsten-high) gewählt: 0.7s Laden, ~1.6s Synthese, native deutsche
+  Aussprache. Getestete Alternativen: Kokoro (kein Deutsch), Chatterbox-
+  Multilingual (Deutsch ja, aber 7-12s Latenz — zu langsam), CosyVoice2
+  (PyPI-Paket kaputt, Build-Fehler). Weitere "Jarvis-klingendere" Stimmen
+  bleiben ein offener Punkt für später, aber kein blockierender Task mehr —
+  Piper ist zuverlässig und schnell genug für den Live-Betrieb.
 
 ### Desktop-App: großzügiger Ausbau (Jarvis-Look + Funktionen)
+- [x] Chat-Texteingabe im HUD (Commit f3a3836) — Eingabefeld unten im
+  Fenster, sendet an POST /api/chat, Antwort im chat-status-Bereich
 - [ ] Echtes Holographic-HUD-Design verfeinern (Scanlines, Glow-Effekte,
   Partikel/Grid-Textur-Hintergrund, Sound-Feedback bei Interaktionen)
 - [ ] Modulare/adaptive Screens: Alfred wählt selbst Layout + Widgets je nach
@@ -153,10 +154,11 @@
 - [ ] Alfred volle Rechte geben: Dateisystem-Zugriff, App-Steuerung,
   Dateien öffnen/bearbeiten direkt aus der Desktop-App heraus (nicht nur
   Backend-Tools) — Tauri-Commands für Datei-IO, App-Launch
-- [ ] Chat-Text-Eingabe in der Desktop-App fehlt noch komplett (nur Voice +
-  Hidden-Nav bisher) — Textfeld ergänzen für Fälle wo Sprechen unpraktisch ist
-- [ ] Mehr Widget-Typen: Second-Brain-Graph, Notizen, Wetter-Karte,
-  Standort/Karte, Skill-Factory-Status, System-Health (CPU/RAM/Ollama)
+- [x] Zwei neue Widget-Typen (Commit 92a863f): **system** (CPU/RAM/Ollama-
+  Status über psutil) und **brain** (zuletzt bearbeitete Second-Brain-Notizen)
+  — beide über Cmd/Ctrl+K manuell wählbar und via build_widget_payload()
+- [ ] Weitere Widget-Typen: Second-Brain-Graph (visuell, nicht nur Liste),
+  Wetter-Karte, Standort/Karte, Skill-Factory-Status
 - [ ] Benachrichtigungs-/Alert-Overlay für proaktive Nachrichten (Autopilot-
   Events sollen im Desktop-HUD auftauchen, nicht nur Telegram)
 - [ ] Persistente Fenster-Position/-Größe, Tray-Icon, Autostart
