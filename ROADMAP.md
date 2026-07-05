@@ -261,6 +261,26 @@
 
 ---
 
+## UI-Polish-Pass (2026-07-05) — "Ghost Protocol"
+
+Spec: `docs/superpowers/specs/2026-07-05-ui-polish-design.md`
+Plan: `docs/superpowers/plans/2026-07-05-ui-polish-ghost-protocol.md`
+
+- [x] CSS-Token-System (`:root`-Block in `style.css`)
+- [x] `motion.ts` — `tweenNumber`-Helper für animierte Zahlenwerte
+- [x] `.charge-pulse` — gemeinsame State-Transition-Animation
+- [x] `system`-Widget: Text → animierte Radial-Gauges (CPU/RAM/Ollama)
+- [x] `nutrition`-Widget: Text → Makro-Gauges
+- [x] `sleep`/`training`: Token-Migration + Charge-Pulse bei Update
+- [x] `brain_graph`: Token-Migration + Hover-Feedback auf Nodes
+- [x] `tasks`/`habits`: Status-Akzente (Inline-Progress-Bar, Streak-Dot) statt reinem Text/Emoji
+- [x] Nicht-Widget-UI (Nav-Overlay, Chat-Input, Settings, Alert-Overlay, Conversation-Log):
+      Token-Migration, neuer `--c-error`/`alert-error`-Zustand ergänzt (existierte vorher nicht)
+- [ ] `calendar`/`brain`/`skills`/`weather`-Listen-Widgets: nur Token-Migration übernommen
+      (kein individuelles Redesign vorgesehen, sind bereits als Listen die richtige Darstellung)
+
+---
+
 ## Offen — externe Abhängigkeiten
 
 Diese Items brauchen externe Infrastruktur oder Hardware die nicht im Code lösbar ist:
