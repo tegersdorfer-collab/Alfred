@@ -32,9 +32,11 @@ class AlfredSettings(BaseSettings):
     AGENT_MODEL_FAST: str = "qwen3.5:9b"
     AGENT_MODEL_STRONG: str = "qwen3.5:9b"
     # Kleines, schnelles Modell für Ja/Nein-Klassifikation (z.B. Voice-Adress-Check).
-    # 1.5b war zu ungenau (praktisch immer "JA"), 9b (AGENT_MODEL_FAST) zu langsam (~6s) —
-    # 3b ist der beste getestete Kompromiss aus Tempo (~1s) und Genauigkeit.
-    ADDRESS_CHECK_MODEL: str = "qwen2.5:3b-instruct"
+    # Auf einem 24-Fälle-Testset verglichen: qwen3.5:2b (12/24), qwen2.5:3b-instruct
+    # (16/24, ~1.1s), qwen3.5:4b (21/24, ~3.1s), qwen3.5:9b (21/24, ~6.0s),
+    # gemma4:e2b (21/24, ~2.8s) — gemma4:e2b gewählt: gleiche Genauigkeit wie die
+    # größeren Qwen-Modelle, aber am schnellsten davon.
+    ADDRESS_CHECK_MODEL: str = "gemma4:e2b"
     ANTHROPIC_API_KEY: str = ""
     CLAUDE_CHAT_MODEL: str = "claude-haiku-4-5-20251001"
     # ── Background-LLM Routing ────────────────────────────────────────────────
