@@ -13,6 +13,8 @@ import { renderAlert } from './alert-overlay';
 import { appendToLog } from './conversation-log';
 import { playTone, TONES } from './sound-feedback';
 import { tweenNumber } from './motion';
+import { startParticleField } from './fx/particle-field';
+import { applyPanelChrome } from './fx/panel-chrome';
 
 const POLL_INTERVAL_MS = 10_000;
 
@@ -328,6 +330,34 @@ function renderChatReply(reply: string, userText: string): void {
 
 initChatInput(getBaseUrl(), renderChatReply);
 initSettingsPanel();
+
+function initHudChrome(): void {
+  const particleCanvas = document.getElementById('hud-particles') as HTMLCanvasElement | null;
+  if (particleCanvas) {
+    startParticleField(particleCanvas, { density: 40 });
+  }
+
+  const bezelTicks = document.getElementById('hud-bezel-ticks');
+  if (bezelTicks) {
+    const TICK_COUNT = 36;
+    const ticks = Array.from({ length: TICK_COUNT }, (_, i) => {
+      const angle = (i / TICK_COUNT) * 2 * Math.PI;
+      const cx = 80 + 74 * Math.cos(angle);
+      const cy = 80 + 74 * Math.sin(angle);
+      const cx2 = 80 + 68 * Math.cos(angle);
+      const cy2 = 80 + 68 * Math.sin(angle);
+      return `<line x1="${cx}" y1="${cy}" x2="${cx2}" y2="${cy2}" />`;
+    }).join('');
+    bezelTicks.innerHTML = ticks;
+  }
+
+  const infoPanel = document.getElementById('hud-info-panel');
+  if (infoPanel) {
+    applyPanelChrome(infoPanel);
+  }
+}
+
+initHudChrome();
 subscribeStatus(getBaseUrl(), (evt) => {
   renderAlert(evt);
   if (evt.type === 'autopilot' || evt.type === 'tool_failure') playTone(TONES.alert);
