@@ -224,8 +224,12 @@
 - [x] Multi-Turn-Konversations-Historie im HUD (Commit 7b265a9):
   conversation-log.ts zeigt die letzten 12 Turns (Nutzer + Alfred) oben
   links, statt nur den letzten Austausch zu überschreiben
-- [ ] Fehler-Selbstheilung: Alfred merkt wenn ein Tool wiederholt fehlschlägt
-  und schlägt Fixes vor / versucht sie selbst (Skill-Factory-Erweiterung)
+- [x] **Fehler-Selbstheilung Stufe 1** (Commit cb28517): core/tools.py::execute()
+  zählt aufeinanderfolgende Fehlschläge pro Tool, ab 3x wird 'tool_failure'
+  auf den StatusBus emittiert → bernsteinfarbener Warn-Toast im Desktop-HUD.
+  Bewusst OHNE automatisches Auto-Fixing (zu riskant ohne Aufsicht) — reine
+  Erkennung + Sichtbarkeit, damit Timo es selbst reparieren/create_skill
+  nutzen kann.
 
 ---
 
