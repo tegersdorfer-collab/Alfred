@@ -53,6 +53,8 @@ async def get_weather(city: str | None = None) -> dict:
         })
     return {
         "city": loc["name"],
+        "lat": lat,
+        "lon": lon,
         "now": {
             "temp": cur.get("temperature_2m"),
             "feels": cur.get("apparent_temperature"),
