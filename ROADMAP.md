@@ -149,9 +149,11 @@
 - [x] Holographic-HUD-Feinschliff (Commit a7e3eb5): Scanline-Animation,
   Grid-Textur-Hintergrund, Vignette, Ring-Puls-Animation. Sound-Feedback
   noch offen (kein Audio-Feedback-System implementiert).
-- [ ] Modulare/adaptive Screens: Alfred wählt selbst Layout + Widgets je nach
-  Kontext (Basis existiert seit Phase 2-4, aber noch nicht "großzügig" genug
-  ausgebaut — mehr Widget-Typen, dynamischere Übergänge/Animationen)
+- [x] **Modulare/adaptive Screens großzügig ausgebaut** (Commit e13d801 +
+  vorherige Widget-Commits): Widget-Bibliothek von 6 auf 10 Typen erweitert
+  (system/brain/skills/weather neu), Fade-In/Scale-Übergangsanimation bei
+  jedem Widget-Wechsel. Layout-Wahl (single/split2) + Alfred' eigene
+  Entscheidung welches Widget wann erscheint bestand schon aus Phase 2-4.
 - [x] **Alfred volle Rechte** (Commits b7247d8, 72f25e0): 5 neue Agent-Tools
   (read_any_file/write_any_file/list_directory/open_path/open_app) —
   Zugriff auf das GESAMTE Mac-Dateisystem, nicht nur Alfred' eigene Codebase.
