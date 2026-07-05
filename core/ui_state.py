@@ -138,6 +138,45 @@ def habits_widget_payload() -> dict:
     }
 
 
+def _ollama_reachable() -> bool:
+    """Schneller Erreichbarkeits-Check für Ollama (kurzer Timeout, kein Crash bei Ausfall)."""
+    try:
+        import httpx
+        import config
+        resp = httpx.get(f"{config.OLLAMA_BASE_URL}/api/tags", timeout=1.5)
+        return resp.status_code == 200
+    except Exception:
+        return False
+
+
+def system_widget_payload() -> dict:
+    """Baut System-Status (CPU/RAM/Ollama) fürs System-Widget — 'Jarvis sieht
+    den eigenen Gesundheitszustand', kein Domain-Modul nötig."""
+    import psutil
+    return {
+        "cpu_pct": psutil.cpu_percent(),
+        "ram_pct": psutil.virtual_memory().percent,
+        "ollama_ok": _ollama_reachable(),
+    }
+
+
+def brain_widget_payload(limit: int = 8) -> dict:
+    """Baut die zuletzt bearbeiteten Second-Brain-Notizen fürs Brain-Widget."""
+    from domains import second_brain
+    notes = second_brain.get_all(limit=limit * 4)  # unsortiert nach Aktualität, daher grob überziehen
+    notes = sorted(notes, key=lambda n: n.updated_at, reverse=True)[:limit]
+    return {
+        "notes": [
+            {
+                "title": n.title,
+                "category": n.category,
+                "updated_at": n.updated_at.isoformat(),
+            }
+            for n in notes
+        ],
+    }
+
+
 # Widget-Typen, die eine Dashboard-Instanz brauchen (services.get("dashboard")).
 _DASHBOARD_BUILDERS = {
     "sleep": sleep_widget_payload,
@@ -151,6 +190,8 @@ _STANDALONE_BUILDERS = {
     "tasks": tasks_widget_payload,
     "nutrition": nutrition_widget_payload,
     "habits": habits_widget_payload,
+    "system": system_widget_payload,
+    "brain": brain_widget_payload,
 }
 
 WIDGET_TYPES = set(_DASHBOARD_BUILDERS) | set(_STANDALONE_BUILDERS)

@@ -94,6 +94,16 @@ function renderWidget(container: HTMLElement, slot: WidgetSlot): void {
     case 'nutrition':
       container.innerHTML = `<div class="widget-title">Ernährung heute</div><div class="widget-title">${p.kcal} kcal · ${p.protein}g P · ${p.carbs}g C · ${p.fat}g F</div>`;
       break;
+    case 'system':
+      container.innerHTML = `<div class="widget-title">System-Status</div><div class="widget-title">CPU ${p.cpu_pct}% · RAM ${p.ram_pct}% · Ollama ${p.ollama_ok ? '✅' : '❌'}</div>`;
+      break;
+    case 'brain':
+      renderList(
+        container,
+        'Second Brain — zuletzt bearbeitet',
+        (p.notes ?? []).map((n: any) => `${n.title} (${n.category})`),
+      );
+      break;
     default:
       container.innerHTML = '<div class="widget-title">unbekannt</div>';
   }

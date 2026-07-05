@@ -12,6 +12,8 @@ from core.ui_state import (
     calendar_widget_payload,
     nutrition_widget_payload,
     habits_widget_payload,
+    system_widget_payload,
+    brain_widget_payload,
     build_widget_payload,
     WIDGET_TYPES,
     WIDGET_MAP,
@@ -114,6 +116,51 @@ class TestHabitsWidgetPayload:
         }
 
 
+class TestSystemWidgetPayload:
+    def test_formt_system_status(self):
+        fake_mem = SimpleNamespace(percent=42.5)
+        with patch("psutil.cpu_percent", return_value=13.2), \
+             patch("psutil.virtual_memory", return_value=fake_mem), \
+             patch("core.ui_state._ollama_reachable", return_value=True):
+            payload = system_widget_payload()
+        assert payload == {"cpu_pct": 13.2, "ram_pct": 42.5, "ollama_ok": True}
+
+    def test_ollama_nicht_erreichbar(self):
+        fake_mem = SimpleNamespace(percent=10.0)
+        with patch("psutil.cpu_percent", return_value=5.0), \
+             patch("psutil.virtual_memory", return_value=fake_mem), \
+             patch("core.ui_state._ollama_reachable", return_value=False):
+            payload = system_widget_payload()
+        assert payload["ollama_ok"] is False
+
+
+class TestBrainWidgetPayload:
+    def test_formt_notizen(self):
+        rows = [
+            SimpleNamespace(title="Projekt X Deadline", category="project",
+                             updated_at=datetime(2026, 7, 4, 10, 0)),
+            SimpleNamespace(title="Buch-Idee", category="inbox",
+                             updated_at=datetime(2026, 7, 3, 9, 0)),
+        ]
+        with patch("domains.second_brain.get_all", return_value=rows):
+            payload = brain_widget_payload(limit=8)
+        assert payload == {
+            "notes": [
+                {"title": "Projekt X Deadline", "category": "project", "updated_at": "2026-07-04T10:00:00"},
+                {"title": "Buch-Idee", "category": "inbox", "updated_at": "2026-07-03T09:00:00"},
+            ]
+        }
+
+    def test_begrenzt_auf_limit(self):
+        rows = [
+            SimpleNamespace(title=f"Note {i}", category="inbox", updated_at=datetime(2026, 7, 1))
+            for i in range(20)
+        ]
+        with patch("domains.second_brain.get_all", return_value=rows):
+            payload = brain_widget_payload(limit=3)
+        assert len(payload["notes"]) == 3
+
+
 class TestWidgetMapAndTypes:
     def test_widget_map_enthaelt_alle_sechs_typen(self):
         assert WIDGET_MAP == {
@@ -125,8 +172,10 @@ class TestWidgetMapAndTypes:
             "list_habits": "habits",
         }
 
-    def test_widget_types_enthaelt_alle_sechs(self):
-        assert WIDGET_TYPES == {"sleep", "training", "tasks", "calendar", "nutrition", "habits"}
+    def test_widget_types_enthaelt_alle_acht(self):
+        assert WIDGET_TYPES == {
+            "sleep", "training", "tasks", "calendar", "nutrition", "habits", "system", "brain",
+        }
 
 
 class TestBuildWidgetPayload:
