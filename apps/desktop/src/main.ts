@@ -12,7 +12,7 @@ import { subscribeStatus } from './status-stream';
 import { renderAlert } from './alert-overlay';
 import { appendToLog } from './conversation-log';
 import { playTone, TONES } from './sound-feedback';
-import { tweenNumber } from './motion';
+import { tweenNumber, drawIn, staggerIn } from './motion';
 import { startParticleField } from './fx/particle-field';
 import { applyPanelChrome } from './fx/panel-chrome';
 import { icon } from './fx/icons';
@@ -101,13 +101,18 @@ function renderGraph(
   const nodeCircles = nodes
     .map((n) => {
       const pos = positions.get(n.id)!;
-      return `<circle cx="${pos.x}" cy="${pos.y}" r="${Math.max(4, n.size / 2)}" fill="${n.color}" class="graph-node" />
+      return `<circle cx="${pos.x}" cy="${pos.y}" r="${Math.max(4, n.size / 2) + 4}" fill="none" stroke="${n.color}" stroke-opacity="0.25" class="graph-node-halo" />
+        <circle cx="${pos.x}" cy="${pos.y}" r="${Math.max(4, n.size / 2)}" fill="${n.color}" class="graph-node" />
         <text x="${pos.x}" y="${pos.y + (n.size / 2) + 10}" text-anchor="middle" font-size="8" fill="#e0f7ff">${n.label}</text>`;
     })
     .join('');
 
   container.innerHTML = `<div class="widget-title">${title}</div>
     <svg viewBox="0 0 ${SIZE} ${SIZE}" width="${SIZE}" height="${SIZE}">${edgeLines}${nodeCircles}</svg>`;
+  applyPanelChrome(container);
+  container
+    .querySelectorAll<SVGLineElement & { getTotalLength(): number }>('.graph-edge')
+    .forEach((edge) => drawIn(edge as unknown as SVGPathElement, 500));
 }
 
 export function renderGauge(
@@ -227,9 +232,10 @@ function renderWidget(container: HTMLElement, slot: WidgetSlot): void {
     case 'brain':
       renderList(
         container,
-        'Second Brain — zuletzt bearbeitet',
+        `${icon('brain')} Second Brain — zuletzt bearbeitet`,
         (p.notes ?? []).map((n: any) => `${n.title} (${n.category})`),
       );
+      staggerIn(container.querySelectorAll<HTMLElement>('.list-line'));
       break;
     case 'skills':
       renderList(

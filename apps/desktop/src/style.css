@@ -527,3 +527,11 @@ body::after {
   color: var(--c-idle-dim);
   margin-top: -2px;
 }
+
+.graph-node-halo {
+  animation: node-pulse 2.6s ease-in-out infinite;
+}
+@keyframes node-pulse {
+  0%, 100% { r: var(--r, 8); opacity: 0.25; }
+  50%      { opacity: 0.5; }
+}
