@@ -56,6 +56,8 @@ function renderBars(
 function renderList(container: HTMLElement, title: string, lines: string[]): void {
   const items = lines.map((l) => `<div class="list-line">${l}</div>`).join('');
   container.innerHTML = `<div class="widget-title">${title}</div><div class="widget-list">${items}</div>`;
+  container.classList.add('charge-pulse');
+  container.addEventListener('animationend', () => container.classList.remove('charge-pulse'), { once: true });
 }
 
 function renderGraph(
@@ -162,7 +164,10 @@ function renderWidget(container: HTMLElement, slot: WidgetSlot): void {
       renderList(
         container,
         'Offene Aufgaben',
-        (p.tasks ?? []).map((t: any) => `${t.title} (${t.progress_pct}%)`),
+        (p.tasks ?? []).map(
+          (t: any) =>
+            `${t.title}<span class="list-inline-bar"><span class="list-inline-bar-fill" style="width:${t.progress_pct}%"></span></span>`,
+        ),
       );
       break;
     case 'calendar':
@@ -176,7 +181,10 @@ function renderWidget(container: HTMLElement, slot: WidgetSlot): void {
       renderList(
         container,
         'Gewohnheiten',
-        (p.habits ?? []).map((h: any) => `${h.emoji} ${h.name} (${h.streak}d)`),
+        (p.habits ?? []).map((h: any) => {
+          const dotColor = h.streak >= 7 ? 'var(--c-ok)' : 'var(--c-idle-dim)';
+          return `<span class="list-dot" style="background:${dotColor}"></span>${h.name} (${h.streak}d)`;
+        }),
       );
       break;
     case 'nutrition': {
