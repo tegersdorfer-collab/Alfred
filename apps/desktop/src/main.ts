@@ -117,6 +117,16 @@ function renderWidget(container: HTMLElement, slot: WidgetSlot): void {
           : ['Noch keine selbst erstellten Skills.'],
       );
       break;
+    case 'weather':
+      renderList(
+        container,
+        `Wetter — ${p.city ?? ''}`,
+        [
+          `Jetzt: ${p.now?.temp ?? '–'}°C (gefühlt ${p.now?.feels ?? '–'}°C), ${p.now?.desc ?? ''}`,
+          ...(p.forecast ?? []).map((d: any) => `${d.date}: ${d.min}° – ${d.max}°, ${d.code} (${d.rain_prob ?? 0}% Regen)`),
+        ],
+      );
+      break;
     default:
       container.innerHTML = '<div class="widget-title">unbekannt</div>';
   }

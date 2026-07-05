@@ -2,6 +2,7 @@
 import sys, os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
+import asyncio
 from datetime import date
 from types import SimpleNamespace
 from unittest.mock import patch
@@ -84,20 +85,20 @@ class TestMaybeUpdateUiZurueckZumRuhezustand:
 
     def test_leere_tool_liste_geht_zurueck_in_ruhezustand(self):
         UI_BUS.show_widget("sleep", {}, slot="main")
-        maybe_update_ui([])
+        asyncio.run(maybe_update_ui([]))
         assert UI_BUS.current["layout"] is None
         assert UI_BUS.current["slots"] == {}
 
     def test_kein_gemapptes_tool_geht_zurueck_in_ruhezustand(self):
         UI_BUS.show_widget("sleep", {}, slot="main")
-        maybe_update_ui(["create_task"])
+        asyncio.run(maybe_update_ui(["create_task"]))
         assert UI_BUS.current["layout"] is None
         assert UI_BUS.current["slots"] == {}
 
     def test_get_health_setzt_weiterhin_sleep_widget(self):
         dash = FakeDashboard([_fake_health_row(date(2026, 7, 4), 7.0, 1.0)])
         with patch("core.container.services.get", return_value=dash):
-            maybe_update_ui(["get_health"])
+            asyncio.run(maybe_update_ui(["get_health"]))
         assert UI_BUS.current["layout"] == "single"
         assert UI_BUS.current["slots"]["main"] == {
             "widget": "sleep",
@@ -109,7 +110,6 @@ class TestMaybeUpdateUiZurueckZumRuhezustand:
 
     def test_explizites_ui_tool_wird_nicht_von_clear_ueberschrieben(self):
         from core.skills import ui as ui_skills
-        import asyncio
         asyncio.run(ui_skills._arrange_screen("split2"))
-        maybe_update_ui(["arrange_screen"])
+        asyncio.run(maybe_update_ui(["arrange_screen"]))
         assert UI_BUS.current["layout"] == "split2"

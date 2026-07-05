@@ -10,6 +10,7 @@ während einfache Anfragen weiterhin automatisch (maybe_update_ui) ins
 "main"-Slot der Standard-Vorlage gehen.
 """
 import asyncio
+import inspect
 import logging
 import time
 from typing import Any
@@ -187,6 +188,17 @@ def skills_widget_payload() -> dict:
     }
 
 
+async def weather_widget_payload() -> dict | None:
+    """Baut Wetterdaten fürs Weather-Widget (domains.weather, Open-Meteo-API,
+    async mit Live-HTTP-Call). Gibt None zurück wenn die Stadt nicht auflösbar
+    war oder die API fehlschlägt."""
+    from domains import weather
+    result = await weather.get_weather()
+    if "error" in result:
+        return None
+    return result
+
+
 # Widget-Typen, die eine Dashboard-Instanz brauchen (services.get("dashboard")).
 _DASHBOARD_BUILDERS = {
     "sleep": sleep_widget_payload,
@@ -194,7 +206,8 @@ _DASHBOARD_BUILDERS = {
 }
 
 # Widget-Typen, die keine externe Abhängigkeit brauchen (holen sich ihre Daten
-# selbst aus den passenden domains-Modulen).
+# selbst aus den passenden domains-Modulen). Kann sync oder async sein —
+# build_widget_payload erkennt das automatisch.
 _STANDALONE_BUILDERS = {
     "training": training_widget_payload,
     "tasks": tasks_widget_payload,
@@ -203,15 +216,16 @@ _STANDALONE_BUILDERS = {
     "system": system_widget_payload,
     "brain": brain_widget_payload,
     "skills": skills_widget_payload,
+    "weather": weather_widget_payload,
 }
 
 WIDGET_TYPES = set(_DASHBOARD_BUILDERS) | set(_STANDALONE_BUILDERS)
 
 
-def build_widget_payload(widget_type: str) -> dict | None:
+async def build_widget_payload(widget_type: str) -> dict | None:
     """Einzige Stelle, die weiß wie man Daten für einen Widget-Typ baut. Gibt
     None zurück wenn der Typ unbekannt ist oder seine Datenquelle (aktuell
-    nur 'dashboard') nicht verfügbar ist."""
+    'dashboard' oder eine externe API wie Wetter) nicht verfügbar ist."""
     if widget_type in _DASHBOARD_BUILDERS:
         from core.container import services
         dash = services.get("dashboard")
@@ -221,6 +235,8 @@ def build_widget_payload(widget_type: str) -> dict | None:
     builder = _STANDALONE_BUILDERS.get(widget_type)
     if builder is None:
         return None
+    if inspect.iscoroutinefunction(builder):
+        return await builder()
     return builder()
 
 
@@ -296,7 +312,7 @@ class UIStateBus:
 UI_BUS = UIStateBus()
 
 
-def maybe_update_ui(tools_used: list[str]) -> None:
+async def maybe_update_ui(tools_used: list[str]) -> None:
     """Nach einem Agent-Turn aufgerufen: prüft ob ein genutztes Tool einem
     Widget zugeordnet ist, baut bei Treffer die Daten und zeigt sie im
     'main'-Slot. Wenn der Turn stattdessen ein explizites UI-Tool genutzt hat
@@ -309,7 +325,7 @@ def maybe_update_ui(tools_used: list[str]) -> None:
         if widget_type is None:
             continue
         try:
-            payload = build_widget_payload(widget_type)
+            payload = await build_widget_payload(widget_type)
             if payload is None:
                 return
             UI_BUS.show_widget(widget_type, payload, slot="main")

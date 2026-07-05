@@ -145,7 +145,7 @@ class MessageHandler:
         self.kzg.add("assistant", response)
         tools_used = [t["tool"] for t in trace]
         try:
-            ui_state.maybe_update_ui(tools_used)
+            await ui_state.maybe_update_ui(tools_used)
         except Exception:
             pass
         self._persist_msg("assistant", response, channel="telegram",
@@ -186,7 +186,7 @@ class MessageHandler:
         self.kzg.add("assistant", response)
         tools_used = [t["tool"] for t in trace]
         try:
-            ui_state.maybe_update_ui(tools_used)
+            await ui_state.maybe_update_ui(tools_used)
         except Exception:
             pass
         self._persist_msg("assistant", response, channel="dashboard",

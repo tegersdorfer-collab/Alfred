@@ -2,9 +2,10 @@
 import sys, os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
+import asyncio
 from datetime import date, datetime
 from types import SimpleNamespace
-from unittest.mock import patch
+from unittest.mock import patch, AsyncMock
 
 from core.ui_state import (
     training_widget_payload,
@@ -15,6 +16,7 @@ from core.ui_state import (
     system_widget_payload,
     brain_widget_payload,
     skills_widget_payload,
+    weather_widget_payload,
     build_widget_payload,
     WIDGET_TYPES,
     WIDGET_MAP,
@@ -179,6 +181,22 @@ class TestSkillsWidgetPayload:
         assert payload == {"dynamic_skills": [], "total_tools": 0}
 
 
+class TestWeatherWidgetPayload:
+    def test_formt_wetterdaten(self):
+        fake_result = {
+            "temp": 18.5, "feels_like": 17.0, "condition": "bedeckt",
+            "days": [{"date": "2026-07-06", "min": 12, "max": 20, "condition": "klar", "rain_pct": 10}],
+        }
+        with patch("domains.weather.get_weather", new=AsyncMock(return_value=fake_result)):
+            payload = asyncio.run(weather_widget_payload())
+        assert payload == fake_result
+
+    def test_fehler_gibt_none(self):
+        with patch("domains.weather.get_weather", new=AsyncMock(return_value={"error": "Stadt nicht gefunden"})):
+            payload = asyncio.run(weather_widget_payload())
+        assert payload is None
+
+
 class TestWidgetMapAndTypes:
     def test_widget_map_enthaelt_alle_sechs_typen(self):
         assert WIDGET_MAP == {
@@ -190,28 +208,35 @@ class TestWidgetMapAndTypes:
             "list_habits": "habits",
         }
 
-    def test_widget_types_enthaelt_alle_neun(self):
+    def test_widget_types_enthaelt_alle_zehn(self):
         assert WIDGET_TYPES == {
-            "sleep", "training", "tasks", "calendar", "nutrition", "habits", "system", "brain", "skills",
+            "sleep", "training", "tasks", "calendar", "nutrition", "habits",
+            "system", "brain", "skills", "weather",
         }
 
 
 class TestBuildWidgetPayload:
     def test_unbekannter_typ_liefert_none(self):
-        assert build_widget_payload("unbekannt") is None
+        assert asyncio.run(build_widget_payload("unbekannt")) is None
 
     def test_standalone_typ_ohne_dashboard(self):
         with patch("domains.nutrition.day_totals",
                    return_value={"kcal": 500, "protein": 10, "carbs": 50, "fat": 10}):
-            payload = build_widget_payload("nutrition")
+            payload = asyncio.run(build_widget_payload("nutrition"))
         assert payload == {"kcal": 500, "protein": 10, "carbs": 50, "fat": 10}
 
     def test_dashboard_typ_ohne_verfuegbares_dashboard_liefert_none(self):
         with patch("core.container.services.get", return_value=None):
-            assert build_widget_payload("sleep") is None
+            assert asyncio.run(build_widget_payload("sleep")) is None
 
     def test_dashboard_typ_mit_dashboard(self):
         dash = FakeDashboard(rows=[])
         with patch("core.container.services.get", return_value=dash):
-            payload = build_widget_payload("sleep")
+            payload = asyncio.run(build_widget_payload("sleep"))
         assert payload == {"widget": "sleep", "nights": []}
+
+    def test_async_typ_wetter(self):
+        fake_result = {"temp": 20.0, "feels_like": 19.0, "condition": "klar", "days": []}
+        with patch("domains.weather.get_weather", new=AsyncMock(return_value=fake_result)):
+            payload = asyncio.run(build_widget_payload("weather"))
+        assert payload == fake_result

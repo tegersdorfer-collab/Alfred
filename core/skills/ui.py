@@ -33,7 +33,7 @@ async def _show_widget(widget_type: str, slot: str = "main"):
         return (f"FEHLER: Slot '{slot}' existiert nicht in Layout '{active_layout}'. "
                 f"Verfügbare Slots: {', '.join(LAYOUT_PRESETS[active_layout])}.")
 
-    payload = build_widget_payload(widget_type)
+    payload = await build_widget_payload(widget_type)
     if payload is None:
         return f"FEHLER: Konnte Daten für Widget '{widget_type}' nicht laden (Datenquelle nicht verfügbar)."
     UI_BUS.show_widget(widget_type, payload, slot=slot)
