@@ -256,9 +256,24 @@ function renderWidget(container: HTMLElement, slot: WidgetSlot): void {
     case 'weather': {
       const conditionIcon = (code: string | undefined): string => {
         const c = (code ?? '').toLowerCase();
-        if (c.includes('rain') || c.includes('regen')) return icon('weather-rain');
-        if (c.includes('snow') || c.includes('schnee')) return icon('weather-snow');
-        if (c.includes('cloud') || c.includes('wolke')) return icon('weather-cloud');
+        if (c.includes('schnee') || c.includes('snow')) return icon('weather-snow');
+        if (
+          c.includes('regen') ||
+          c.includes('rain') ||
+          c.includes('niesel') ||
+          c.includes('schauer') ||
+          c.includes('gewitter') ||
+          c.includes('storm')
+        )
+          return icon('weather-rain');
+        if (
+          c.includes('bewölkt') ||
+          c.includes('bedeckt') ||
+          c.includes('nebel') ||
+          c.includes('cloud') ||
+          c.includes('wolke')
+        )
+          return icon('weather-cloud');
         return icon('weather-sun');
       };
       renderList(
