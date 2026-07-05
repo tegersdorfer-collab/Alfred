@@ -153,9 +153,9 @@ body::after {
 }
 
 .widget-title {
-  font-size: 11px;
+  font-size: var(--fs-label);
   letter-spacing: 0.5px;
-  color: #00e5ff;
+  color: var(--c-idle);
   text-transform: uppercase;
   opacity: 0.7;
 }

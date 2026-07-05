@@ -48,16 +48,24 @@ function renderBars(
       return `<div class="sleep-bar" style="height:${heightPx}px" title="${i.tooltip}"></div>`;
     })
     .join('');
+  const isUpdate = container.dataset.rendered === 'true';
   container.innerHTML = `<div class="widget-title">${title}</div><div class="sleep-bars">${bars}</div>`;
-  container.classList.add('charge-pulse');
-  container.addEventListener('animationend', () => container.classList.remove('charge-pulse'), { once: true });
+  container.dataset.rendered = 'true';
+  if (isUpdate) {
+    container.classList.add('charge-pulse');
+    container.addEventListener('animationend', () => container.classList.remove('charge-pulse'), { once: true });
+  }
 }
 
-function renderList(container: HTMLElement, title: string, lines: string[]): void {
+export function renderList(container: HTMLElement, title: string, lines: string[]): void {
   const items = lines.map((l) => `<div class="list-line">${l}</div>`).join('');
+  const isUpdate = container.dataset.rendered === 'true';
   container.innerHTML = `<div class="widget-title">${title}</div><div class="widget-list">${items}</div>`;
-  container.classList.add('charge-pulse');
-  container.addEventListener('animationend', () => container.classList.remove('charge-pulse'), { once: true });
+  container.dataset.rendered = 'true';
+  if (isUpdate) {
+    container.classList.add('charge-pulse');
+    container.addEventListener('animationend', () => container.classList.remove('charge-pulse'), { once: true });
+  }
 }
 
 function renderGraph(
@@ -109,8 +117,6 @@ export function renderGauge(
 
   const gauges = metrics
     .map((m, i) => {
-      const clamped = Math.max(0, Math.min(100, m.pct));
-      const offset = CIRC * (1 - clamped / 100);
       return `
         <div class="gauge">
           <svg viewBox="0 0 80 80" width="80" height="80">
@@ -120,7 +126,7 @@ export function renderGauge(
               cx="40" cy="40" r="${RADIUS}"
               stroke="${m.color}"
               stroke-dasharray="${CIRC}"
-              stroke-dashoffset="${offset}"
+              stroke-dashoffset="${CIRC}"
               data-gauge-id="${i}"
             />
           </svg>
@@ -136,6 +142,12 @@ export function renderGauge(
     const textEl = container.querySelector(`[data-gauge-text-id="${i}"]`) as HTMLElement | null;
     if (textEl) {
       tweenNumber(textEl, 0, Math.round(m.pct), 400, (n) => `${n}%`);
+    }
+    const circleEl = container.querySelector(`[data-gauge-id="${i}"]`) as SVGCircleElement | null;
+    if (circleEl) {
+      const clamped = Math.max(0, Math.min(100, m.pct));
+      const offset = CIRC * (1 - clamped / 100);
+      circleEl.setAttribute('stroke-dashoffset', String(offset));
     }
   });
 }
