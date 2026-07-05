@@ -5,6 +5,7 @@ import { subscribeUiState } from './ui-state-client';
 import type { UiEvent, WidgetSlot } from './ui-state-client';
 import { startVoiceCapture } from './voice-capture';
 import type { VoiceSegmentResult } from './voice-capture';
+import { startVoiceCaptureStream } from './voice-capture-stream';
 import { initNavOverlay } from './nav-overlay';
 import { initChatInput } from './chat-input';
 import { initSettingsPanel } from './settings-panel';
@@ -395,7 +396,22 @@ function renderVoiceStatus(result: VoiceSegmentResult): void {
   }
 }
 
-startVoiceCapture(getBaseUrl(), renderVoiceStatus);
+async function initVoiceCapture(
+  baseUrl: string,
+  onSegment: (r: VoiceSegmentResult) => void,
+): Promise<() => void> {
+  try {
+    const res = await fetch(`${baseUrl}/api/voice/stream-mode`);
+    const { mode } = await res.json();
+    return mode === 'websocket'
+      ? startVoiceCaptureStream(baseUrl, onSegment)
+      : startVoiceCapture(baseUrl, onSegment);
+  } catch {
+    return startVoiceCapture(baseUrl, onSegment);
+  }
+}
+
+initVoiceCapture(getBaseUrl(), renderVoiceStatus);
 initNavOverlay(getBaseUrl());
 
 export function triggerSpeakingState(durationMs = 2000): void {
