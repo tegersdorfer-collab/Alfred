@@ -342,3 +342,41 @@ body::after {
 .charge-pulse {
   animation: charge-pulse 200ms ease-out;
 }
+
+.gauge-row {
+  display: flex;
+  gap: 20px;
+  justify-content: center;
+}
+.gauge {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  position: relative;
+}
+.gauge-track {
+  fill: none;
+  stroke: rgba(0, 229, 255, 0.12);
+  stroke-width: 6;
+}
+.gauge-value {
+  fill: none;
+  stroke-width: 6;
+  stroke-linecap: round;
+  transform: rotate(-90deg);
+  transform-origin: 40px 40px;
+  transition: stroke-dashoffset 400ms ease-out;
+}
+.gauge-label {
+  font-size: var(--fs-label);
+  letter-spacing: 0.5px;
+  color: var(--c-idle-dim);
+  text-transform: uppercase;
+}
+.gauge-value-text {
+  font-size: var(--fs-value);
+  color: var(--c-idle);
+  position: absolute;
+  top: 28px;
+}

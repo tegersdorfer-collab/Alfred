@@ -12,6 +12,7 @@ import { subscribeStatus } from './status-stream';
 import { renderAlert } from './alert-overlay';
 import { appendToLog } from './conversation-log';
 import { playTone, TONES } from './sound-feedback';
+import { tweenNumber } from './motion';
 
 const POLL_INTERVAL_MS = 10_000;
 
@@ -94,6 +95,47 @@ function renderGraph(
     <svg viewBox="0 0 ${SIZE} ${SIZE}" width="${SIZE}" height="${SIZE}">${edgeLines}${nodeCircles}</svg>`;
 }
 
+export function renderGauge(
+  container: HTMLElement,
+  title: string,
+  metrics: { label: string; pct: number; color: string }[],
+): void {
+  const RADIUS = 34;
+  const CIRC = 2 * Math.PI * RADIUS;
+
+  const gauges = metrics
+    .map((m, i) => {
+      const clamped = Math.max(0, Math.min(100, m.pct));
+      const offset = CIRC * (1 - clamped / 100);
+      return `
+        <div class="gauge">
+          <svg viewBox="0 0 80 80" width="80" height="80">
+            <circle class="gauge-track" cx="40" cy="40" r="${RADIUS}" />
+            <circle
+              class="gauge-value"
+              cx="40" cy="40" r="${RADIUS}"
+              stroke="${m.color}"
+              stroke-dasharray="${CIRC}"
+              stroke-dashoffset="${offset}"
+              data-gauge-id="${i}"
+            />
+          </svg>
+          <div class="gauge-label">${m.label}</div>
+          <div class="gauge-value-text" data-gauge-text-id="${i}">0</div>
+        </div>`;
+    })
+    .join('');
+
+  container.innerHTML = `<div class="widget-title">${title}</div><div class="gauge-row">${gauges}</div>`;
+
+  metrics.forEach((m, i) => {
+    const textEl = container.querySelector(`[data-gauge-text-id="${i}"]`) as HTMLElement | null;
+    if (textEl) {
+      tweenNumber(textEl, 0, Math.round(m.pct), 400, (n) => `${n}%`);
+    }
+  });
+}
+
 function renderWidget(container: HTMLElement, slot: WidgetSlot): void {
   const p: any = slot.payload;
   switch (slot.widget) {
@@ -139,7 +181,15 @@ function renderWidget(container: HTMLElement, slot: WidgetSlot): void {
       container.innerHTML = `<div class="widget-title">Ernährung heute</div><div class="widget-title">${p.kcal} kcal · ${p.protein}g P · ${p.carbs}g C · ${p.fat}g F</div>`;
       break;
     case 'system':
-      container.innerHTML = `<div class="widget-title">System-Status</div><div class="widget-title">CPU ${p.cpu_pct}% · RAM ${p.ram_pct}% · Ollama ${p.ollama_ok ? '✅' : '❌'}</div>`;
+      renderGauge(container, 'System-Status', [
+        { label: 'CPU', pct: p.cpu_pct ?? 0, color: 'var(--c-active)' },
+        { label: 'RAM', pct: p.ram_pct ?? 0, color: 'var(--c-active)' },
+        {
+          label: 'Ollama',
+          pct: p.ollama_ok ? 100 : 0,
+          color: p.ollama_ok ? 'var(--c-ok)' : 'var(--c-error)',
+        },
+      ]);
       break;
     case 'brain':
       renderList(
