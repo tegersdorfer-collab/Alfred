@@ -17,6 +17,7 @@ from core.ui_state import (
     brain_widget_payload,
     skills_widget_payload,
     weather_widget_payload,
+    brain_graph_widget_payload,
     build_widget_payload,
     WIDGET_TYPES,
     WIDGET_MAP,
@@ -197,6 +198,25 @@ class TestWeatherWidgetPayload:
         assert payload is None
 
 
+class TestBrainGraphWidgetPayload:
+    def test_begrenzt_auf_limit_und_filtert_kanten(self):
+        fake_graph = {
+            "nodes": [{"id": i, "label": f"Note {i}", "group": "inbox", "color": "#888", "size": 12} for i in range(5)],
+            "edges": [{"from": 0, "to": 1, "arrows": "to"}, {"from": 3, "to": 4, "arrows": "to"}],
+        }
+        with patch("domains.second_brain.get_graph_data", return_value=fake_graph):
+            payload = brain_graph_widget_payload(limit=3)
+        node_ids = {n["id"] for n in payload["nodes"]}
+        assert node_ids == {0, 1, 2}
+        # Kante 3->4 muss verworfen werden, da beide Knoten außerhalb des Limits liegen
+        assert payload["edges"] == [{"from": 0, "to": 1, "arrows": "to"}]
+
+    def test_leerer_graph(self):
+        with patch("domains.second_brain.get_graph_data", return_value={"nodes": [], "edges": []}):
+            payload = brain_graph_widget_payload()
+        assert payload == {"nodes": [], "edges": []}
+
+
 class TestWidgetMapAndTypes:
     def test_widget_map_enthaelt_alle_sechs_typen(self):
         assert WIDGET_MAP == {
@@ -208,10 +228,10 @@ class TestWidgetMapAndTypes:
             "list_habits": "habits",
         }
 
-    def test_widget_types_enthaelt_alle_zehn(self):
+    def test_widget_types_enthaelt_alle_elf(self):
         assert WIDGET_TYPES == {
             "sleep", "training", "tasks", "calendar", "nutrition", "habits",
-            "system", "brain", "skills", "weather",
+            "system", "brain", "skills", "weather", "brain_graph",
         }
 
 

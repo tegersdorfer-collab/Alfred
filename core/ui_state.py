@@ -199,6 +199,19 @@ async def weather_widget_payload() -> dict | None:
     return result
 
 
+def brain_graph_widget_payload(limit: int = 30) -> dict:
+    """Baut einen begrenzten Ausschnitt des Second-Brain-Graphen (Knoten +
+    Kanten) fürs Brain-Graph-Widget — visuelle Alternative zur reinen
+    Notizen-Liste (brain_widget_payload). Kanten, deren Knoten außerhalb des
+    Limits liegen, werden verworfen (sonst Referenzen ins Leere)."""
+    from domains import second_brain
+    graph = second_brain.get_graph_data()
+    nodes = graph["nodes"][:limit]
+    node_ids = {n["id"] for n in nodes}
+    edges = [e for e in graph["edges"] if e["from"] in node_ids and e["to"] in node_ids]
+    return {"nodes": nodes, "edges": edges}
+
+
 # Widget-Typen, die eine Dashboard-Instanz brauchen (services.get("dashboard")).
 _DASHBOARD_BUILDERS = {
     "sleep": sleep_widget_payload,
@@ -217,6 +230,7 @@ _STANDALONE_BUILDERS = {
     "brain": brain_widget_payload,
     "skills": skills_widget_payload,
     "weather": weather_widget_payload,
+    "brain_graph": brain_graph_widget_payload,
 }
 
 WIDGET_TYPES = set(_DASHBOARD_BUILDERS) | set(_STANDALONE_BUILDERS)

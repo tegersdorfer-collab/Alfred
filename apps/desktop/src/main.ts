@@ -54,6 +54,45 @@ function renderList(container: HTMLElement, title: string, lines: string[]): voi
   container.innerHTML = `<div class="widget-title">${title}</div><div class="widget-list">${items}</div>`;
 }
 
+function renderGraph(
+  container: HTMLElement,
+  title: string,
+  nodes: { id: number; label: string; color: string; size: number }[],
+  edges: { from: number; to: number }[],
+): void {
+  const SIZE = 260;
+  const CENTER = SIZE / 2;
+  const RADIUS = SIZE / 2 - 30;
+  const positions = new Map<number, { x: number; y: number }>();
+  nodes.forEach((n, i) => {
+    const angle = (2 * Math.PI * i) / Math.max(1, nodes.length);
+    positions.set(n.id, {
+      x: CENTER + RADIUS * Math.cos(angle),
+      y: CENTER + RADIUS * Math.sin(angle),
+    });
+  });
+
+  const edgeLines = edges
+    .map((e) => {
+      const a = positions.get(e.from);
+      const b = positions.get(e.to);
+      if (!a || !b) return '';
+      return `<line x1="${a.x}" y1="${a.y}" x2="${b.x}" y2="${b.y}" stroke="#00e5ff33" stroke-width="1" />`;
+    })
+    .join('');
+
+  const nodeCircles = nodes
+    .map((n) => {
+      const pos = positions.get(n.id)!;
+      return `<circle cx="${pos.x}" cy="${pos.y}" r="${Math.max(4, n.size / 2)}" fill="${n.color}" />
+        <text x="${pos.x}" y="${pos.y + (n.size / 2) + 10}" text-anchor="middle" font-size="8" fill="#e0f7ff">${n.label}</text>`;
+    })
+    .join('');
+
+  container.innerHTML = `<div class="widget-title">${title}</div>
+    <svg viewBox="0 0 ${SIZE} ${SIZE}" width="${SIZE}" height="${SIZE}">${edgeLines}${nodeCircles}</svg>`;
+}
+
 function renderWidget(container: HTMLElement, slot: WidgetSlot): void {
   const p: any = slot.payload;
   switch (slot.widget) {
@@ -126,6 +165,9 @@ function renderWidget(container: HTMLElement, slot: WidgetSlot): void {
           ...(p.forecast ?? []).map((d: any) => `${d.date}: ${d.min}° – ${d.max}°, ${d.code} (${d.rain_prob ?? 0}% Regen)`),
         ],
       );
+      break;
+    case 'brain_graph':
+      renderGraph(container, 'Second Brain — Graph', p.nodes ?? [], p.edges ?? []);
       break;
     default:
       container.innerHTML = '<div class="widget-title">unbekannt</div>';
