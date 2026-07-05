@@ -23,8 +23,7 @@ python-multipart>=0.0.9
 pydantic-settings>=2.0
 
 # TTS (Text-to-Speech, lokal)
-kokoro-onnx>=0.4.0
-soundfile>=0.12
+piper-tts>=1.4.0
 
 # Utilities
 python-dotenv>=1.0

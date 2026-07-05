@@ -1,8 +1,13 @@
 """
-TTS — Text-to-Speech via Kokoro ONNX (lokal, Apache-2.0, ~80MB).
+TTS — Text-to-Speech via Piper (lokal, MIT, deutsche Stimme).
 
-Gibt OGG/Opus-Bytes zurück die direkt als Telegram-Sprachnachricht verschickt werden können.
-Lazy-loaded beim ersten Aufruf, dann im RAM gecacht.
+Gibt OGG/Opus-Bytes zurück die direkt als Telegram-Sprachnachricht verschickt
+werden können. Lazy-loaded beim ersten Aufruf, dann im RAM gecacht.
+
+Ersetzt Kokoro-ONNX (kein Deutsch-Support — nur en/ja/zh/es/fr/hi/it/pt) und
+Chatterbox-Multilingual (unterstützt Deutsch, aber 8-12s Latenz pro Satz auf
+Apple Silicon — zu langsam für Sprachantworten). Piper: ~0.7s Modell-Ladezeit,
+~1-2s Synthese für einen normalen Antwortsatz, native deutsche Stimme.
 """
 from __future__ import annotations
 import asyncio
@@ -11,41 +16,39 @@ import logging
 import re
 import subprocess
 import tempfile
+import wave
 from pathlib import Path
 
 log = logging.getLogger(__name__)
 
-_MODEL_DIR  = Path(__file__).parent.parent / "data" / "tts"
-_ONNX_PATH  = _MODEL_DIR / "kokoro-v1.0.onnx"
-_VOICES_PATH = _MODEL_DIR / "voices-v1.0.bin"
+_MODEL_DIR    = Path(__file__).parent.parent / "data" / "tts" / "piper"
+_ONNX_PATH    = _MODEL_DIR / "de_DE-thorsten-high.onnx"
+_CONFIG_PATH  = _MODEL_DIR / "de_DE-thorsten-high.onnx.json"
 
-# Beste verfügbare deutsche/neutrale Stimme in Kokoro
-# af_heart = american female (warm, natürlich) — beste Qualität für kurze Texte
-# bf_emma  = british female (klar, professionell)
-DEFAULT_VOICE = "af_heart"
+DEFAULT_VOICE = "de_DE-thorsten-high"  # männlich, deutsch
 DEFAULT_SPEED = 1.0
 
-_kokoro: object | None = None
+_voice: object | None = None
 _lock = asyncio.Lock()
 
 
 def is_available() -> bool:
-    return _ONNX_PATH.exists() and _VOICES_PATH.exists()
+    return _ONNX_PATH.exists() and _CONFIG_PATH.exists()
 
 
-def _load_kokoro():
-    global _kokoro
-    if _kokoro is not None:
-        return _kokoro
+def _load_voice():
+    global _voice
+    if _voice is not None:
+        return _voice
     if not is_available():
         raise RuntimeError(
-            f"Kokoro-Modelle nicht gefunden in {_MODEL_DIR}. "
-            "Bitte kokoro-v1.0.onnx und voices-v1.0.bin herunterladen."
+            f"Piper-Modell nicht gefunden in {_MODEL_DIR}. "
+            "Bitte de_DE-thorsten-high.onnx (+ .onnx.json) herunterladen."
         )
-    from kokoro_onnx import Kokoro
-    _kokoro = Kokoro(str(_ONNX_PATH), str(_VOICES_PATH))
-    log.info(f"🔊 Kokoro TTS geladen — Stimmen: {_kokoro.get_voices()[:5]}")
-    return _kokoro
+    from piper import PiperVoice
+    _voice = PiperVoice.load(str(_ONNX_PATH), str(_CONFIG_PATH))
+    log.info("🔊 Piper TTS geladen (de_DE-thorsten-high)")
+    return _voice
 
 
 def _clean_for_speech(text: str) -> str:
@@ -62,13 +65,14 @@ def _clean_for_speech(text: str) -> str:
     return text.strip()
 
 
-def _synth(text: str, voice: str, speed: float) -> bytes:
+def _synth(text: str, speed: float) -> bytes:
     """Synthesisiert Text → WAV-Bytes (läuft in Thread, blockiert nicht Event-Loop)."""
-    kokoro = _load_kokoro()
-    import soundfile as sf
-    samples, sample_rate = kokoro.create(text, voice=voice, speed=speed, lang="en-us")
+    from piper.config import SynthesisConfig
+    voice = _load_voice()
+    syn_config = SynthesisConfig(length_scale=1.0 / speed if speed else None)
     buf = io.BytesIO()
-    sf.write(buf, samples, sample_rate, format="WAV")
+    with wave.open(buf, "wb") as wav_file:
+        voice.synthesize_wav(text, wav_file, syn_config=syn_config)
     return buf.getvalue()
 
 
@@ -108,11 +112,13 @@ async def synthesize(
 ) -> bytes:
     """Text → OGG/Opus-Bytes (Telegram voice message format).
 
+    `voice` bleibt aus API-Kompatibilitätsgründen erhalten, wird aktuell aber
+    ignoriert — es ist nur eine deutsche Piper-Stimme geladen.
     Kürzt automatisch auf max_chars um Timeouts zu vermeiden.
     Gibt leere Bytes zurück wenn TTS nicht verfügbar.
     """
     if not is_available():
-        log.warning("TTS nicht verfügbar — Modelle fehlen in data/tts/")
+        log.warning("TTS nicht verfügbar — Modelle fehlen in data/tts/piper/")
         return b""
 
     text = _clean_for_speech(text)
@@ -124,7 +130,7 @@ async def synthesize(
 
     async with _lock:
         try:
-            wav = await asyncio.to_thread(_synth, text, voice, speed)
+            wav = await asyncio.to_thread(_synth, text, speed)
             ogg = await asyncio.to_thread(_wav_to_ogg, wav)
             log.info(f"🔊 TTS: {len(text)} Zeichen → {len(ogg)//1024}KB OGG")
             return ogg
@@ -134,11 +140,5 @@ async def synthesize(
 
 
 async def list_voices() -> list[str]:
-    """Gibt alle verfügbaren Kokoro-Stimmen zurück."""
-    if not is_available():
-        return []
-    try:
-        kokoro = await asyncio.to_thread(_load_kokoro)
-        return kokoro.get_voices()
-    except Exception:
-        return []
+    """Gibt alle verfügbaren Stimmen zurück (aktuell nur eine deutsche Piper-Stimme)."""
+    return [DEFAULT_VOICE] if is_available() else []

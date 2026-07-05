@@ -132,7 +132,7 @@ class TelegramChannel(CommunicationChannel):
                 log.warning("TTS nicht verfügbar — sende als Text")
                 await self.send(text)
                 return False
-            ogg = await synthesize(text, voice=voice or "af_heart")
+            ogg = await synthesize(text, voice=voice or "de_DE-thorsten-high")
             if not ogg:
                 await self.send(text)
                 return False

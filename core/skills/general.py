@@ -158,15 +158,15 @@ def _update_skill_procedure(name: str, new_body: str) -> str:
     "möchte, oder bei Morgen-Briefings, Alerts und kurzen proaktiven Nachrichten.",
     {
         "text":  {"type": "string", "description": "Text der vorgelesen werden soll"},
-        "voice": {"type": "string", "description": "Stimme: af_heart (default, warm), bf_emma (klar), af_bella (expressiv)"},
+        "voice": {"type": "string", "description": "Aktuell nur eine deutsche Stimme verfügbar (de_DE-thorsten-high), Parameter wird ignoriert"},
     },
     ["text"], "general")
-async def _speak(text: str, voice: str = "af_heart"):
+async def _speak(text: str, voice: str = "de_DE-thorsten-high"):
     if not CTX.channel:
         return "Kein Kommunikationskanal verfügbar."
     from core.tts import is_available
     if not is_available():
-        return "TTS nicht verfügbar — Kokoro-Modelle fehlen in data/tts/."
+        return "TTS nicht verfügbar — Piper-Modell fehlt in data/tts/piper/."
     send_voice = getattr(CTX.channel, "send_voice", None)
     if not send_voice:
         return "Kanal unterstützt keine Sprachnachrichten."

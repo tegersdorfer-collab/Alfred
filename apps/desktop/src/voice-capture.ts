@@ -29,6 +29,8 @@ export function startVoiceCapture(
   let segmentStartedAt = 0;
   let segmentStartTs = 0;
   let rafId: number | null = null;
+  let currentReplyAudio: HTMLAudioElement | null = null;
+  let isPlayingReply = false;
 
   function extensionFor(mimeType: string): string {
     if (mimeType.includes('mp4')) return 'm4a';
@@ -39,10 +41,26 @@ export function startVoiceCapture(
 
   function playReplyAudio(audioB64: string): void {
     try {
+      // Vorherige Wiedergabe hart stoppen — verhindert überlappende Antworten,
+      // falls ein weiteres Segment eintrifft während Alfred noch spricht.
+      if (currentReplyAudio) {
+        currentReplyAudio.pause();
+        currentReplyAudio.onended = null;
+      }
       const audio = new Audio(`data:audio/ogg;base64,${audioB64}`);
-      audio.play().catch(() => {});
+      currentReplyAudio = audio;
+      isPlayingReply = true;
+      // VAD während der Wiedergabe pausieren (siehe tick()) — sonst hört das
+      // Mikrofon Alfreds eigene Stimme und löst sofort ein neues Segment aus.
+      const stopPlayingFlag = () => {
+        isPlayingReply = false;
+      };
+      audio.onended = stopPlayingFlag;
+      audio.onerror = stopPlayingFlag;
+      audio.play().catch(stopPlayingFlag);
     } catch {
       // Wiedergabe fehlgeschlagen — Text-Antwort bleibt trotzdem sichtbar
+      isPlayingReply = false;
     }
   }
 
@@ -101,6 +119,11 @@ export function startVoiceCapture(
 
       function tick(): void {
         if (stopped || !audioCtx) return;
+        if (isPlayingReply) {
+          // Mikrofon-Auswertung pausiert solange Alfred selbst spricht (Echo-Vermeidung).
+          rafId = requestAnimationFrame(tick);
+          return;
+        }
         analyser.getByteTimeDomainData(data);
         const level = rms(data);
         const now = performance.now();
