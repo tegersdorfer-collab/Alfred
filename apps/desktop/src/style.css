@@ -561,3 +561,17 @@ body::after {
   width: 6px;
   height: 6px;
 }
+
+.settings-status-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--c-idle-dim);
+  margin-left: 8px;
+  vertical-align: middle;
+  transition: background 200ms ease-out;
+}
+.nav-tile {
+  position: relative;
+}

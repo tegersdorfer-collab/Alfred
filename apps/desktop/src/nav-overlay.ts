@@ -1,3 +1,6 @@
+import { applyPanelChrome } from './fx/panel-chrome';
+import { staggerIn } from './motion';
+
 const WIDGET_TYPES = ['sleep', 'training', 'tasks', 'calendar', 'nutrition', 'habits', 'brain', 'system', 'skills', 'weather', 'brain_graph'] as const;
 const LABELS: Record<string, string> = {
   sleep: 'Schlaf', training: 'Training', tasks: 'Aufgaben',
@@ -14,6 +17,11 @@ export function initNavOverlay(baseUrl: string): void {
   ).join('') + `<button class="nav-tile" data-widget-type="">Home</button>`;
   overlay.innerHTML = `<div class="nav-grid">${tiles}</div>`;
   document.body.appendChild(overlay);
+
+  const grid = overlay.querySelector<HTMLElement>('.nav-grid')!;
+  grid.querySelectorAll<HTMLElement>('.nav-tile').forEach((tile) => {
+    applyPanelChrome(tile);
+  });
 
   function close(): void {
     overlay.classList.remove('visible');
@@ -39,7 +47,11 @@ export function initNavOverlay(baseUrl: string): void {
     const isToggle = (e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k';
     if (isToggle) {
       e.preventDefault();
+      const willBeVisible = !overlay.classList.contains('visible');
       overlay.classList.toggle('visible');
+      if (willBeVisible) {
+        staggerIn(grid.querySelectorAll<HTMLElement>('.nav-tile'), 50);
+      }
     } else if (e.key === 'Escape') {
       close();
     }

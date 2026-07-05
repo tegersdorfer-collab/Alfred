@@ -6,7 +6,7 @@ export function initSettingsPanel(): void {
   panel.innerHTML = `
     <form id="settings-form">
       <label for="settings-base-url">Backend-Adresse (z.B. Tailscale-Hostname des Macs für Remote-Clients)</label>
-      <input type="text" id="settings-base-url" autocomplete="off" />
+      <input type="text" id="settings-base-url" autocomplete="off" /><span class="settings-status-dot"></span>
       <div class="settings-hint">Enter zum Speichern &amp; Neuladen · Escape zum Abbrechen</div>
     </form>
   `;
