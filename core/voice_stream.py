@@ -13,6 +13,16 @@ from core.vad import VadSegmenter
 
 SAMPLE_RATE = 16000
 
+# Silero VAD's ONNX export requires exactly 512 samples (32ms @ 16kHz) per
+# speech_probability() call. openWakeWord's documented standard chunk size is
+# 1280 samples (80ms @ 16kHz) — see openwakeword.model.Model.predict docstring
+# ("Ideally should be multiples of 80 ms (1280 samples)"). The AudioWorklet in
+# apps/desktop/public/pcm-worklet.js posts small raw frames (128 samples/8ms)
+# with no accumulation, so VoiceStreamSession buffers incoming bytes
+# independently per detector before dispatching full-size frames.
+VAD_FRAME_BYTES = 512 * 2  # 1024 bytes
+WAKEWORD_FRAME_BYTES = 1280 * 2  # 2560 bytes
+
 
 async def transcribe_pcm(pcm_audio: bytes) -> str:
     """Schreibt rohes PCM als WAV und transkribiert über die bestehende
@@ -39,23 +49,43 @@ class VoiceStreamSession:
         self._wakeword = wakeword_detector
         self._conversation_active_fn = conversation_active_fn
         self._wake_fired_in_segment = False
+        # Independent byte-accumulation buffers: the two detectors require
+        # different frame sizes (see VAD_FRAME_BYTES / WAKEWORD_FRAME_BYTES
+        # above), so incoming raw chunks (arbitrary size, e.g. 8ms from the
+        # AudioWorklet) must be buffered separately per detector rather than
+        # fed through on a shared per-call cadence.
+        self._vad_buffer = bytearray()
+        self._wakeword_buffer = bytearray()
 
     async def handle_chunk(self, pcm_chunk: bytes, muted: bool) -> dict | None:
         if muted:
             return None
 
-        if self._wakeword.check(pcm_chunk):
-            self._wake_fired_in_segment = True
+        self._vad_buffer.extend(pcm_chunk)
+        self._wakeword_buffer.extend(pcm_chunk)
 
-        segment = self._segmenter.process_chunk(pcm_chunk)
-        if segment is None:
-            return None
+        while len(self._wakeword_buffer) >= WAKEWORD_FRAME_BYTES:
+            frame = bytes(self._wakeword_buffer[:WAKEWORD_FRAME_BYTES])
+            del self._wakeword_buffer[:WAKEWORD_FRAME_BYTES]
+            if self._wakeword.check(frame):
+                self._wake_fired_in_segment = True
 
-        wake_fired = self._wake_fired_in_segment
-        self._wake_fired_in_segment = False
+        result = None
+        while len(self._vad_buffer) >= VAD_FRAME_BYTES:
+            frame = bytes(self._vad_buffer[:VAD_FRAME_BYTES])
+            del self._vad_buffer[:VAD_FRAME_BYTES]
 
-        if not wake_fired and not self._conversation_active_fn():
-            return None
+            segment = self._segmenter.process_chunk(frame)
+            if segment is None:
+                continue
 
-        text = await transcribe_pcm(segment.audio)
-        return {"text": text, "addressed": True}
+            wake_fired = self._wake_fired_in_segment
+            self._wake_fired_in_segment = False
+
+            if not wake_fired and not self._conversation_active_fn():
+                continue
+
+            text = await transcribe_pcm(segment.audio)
+            result = {"text": text, "addressed": True}
+
+        return result

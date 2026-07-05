@@ -14,6 +14,10 @@ SILENCE_MS_TO_STOP = 800
 MIN_SEGMENT_MS = 300
 PREROLL_MS = 400
 
+# Silero VAD's ONNX export requires exactly this many samples per inference
+# call (32ms @ 16kHz) — confirmed empirically against the downloaded model.
+VAD_REQUIRED_SAMPLES = 512
+
 
 def _load_session(model_path: Path):
     import onnxruntime as ort
@@ -35,6 +39,14 @@ class SileroVAD:
 
     def speech_probability(self, pcm_chunk: bytes) -> float:
         n_samples = len(pcm_chunk) // 2
+        if n_samples != VAD_REQUIRED_SAMPLES:
+            raise ValueError(
+                f"SileroVAD.speech_probability requires exactly "
+                f"{VAD_REQUIRED_SAMPLES} samples ({VAD_REQUIRED_SAMPLES * 2} bytes), "
+                f"got {n_samples} samples ({len(pcm_chunk)} bytes). Callers must "
+                f"buffer raw audio to this frame size before calling (see "
+                f"core/voice_stream.py::VoiceStreamSession)."
+            )
         samples = struct.unpack(f"<{n_samples}h", pcm_chunk)
         audio = np.array(samples, dtype=np.float32) / 32768.0
         inputs = {
@@ -57,7 +69,15 @@ class SegmentEvent:
 class VadSegmenter:
     """Zustandsautomat: sammelt PCM-Chunks, erkennt Sprechbeginn/-ende per VAD-
     Wahrscheinlichkeit, liefert fertige Segmente (inkl. Preroll) zurück. Portierte
-    Logik von apps/desktop/src/voice-capture.ts's alter tick()-Funktion."""
+    Logik von apps/desktop/src/voice-capture.ts's alter tick()-Funktion.
+
+    Bleibt bewusst agnostisch gegenüber der konkreten chunk_ms-Größe: der Aufrufer
+    ist dafür verantwortlich, process_chunk() mit Chunks der angegebenen Dauer zu
+    füttern. Der WebSocket-Pfad (web/routers/voice.py) puffert rohe, sehr kleine
+    AudioWorklet-Frames serverseitig in core/voice_stream.py::VoiceStreamSession
+    zu exakt 512-Sample-Blöcken (32ms @ 16kHz, das von Silero VAD geforderte
+    Modell-Input-Format) und ruft process_chunk() entsprechend mit chunk_ms=32
+    auf — NICHT mit den früher angenommenen 100ms."""
 
     SPEECH_THRESHOLD = 0.5
 

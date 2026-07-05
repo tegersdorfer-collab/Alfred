@@ -63,7 +63,10 @@ def build_router(orch=None) -> APIRouter:
         from core.vad import SileroVAD, VadSegmenter
 
         vad_model = SileroVAD(Path(__file__).parent.parent.parent / "data" / "vad" / "silero_vad.onnx")
-        segmenter = VadSegmenter(vad_model, chunk_ms=100)
+        # VoiceStreamSession buffers raw incoming chunks into fixed 512-sample
+        # (32ms @ 16kHz) frames before calling process_chunk(), so chunk_ms
+        # here must match that buffered frame size (see core/voice_stream.py).
+        segmenter = VadSegmenter(vad_model, chunk_ms=32)
         wakeword_detector = _StubWakeWordDetector()  # Task 6 ersetzt dies durch den echten Detector
         session = VoiceStreamSession(
             vad_segmenter=segmenter,

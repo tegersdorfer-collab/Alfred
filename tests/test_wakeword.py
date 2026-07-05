@@ -16,7 +16,7 @@ class TestWakeWordDetector:
             mock_load.return_value = mock_model
 
             detector = wakeword.WakeWordDetector(model_path, threshold=0.5)
-            assert detector.check(b"\x00\x00" * 512) is True
+            assert detector.check(b"\x00\x00" * 1280) is True
 
     def test_check_false_when_score_below_threshold(self, tmp_path):
         model_path = tmp_path / "mantis.onnx"
@@ -27,4 +27,17 @@ class TestWakeWordDetector:
             mock_load.return_value = mock_model
 
             detector = wakeword.WakeWordDetector(model_path, threshold=0.5)
-            assert detector.check(b"\x00\x00" * 512) is False
+            assert detector.check(b"\x00\x00" * 1280) is False
+
+    def test_check_rejects_wrong_frame_size(self, tmp_path):
+        model_path = tmp_path / "mantis.onnx"
+        model_path.write_bytes(b"fake")
+        with patch.object(wakeword, "_load_model") as mock_load:
+            mock_load.return_value = MagicMock()
+
+            detector = wakeword.WakeWordDetector(model_path, threshold=0.5)
+            try:
+                detector.check(b"\x00\x00" * 128)
+                assert False, "expected ValueError for wrong frame size"
+            except ValueError:
+                pass
