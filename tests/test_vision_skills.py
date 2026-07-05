@@ -12,20 +12,25 @@ import core.skills.vision as vision_skills
 
 class TestSeeScreen:
     def test_macht_screenshot_und_beschreibt_ihn(self, tmp_path):
+        from pathlib import Path
         fake_png = tmp_path / "screen.png"
+        captured_cmd = {}
 
         def fake_run(cmd, **kwargs):
+            captured_cmd["cmd"] = cmd
             # screencapture würde die Datei erzeugen — hier simuliert
             Path(cmd[-1]).write_bytes(b"FAKE_PNG_BYTES")
             return MagicMock(returncode=0)
 
-        from pathlib import Path
         with patch("core.skills.vision.subprocess.run", side_effect=fake_run), \
              patch("core.skills.vision.tempfile.NamedTemporaryFile") as mock_tmp, \
              patch("core.skills.vision.describe_image", new=AsyncMock(return_value="🖥️ Ein Code-Editor mit Python-Code.")):
             mock_tmp.return_value.__enter__.return_value.name = str(fake_png)
             result = asyncio.run(vision_skills._see_screen())
         assert "Code-Editor" in result
+        # launchd-Prozesse haben oft kein /usr/sbin im PATH — absoluter Pfad nötig,
+        # sonst: "[Errno 2] No such file or directory: 'screencapture'"
+        assert captured_cmd["cmd"][0] == "/usr/sbin/screencapture"
 
     def test_screencapture_fehlschlag_gibt_fehlermeldung(self):
         with patch("core.skills.vision.subprocess.run") as mock_run, \

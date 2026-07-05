@@ -18,6 +18,9 @@ from core.vision import describe_image
 
 log = logging.getLogger("core.skills")
 
+_SCREENCAPTURE_BIN = "/usr/sbin/screencapture"  # nicht per PATH suchen — launchd-Prozesse
+                                                  # haben /usr/sbin oft nicht im PATH
+
 _SCREEN_PROMPT = (
     "Beschreibe kurz auf Deutsch, was auf diesem Bildschirmfoto zu sehen ist — "
     "welche App(s) offen sind, worum es inhaltlich geht, und falls ein Fehler/"
@@ -35,7 +38,7 @@ async def _see_screen() -> str:
         path = tmp.name
     try:
         result = await asyncio.to_thread(
-            subprocess.run, ["screencapture", "-x", path], capture_output=True,
+            subprocess.run, [_SCREENCAPTURE_BIN, "-x", path], capture_output=True,
         )
         if result.returncode != 0:
             err = (result.stderr or b"").decode(errors="replace")
