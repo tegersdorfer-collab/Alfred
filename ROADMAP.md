@@ -165,9 +165,11 @@
   — beide über Cmd/Ctrl+K manuell wählbar und via build_widget_payload()
 - [x] Skill-Factory-Status-Widget (Commit 23636a8): zeigt selbst erstellte
   Skills + Gesamt-Tool-Anzahl, live verifiziert
+- [x] **Wetter-Karten-Widget** (Commit bd4881e): build_widget_payload() +
+  maybe_update_ui() auf async umgebaut (inspect.iscoroutinefunction erkennt
+  automatisch sync/async Builder), damit domains.weather.get_weather() (Live
+  Open-Meteo-API) als Widget läuft. Live verifiziert (echte Nürnberg-Daten).
 - [ ] Weitere Widget-Typen: Second-Brain-Graph (visuell, nicht nur Liste),
-  Wetter-Karte (braucht Async-Umbau der Widget-Pipeline — aktuell komplett
-  synchron, domains.weather.get_weather ist async mit Live-HTTP-Call),
   Standort/Karte
 - [x] Benachrichtigungs-/Alert-Overlay (Commit 1b3b38b): Autopilot._send()
   emittiert jetzt auf den bestehenden StatusBus, Desktop-HUD zeigt jede
