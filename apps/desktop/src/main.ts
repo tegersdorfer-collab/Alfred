@@ -172,6 +172,9 @@ const MAP_ZOOM = 8;
 const MAP_RADIUS = 1; // 1 => 3x3 grid
 
 function renderWeatherMap(container: HTMLElement, payload: any): void {
+  const renderToken = Symbol();
+  (container as any)._weatherRenderToken = renderToken;
+
   const lat = payload.lat;
   const lon = payload.lon;
   const city = payload.city ?? '';
@@ -209,6 +212,7 @@ function renderWeatherMap(container: HTMLElement, payload: any): void {
   if (!radarLayer) return;
 
   fetchRadarFrameTimes().then((times) => {
+    if ((container as any)._weatherRenderToken !== renderToken) return; // Container wurde inzwischen neu gerendert — dieser Promise ist veraltet
     if (times.length === 0) return; // kein Radar-Overlay verfügbar — Basiskarte bleibt sichtbar
     const frames = times.map(
       (time) =>
