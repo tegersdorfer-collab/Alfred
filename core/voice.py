@@ -35,6 +35,10 @@ def mark_conversation_active() -> None:
     _conversation_active_until = time.monotonic() + CONVERSATION_FOLLOWUP_WINDOW_S
 
 
+def _conversation_active() -> bool:
+    return time.monotonic() < _conversation_active_until
+
+
 async def transcribe_audio(audio_path: str) -> str:
     """Transkribiert eine Audiodatei lokal mit whisper.cpp. Gibt leeren String bei Fehler zurück."""
     global _whisper_model
