@@ -341,3 +341,31 @@ Diese Items brauchen externe Infrastruktur oder Hardware die nicht im Code lösb
 3. **Kein Over-Engineering** — einfacher Code > komplexe Abstraktionen
 4. **Funktionalität > Ästhetik** — ein Feature das funktioniert > fünf die aussehen
 5. **Alfred soll lernen** — jede Interaktion macht ihn besser, nicht nur reaktiver
+
+## Voice-Pipeline-Latenz-Untersuchung + lokales Voice-Modell (2026-07-05, spät)
+
+- [x] STT-Benchmark: pywhispercpp (aktuell), faster-whisper, mlx-whisper,
+      lightning-whisper-mlx auf 6 deutschen Testsätzen verglichen —
+      **aktuelles Setup (whisper.cpp/Metal) bleibt bestes für kurze
+      Sprachbefehle**, keine der Alternativen war schneller (siehe
+      `scripts/stt_benchmark_run.py`)
+- [x] End-to-End-Latenztest gegen echte Pipeline (`scripts/e2e_voice_latency_test.py`)
+      aufgedeckt: Voice-Antworten liefen über Claude (Cloud), Latenz dominiert
+      von Netzwerk-Roundtrips (6-32s/Anfrage), nicht STT/TTS
+- [x] Root-Cause für "lokales Modell ist noch langsamer" gefunden: `qwen3.5:9b`
+      brauchte lokal bis zu 166s (16GB RAM, `OLLAMA_KEEP_ALIVE="0"` entlädt
+      Modell nach jedem Call, plus Speicherdruck)
+- [x] Dediziertes, dauerhaft geladenes Voice-Modell (`gemma4:e2b`,
+      `VOICE_AGENT_KEEP_ALIVE="-1"`) eingebaut — wiederverwendet dasselbe
+      Modell wie der Adress-Check. Warm ~5.5-7.5s statt 166s. Claude bleibt
+      Fallback bei Ausfall/unzureichender Qualität.
+- [x] XTTS-v2-Umgebung vorbereitet (`data/xtts/venv`, Python 3.11 isoliert vom
+      Haupt-Backend (Python 3.14, noch keine kompatiblen XTTS-Pakete)) —
+      wartet auf Stimmprobe zum Klonen
+- [ ] VAD-Wechsel auf Silero VAD (offen)
+- [ ] Wake-Word via openWakeWord (offen)
+- [ ] Streaming durchgängig verketten (LLM → TTS, nicht erst nach kompletter
+      Antwort) — größter verbleibender Latenz-Hebel, noch nicht umgesetzt
+- [ ] Haupt-Dashboard/Telegram-Agent: aktuell Ollama-primär (`qwen3.5:9b`) seit
+      der früheren Änderung — angesichts der 166s-Erkenntnis fraglich, ob das
+      auch dort sinnvoll ist; noch nicht mit Timo geklärt
