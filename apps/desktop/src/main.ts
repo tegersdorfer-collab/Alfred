@@ -7,6 +7,7 @@ import { startVoiceCapture } from './voice-capture';
 import type { VoiceSegmentResult } from './voice-capture';
 import { initNavOverlay } from './nav-overlay';
 import { initChatInput } from './chat-input';
+import { initSettingsPanel } from './settings-panel';
 
 const POLL_INTERVAL_MS = 10_000;
 
@@ -165,3 +166,4 @@ function renderChatReply(reply: string): void {
 }
 
 initChatInput(getBaseUrl(), renderChatReply);
+initSettingsPanel();
