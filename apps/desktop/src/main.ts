@@ -396,7 +396,7 @@ function renderVoiceStatus(result: VoiceSegmentResult): void {
   }
 }
 
-async function initVoiceCapture(
+export async function initVoiceCapture(
   baseUrl: string,
   onSegment: (r: VoiceSegmentResult) => void,
 ): Promise<() => void> {
