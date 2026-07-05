@@ -220,7 +220,9 @@
   Review-Loop/HUD bereits ab oder sie stehen schon im Brainstorm unten
   (Smart-Home, Screen-Context-Awareness). Kein neuer Feature-Fund, der nicht
   schon anderswo in dieser Roadmap steht.
-- [ ] Gefundene, machbare Lücken priorisieren und umsetzen
+- [x] Gefundene, machbare Lücken priorisiert und umgesetzt — siehe Brainstorm-
+  Liste unten (Screen-Context-Awareness umgesetzt, Kalender-Konflikt-Erkennung
+  bestand bereits, Emotionserkennung recherchiert+bewusst zurückgestellt).
 
 ### Weitere gesammelte Ideen (Brainstorm, nicht priorisiert)
 - [ ] Smart-Home-Steuerung (falls HomeKit/HomeAssistant vorhanden — prüfen)
