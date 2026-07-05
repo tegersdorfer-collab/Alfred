@@ -31,6 +31,7 @@ def registry():
         ("read_any_file",       "Liest den Inhalt einer beliebigen Datei", "filesystem"),
         ("list_directory",      "Listet Dateien eines Verzeichnisses auf", "filesystem"),
         ("open_app",            "Startet eine Mac-Anwendung",             "filesystem"),
+        ("see_screen",          "Macht einen Screenshot und beschreibt ihn", "vision"),
     ]
     for name, desc, cat in fakes:
         T.REGISTRY[name] = T.Tool(name=name, description=desc, parameters={},
@@ -84,6 +85,10 @@ class TestSelectTools:
     def test_app_starten_liefert_filesystem_tools(self, registry):
         names = T.select_tools("Kannst du mir Notizen öffnen")
         assert "open_app" in names
+
+    def test_bildschirm_anfrage_liefert_vision_tools(self, registry):
+        names = T.select_tools("Was siehst du gerade auf meinem Bildschirm?")
+        assert "see_screen" in names
 
     def test_cap_liegt_bei_14_plus_skill_garantie(self, registry):
         # 20 zusätzliche productivity-Tools → Auswahl bleibt gedeckelt

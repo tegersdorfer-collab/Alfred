@@ -158,6 +158,9 @@ _CATEGORY_KEYWORDS = {
     "filesystem":   ["datei", "ordner", "verzeichnis", "öffne", "öffnen", "dokument",
                      "app öffnen", "app starten", "starte die app", "zeig mir den ordner",
                      "lies die datei", "pdf", "downloads", "schreibtisch", "desktop"],
+    "vision":       ["bildschirm", "screenshot", "bildschirmfoto", "siehst du",
+                     "was siehst du", "schau dir meinen bildschirm", "guck dir an",
+                     "bildschirminhalt"],
 }
 
 # Generelle Aktionsverben → es soll etwas GETAN werden

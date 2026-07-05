@@ -1,0 +1,36 @@
+"""Unit-Tests für core/skills/vision.py: Screen-Context-Awareness ('see_screen').
+Alfred macht einen Screenshot (macOS screencapture) und beschreibt ihn via
+core.vision.describe_image (Ollama-Vision, bereits für Telegram-Fotos genutzt)."""
+import sys, os
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
+
+import asyncio
+from unittest.mock import patch, AsyncMock, MagicMock
+
+import core.skills.vision as vision_skills
+
+
+class TestSeeScreen:
+    def test_macht_screenshot_und_beschreibt_ihn(self, tmp_path):
+        fake_png = tmp_path / "screen.png"
+
+        def fake_run(cmd, **kwargs):
+            # screencapture würde die Datei erzeugen — hier simuliert
+            Path(cmd[-1]).write_bytes(b"FAKE_PNG_BYTES")
+            return MagicMock(returncode=0)
+
+        from pathlib import Path
+        with patch("core.skills.vision.subprocess.run", side_effect=fake_run), \
+             patch("core.skills.vision.tempfile.NamedTemporaryFile") as mock_tmp, \
+             patch("core.skills.vision.describe_image", new=AsyncMock(return_value="🖥️ Ein Code-Editor mit Python-Code.")):
+            mock_tmp.return_value.__enter__.return_value.name = str(fake_png)
+            result = asyncio.run(vision_skills._see_screen())
+        assert "Code-Editor" in result
+
+    def test_screencapture_fehlschlag_gibt_fehlermeldung(self):
+        with patch("core.skills.vision.subprocess.run") as mock_run, \
+             patch("core.skills.vision.tempfile.NamedTemporaryFile") as mock_tmp:
+            mock_tmp.return_value.__enter__.return_value.name = "/tmp/fake_nonexistent_screen.png"
+            mock_run.return_value = MagicMock(returncode=1, stderr=b"permission denied")
+            result = asyncio.run(vision_skills._see_screen())
+        assert "FEHLER" in result

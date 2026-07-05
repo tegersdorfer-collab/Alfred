@@ -25,6 +25,7 @@ from . import (
     general,
     ui,
     filesystem,
+    vision,
 )
 
 # REGISTRY in die ursprüngliche Reihenfolge bringen (select_tools byte-identisch).

@@ -4,7 +4,6 @@ Tauschbar gegen andere Kanäle via CommunicationChannel Interface.
 Unterstützt: Text, Sprachnachrichten (→ Transkription via Whisper), Fotos (→ Claude Haiku Vision).
 """
 import asyncio
-import base64
 import logging
 import tempfile
 from datetime import datetime
@@ -20,6 +19,7 @@ from telegram.constants import ChatAction
 
 from communication.base import CommunicationChannel, IncomingMessage, MessageHandler as MH
 from core.voice import transcribe_audio as _transcribe
+from core.vision import describe_image as _describe_image_raw
 import config
 
 log = logging.getLogger(__name__)
@@ -27,7 +27,6 @@ log = logging.getLogger(__name__)
 
 # ── Ollama-Vision (für Fotos) ─────────────────────────────────────────────────
 
-_VISION_MODEL = getattr(__import__("config"), "VISION_MODEL", "qwen3-vl:8b")
 _VISION_PROMPT = (
     "Beschreibe dieses Bild kurz auf Deutsch. "
     "Falls es sich um Essen oder Getränke handelt, schätze die Kalorien "
@@ -38,25 +37,8 @@ _VISION_PROMPT = (
 
 
 async def _describe_image(image_bytes: bytes) -> str:
-    """Beschreibt ein Bild lokal mit llava:7b via Ollama. Erkennt Mahlzeiten für Tracking."""
-    try:
-        import ollama as _ollama
-        b64 = base64.standard_b64encode(image_bytes).decode()
-        client = _ollama.AsyncClient(host=config.OLLAMA_BASE_URL)
-        resp = await client.chat(
-            model=_VISION_MODEL,
-            messages=[{
-                "role": "user",
-                "content": _VISION_PROMPT,
-                "images": [b64],
-            }],
-            options={"num_predict": 512},
-            keep_alive=0,
-        )
-        return (resp.message.content or "").strip()
-    except Exception as e:
-        log.error(f"Ollama-Vision fehlgeschlagen: {e}")
-        return "Konnte Bild nicht analysieren."
+    """Beschreibt ein Bild lokal via Ollama-Vision. Erkennt Mahlzeiten für Tracking."""
+    return await _describe_image_raw(image_bytes, _VISION_PROMPT)
 
 
 class TelegramChannel(CommunicationChannel):
