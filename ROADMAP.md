@@ -151,16 +151,23 @@
 - [ ] Modulare/adaptive Screens: Alfred wählt selbst Layout + Widgets je nach
   Kontext (Basis existiert seit Phase 2-4, aber noch nicht "großzügig" genug
   ausgebaut — mehr Widget-Typen, dynamischere Übergänge/Animationen)
-- [ ] Alfred volle Rechte geben: Dateisystem-Zugriff, App-Steuerung,
-  Dateien öffnen/bearbeiten direkt aus der Desktop-App heraus (nicht nur
-  Backend-Tools) — Tauri-Commands für Datei-IO, App-Launch
+- [x] **Alfred volle Rechte** (Commits b7247d8, 72f25e0): 5 neue Agent-Tools
+  (read_any_file/write_any_file/list_directory/open_path/open_app) —
+  Zugriff auf das GESAMTE Mac-Dateisystem, nicht nur Alfred' eigene Codebase.
+  Bewusst OHNE Lösch-Tool. Live-Test deckte einen Folgefehler auf: das
+  Keyword-Tool-Routing (core/tools.py::select_tools) kannte die neue
+  Kategorie 'filesystem' nicht — Datei-Anfragen fielen in den 'reines
+  Gespräch'-Fast-Path und bekamen die neuen Tools nie angeboten. Gefixt,
+  end-to-end live verifiziert (list_directory ~/Desktop → echte Dateiliste).
 - [x] Zwei neue Widget-Typen (Commit 92a863f): **system** (CPU/RAM/Ollama-
   Status über psutil) und **brain** (zuletzt bearbeitete Second-Brain-Notizen)
   — beide über Cmd/Ctrl+K manuell wählbar und via build_widget_payload()
 - [ ] Weitere Widget-Typen: Second-Brain-Graph (visuell, nicht nur Liste),
   Wetter-Karte, Standort/Karte, Skill-Factory-Status
-- [ ] Benachrichtigungs-/Alert-Overlay für proaktive Nachrichten (Autopilot-
-  Events sollen im Desktop-HUD auftauchen, nicht nur Telegram)
+- [x] Benachrichtigungs-/Alert-Overlay (Commit 1b3b38b): Autopilot._send()
+  emittiert jetzt auf den bestehenden StatusBus, Desktop-HUD zeigt jede
+  proaktive Nachricht (Morgen-Briefing, Smart Notifications, ...) als
+  stapelbaren 12s-Toast oben rechts
 - [ ] Persistente Fenster-Position/-Größe, Tray-Icon, Autostart
 
 ### Windows-Readiness
@@ -190,10 +197,15 @@
      Nicht-Ziel der Master-Spec), echter Build+Test auf einer Windows-Maschine.
 
 ### Jarvis-Feature-Parität (Recherche + Implementierung)
-- [ ] Web-Recherche: welche Jarvis-Fähigkeiten (Iron-Man-Filme/Fiktion) hat
-  Alfred noch nicht? (z.B. Multi-Screen-Simultan-Anzeige, proaktive
-  Warnungen/Diagnosen, Geräte-/Smart-Home-Steuerung, Kontext-übergreifendes
-  Erinnern in Echtzeit, visuelle Datenanalyse/Simulationen)
+- [x] **Web-Recherche abgeschlossen:** Die meisten kanonischen Jarvis-
+  Fähigkeiten (Anzug-Steuerung, Energiequellen-Scan, House-Party-Protocol)
+  sind fiktionsspezifisch/kampfbezogen und nicht sinnvoll übertragbar. Die
+  realistisch übertragbaren Kernmerkmale — natürlichsprachliche Konversation,
+  proaktive Analyse/Warnungen, Multi-Tasking im Hintergrund, visuelle
+  Datenanzeige — deckt Alfred über Autopilot/Reflexions-Engine/Background-
+  Review-Loop/HUD bereits ab oder sie stehen schon im Brainstorm unten
+  (Smart-Home, Screen-Context-Awareness). Kein neuer Feature-Fund, der nicht
+  schon anderswo in dieser Roadmap steht.
 - [ ] Gefundene, machbare Lücken priorisieren und umsetzen
 
 ### Weitere gesammelte Ideen (Brainstorm, nicht priorisiert)
