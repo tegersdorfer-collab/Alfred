@@ -132,6 +132,20 @@ def pad_to_min_length(data: np.ndarray, min_samples: int = MIN_CLIP_SAMPLES) -> 
     return np.concatenate([data, np.zeros(pad, dtype=data.dtype)])
 
 
+def embed_clip(audio_features, clip: np.ndarray) -> np.ndarray:
+    """Berechnet die openWakeWord-Embedding-Sequenz für einen einzelnen, bereits
+    auf 16kHz/int16 normalisierten Clip. Nutzt die interne _get_embeddings-Methode
+    (statt embed_clips, dessen Batch-Pfad bei batch_size=1 einen Shape-Bug hat) -
+    liefert direkt die (n_frames, EMBEDDING_DIM)-Sequenz für genau diesen einen Clip.
+
+    Zentral an einer Stelle gehalten (statt in train_wakeword.py und
+    validate_wakeword.py dupliziert), da validate_wakeword.py exakt denselben
+    Feature-Extraktions-Pfad nutzen MUSS wie das Training - eine Abweichung hier
+    würde die Validierung gegen ein anderes Kontrakt laufen lassen als das, worauf
+    das Modell tatsächlich trainiert wurde."""
+    return audio_features._get_embeddings(clip)
+
+
 def extract_windows(features: np.ndarray, n_frames: int = N_FRAMES) -> np.ndarray:
     """Schneidet aus einer Embedding-Sequenz (n_total_frames, EMBEDDING_DIM) alle
     überlappenden Fenster der Länge n_frames heraus (Sliding Window, Schrittweite 1)."""
@@ -175,10 +189,7 @@ def build_feature_dataset(files, audio_features, label: int):
     all_windows = []
     for f in files:
         clip = pad_to_min_length(load_and_resample(f))
-        # Einzelne Clips über die interne _get_embeddings-Methode verarbeiten (statt embed_clips,
-        # dessen Batch-Pfad bei batch_size=1 einen Shape-Bug hat) - liefert direkt die
-        # (n_frames, EMBEDDING_DIM)-Sequenz für genau diesen einen Clip.
-        embeddings = audio_features._get_embeddings(clip)
+        embeddings = embed_clip(audio_features, clip)
         windows = extract_windows(embeddings)
         if windows.shape[0] > 0:
             all_windows.append(windows)

@@ -38,6 +38,7 @@ sys.path.insert(0, str(Path(__file__).parent))
 from train_wakeword import (  # noqa: E402
     EMBEDDING_DIM,
     N_FRAMES,
+    embed_clip,
     extract_windows,
     load_and_resample,
     pad_to_min_length,
@@ -53,7 +54,7 @@ def score_file(audio_features, ort_session, input_name: str, wav_path: Path) -> 
     """Lädt eine WAV-Datei, berechnet Embedding-Fenster (identisch zu train_wakeword.py)
     und gibt den Maximal-Score des Klassifikations-Kopfs über alle Fenster zurück."""
     clip = pad_to_min_length(load_and_resample(wav_path))
-    embeddings = audio_features._get_embeddings(clip)
+    embeddings = embed_clip(audio_features, clip)
     windows = extract_windows(embeddings)
     if windows.shape[0] == 0:
         log.warning(f"  Übersprungen (zu kurz für ein Fenster, >= {N_FRAMES} Embedding-Frames nötig): {wav_path.name}")
