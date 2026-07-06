@@ -81,6 +81,8 @@ def build_router(orch=None) -> APIRouter:
         try:
             while True:
                 message = await websocket.receive()
+                if message.get("type") == "websocket.disconnect":
+                    break
                 if "bytes" in message and message["bytes"] is not None:
                     result = await session.handle_chunk(message["bytes"], muted=muted)
                 elif "text" in message and message["text"] is not None:
