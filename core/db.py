@@ -1,5 +1,5 @@
 """
-Zentrale Datenbank-Schicht für Alfred.
+Zentrale Datenbank-Schicht für Mantis.
 - Connection-Pool (thread-safe)
 - pgvector-Registrierung pro Connection
 - Sync- und Async-Helfer (Async läuft im Thread-Executor)
@@ -201,7 +201,7 @@ MIGRATIONS = [
         energy      INT,                        -- 1-5
         content     TEXT,
         tags        TEXT[],
-        author      TEXT DEFAULT 'timo',        -- timo | alfred
+        author      TEXT DEFAULT 'timo',        -- timo | mantis
         created_at  TIMESTAMPTZ DEFAULT NOW()
     );
     """,
@@ -239,7 +239,7 @@ MIGRATIONS = [
     );
     """,
 
-    # Reiches Task-System (alfred-nativ): Arten, Unteraufgaben, Fortschritt, Archiv
+    # Reiches Task-System (mantis-nativ): Arten, Unteraufgaben, Fortschritt, Archiv
     """
     CREATE TABLE IF NOT EXISTS tasks (
         id           SERIAL PRIMARY KEY,
@@ -259,7 +259,25 @@ MIGRATIONS = [
     "CREATE INDEX IF NOT EXISTS tasks_status_idx ON tasks(status);",
     "CREATE INDEX IF NOT EXISTS tasks_parent_idx ON tasks(parent_id);",
     "ALTER TABLE tasks ADD COLUMN IF NOT EXISTS assigned_to TEXT DEFAULT 'user';",
-    "ALTER TABLE tasks ADD COLUMN IF NOT EXISTS alfred_result TEXT;",
+    # Alfred→Mantis-Umbenennung: die Spalte hieß bis hier "alfred_result" — ein
+    # blindes ADD COLUMN IF NOT EXISTS mantis_result hätte die alte Spalte samt
+    # historischem Inhalt als tote, verwaiste Spalte zurückgelassen und daneben
+    # eine neue, leere angelegt. RENAME COLUMN erhält die Werte; der Fallback
+    # ADD COLUMN IF NOT EXISTS greift nur bei einer wirklich frischen Installation
+    # (die nie eine alfred_result-Spalte hatte).
+    """
+    DO $$
+    BEGIN
+        IF EXISTS (SELECT 1 FROM information_schema.columns
+                   WHERE table_name='tasks' AND column_name='alfred_result')
+           AND NOT EXISTS (SELECT 1 FROM information_schema.columns
+                            WHERE table_name='tasks' AND column_name='mantis_result')
+        THEN
+            ALTER TABLE tasks RENAME COLUMN alfred_result TO mantis_result;
+        END IF;
+    END $$;
+    """,
+    "ALTER TABLE tasks ADD COLUMN IF NOT EXISTS mantis_result TEXT;",
     "ALTER TABLE tasks ADD COLUMN IF NOT EXISTS rejection_reason TEXT;",
     "ALTER TABLE tasks ADD COLUMN IF NOT EXISTS suggestion_status TEXT;",
     "ALTER TABLE tasks ADD COLUMN IF NOT EXISTS execution_phase TEXT DEFAULT 'pending';",
@@ -267,7 +285,7 @@ MIGRATIONS = [
     "ALTER TABLE tasks ADD COLUMN IF NOT EXISTS clarification_answer TEXT;",
     "ALTER TABLE tasks ADD COLUMN IF NOT EXISTS hold_until TIMESTAMPTZ;",
 
-    # Alfred' eigene Agenda (autonome To-dos)
+    # Mantis' eigene Agenda (autonome To-dos)
     """
     CREATE TABLE IF NOT EXISTS agenda (
         id          SERIAL PRIMARY KEY,
@@ -306,7 +324,7 @@ MIGRATIONS = [
     );
     """,
 
-    # Event-Log (alles was Alfred tut → fürs Dashboard "Mind"/Activity)
+    # Event-Log (alles was Mantis tut → fürs Dashboard "Mind"/Activity)
     """
     CREATE TABLE IF NOT EXISTS events_log (
         id          SERIAL PRIMARY KEY,
@@ -328,7 +346,7 @@ MIGRATIONS = [
     );
     """,
 
-    # Health (alfred-nativ, gespeist aus iCloud Health.json – unabhängig von ai-dashboard)
+    # Health (mantis-nativ, gespeist aus iCloud Health.json – unabhängig von ai-dashboard)
     """
     CREATE TABLE IF NOT EXISTS health_data (
         date             DATE PRIMARY KEY,
@@ -362,7 +380,7 @@ MIGRATIONS = [
     );
     """,
 
-    # Kalender (alfred-erstellte Events; gelesene Events kommen live aus ICS)
+    # Kalender (mantis-erstellte Events; gelesene Events kommen live aus ICS)
     """
     CREATE TABLE IF NOT EXISTS calendar_events (
         id          SERIAL PRIMARY KEY,
@@ -373,7 +391,7 @@ MIGRATIONS = [
         all_day     BOOLEAN DEFAULT FALSE,
         location    TEXT,
         notes       TEXT,
-        source      TEXT DEFAULT 'alfred',
+        source      TEXT DEFAULT 'mantis',
         created_at  TIMESTAMPTZ DEFAULT NOW()
     );
     """,
@@ -512,6 +530,12 @@ MIGRATIONS = [
     );
     """,
     "CREATE INDEX IF NOT EXISTS llm_usage_created_idx ON llm_usage (created_at DESC);",
+
+    # Bestandsdaten mit dem alten Sentinel-Wert 'alfred' auf 'mantis' nachziehen
+    # (Code liest/schreibt nach der Umbenennung nur noch 'mantis') — idempotent,
+    # nach dem ersten Lauf matcht WHERE ...='alfred' keine Zeilen mehr.
+    "UPDATE tasks SET assigned_to='mantis' WHERE assigned_to='alfred';",
+    "UPDATE calendar_events SET source='mantis' WHERE source='alfred';",
 ]
 
 
@@ -544,7 +568,7 @@ def set_setting(key: str, value) -> None:
 
 
 def log_event(type_: str, summary: str, detail: dict | None = None) -> None:
-    """Schreibt einen Eintrag ins Event-Log (fürs Dashboard 'Alfred Mind')."""
+    """Schreibt einen Eintrag ins Event-Log (fürs Dashboard 'Mantis Mind')."""
     import json
     try:
         execute(

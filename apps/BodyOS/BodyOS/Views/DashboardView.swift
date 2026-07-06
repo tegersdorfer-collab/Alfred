@@ -189,8 +189,8 @@ struct DashboardView: View {
                 Text("\(plan.exercises.count) Übungen · \(dayTypeEmoji(plan.dayType)) \(plan.dayType.capitalized)")
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
-                if !plan.alfredMessage.isEmpty {
-                    Text(plan.alfredMessage)
+                if !plan.mantisMessage.isEmpty {
+                    Text(plan.mantisMessage)
                         .font(.caption)
                         .foregroundStyle(.secondary)
                         .lineLimit(2)

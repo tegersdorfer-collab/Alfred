@@ -14,7 +14,7 @@ log = logging.getLogger("core.skills")
 
 
 @T.register("read_own_code",
-    "Liest eine Datei aus Alfred' eigener Codebase. Nutze dies bevor du Code änderst "
+    "Liest eine Datei aus Mantis' eigener Codebase. Nutze dies bevor du Code änderst "
     "um den aktuellen Stand zu verstehen.",
     {"path": {"type": "string", "description": "Relativer Pfad z.B. 'domains/health.py' oder 'web/index.html'"}},
     ["path"], "system")
@@ -23,7 +23,7 @@ async def _read_own_code(path: str):
     return read_file(path)
 
 @T.register("list_own_files",
-    "Listet Dateien in Alfred' Codebase. Nutze dies zur Orientierung.",
+    "Listet Dateien in Mantis' Codebase. Nutze dies zur Orientierung.",
     {"directory": {"type": "string", "description": "Verzeichnis z.B. 'domains' oder 'web' (leer = alles)"}},
     [], "system")
 async def _list_own_files(directory: str = ""):
@@ -32,7 +32,7 @@ async def _list_own_files(directory: str = ""):
     return "\n".join(files) if files else "Keine Dateien gefunden."
 
 @T.register("write_own_code",
-    "Schreibt oder überschreibt eine Datei in Alfred' Codebase. "
+    "Schreibt oder überschreibt eine Datei in Mantis' Codebase. "
     "Erstellt automatisch ein Git-Backup und triggert einen gesicherten Neustart. "
     "Bei Fehler wird automatisch zur alten Version zurückgerollt. "
     "Nutze dies für Bugfixes, neue Features, UI-Änderungen. "
@@ -47,7 +47,7 @@ async def _write_own_code(path: str, content: str, description: str):
     from domains.self_modify import write_file
     result = write_file(path, content, description)
     if result["ok"]:
-        return f"✅ {result['message']}\nAlfred startet neu und prüft ob alles funktioniert. Bei Fehler: automatischer Rollback zu {result['backup_commit'][:8]}."
+        return f"✅ {result['message']}\nMantis startet neu und prüft ob alles funktioniert. Bei Fehler: automatischer Rollback zu {result['backup_commit'][:8]}."
     return f"❌ {result['message']}"
 
 @T.register("create_skill",
@@ -127,14 +127,14 @@ async def _api_costs(days: int = 30):
 
 @T.register("claude_code_run",
     "Startet eine Claude Code Aufgabe im Hintergrund (z.B. 'Baue Feature X', "
-    "'Schreibe Tests für Y', 'Refactor Z'). Alfred spawnt einen claude-Subprocess, "
+    "'Schreibe Tests für Y', 'Refactor Z'). Mantis spawnt einen claude-Subprocess, "
     "du bekommst eine Push-Notification wenn er fertig ist.",
     {
         "task":    {"type": "string",  "description": "Was Claude Code tun soll"},
-        "workdir": {"type": "string",  "description": "Arbeitsverzeichnis (Standard: ~/Alfred)"},
+        "workdir": {"type": "string",  "description": "Arbeitsverzeichnis (Standard: ~/Mantis)"},
     },
     ["task"], "system")
-async def _claude_code_run(task: str, workdir: str = "/Users/timoegersdorfer/Alfred"):
+async def _claude_code_run(task: str, workdir: str = "/Users/timoegersdorfer/Mantis"):
     import asyncio, subprocess, time
     from core import push as _push, db as _db
 

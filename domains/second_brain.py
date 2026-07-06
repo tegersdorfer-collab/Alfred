@@ -324,7 +324,7 @@ async def sort_inbox_note(note: BrainNote, llm) -> str:
     Gibt die neue Kategorie zurück.
     """
     prompt = (
-        "Du bist Alfreds Wissens-Sortierer. Ordne diese Notiz einer Kategorie zu.\n\n"
+        "Du bist Mantis' Wissens-Sortierer. Ordne diese Notiz einer Kategorie zu.\n\n"
         f"Titel: {note.title}\nInhalt: {note.content[:400]}\n\n"
         "Kategorien:\n"
         "- context: Infos über Timo selbst (Schreibstil, Background, Präferenzen)\n"
@@ -356,17 +356,17 @@ async def sort_all_inbox(llm) -> list[dict]:
     return changes
 
 
-# ── Alfred-Tools (für den Agent) ──────────────────────────────────────────────
+# ── Mantis-Tools (für den Agent) ──────────────────────────────────────────────
 
 def brain_tool_save(title: str, content: str, category: str = "inbox",
                     tags: list[str] | None = None) -> str:
-    """Alfred-Tool: Notiz im Second Brain speichern."""
+    """Mantis-Tool: Notiz im Second Brain speichern."""
     note_id = add_note(title=title, content=content, category=category, tags=tags)
     return f"Notiz '{title}' gespeichert (ID {note_id}, Kategorie: {category})"
 
 
 def brain_tool_search(query: str) -> str:
-    """Alfred-Tool: Second Brain durchsuchen."""
+    """Mantis-Tool: Second Brain durchsuchen."""
     results = search_notes(query)
     if not results:
         return f"Keine Notizen zu '{query}' gefunden."
@@ -375,14 +375,14 @@ def brain_tool_search(query: str) -> str:
 
 
 def brain_tool_inbox_add(content: str) -> str:
-    """Alfred-Tool: Schnell etwas in die Inbox werfen."""
+    """Mantis-Tool: Schnell etwas in die Inbox werfen."""
     title = content[:60].split("\n")[0].strip() or "Inbox-Notiz"
     note_id = add_note(title=title, content=content, category="inbox")
     return f"In Inbox gespeichert (ID {note_id}): '{title}'"
 
 
 def brain_tool_daily_log(entry: str) -> str:
-    """Alfred-Tool: Eintrag in heutige Daily Note schreiben."""
+    """Mantis-Tool: Eintrag in heutige Daily Note schreiben."""
     daily = ensure_today_daily()
     new_content = daily.content + f"\n## {datetime.now().strftime('%H:%M')}\n{entry}\n"
     update_note(daily.id, content=new_content)

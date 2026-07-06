@@ -1,5 +1,5 @@
 """
-Skill-Factory: Alfred kann zur Laufzeit neue Tools für sich selbst erschaffen,
+Skill-Factory: Mantis kann zur Laufzeit neue Tools für sich selbst erschaffen,
 wenn ihm für eine Anfrage kein passendes Tool zur Verfügung steht – statt zu
 sagen "das kann ich nicht", baut er sich die Fähigkeit.
 
@@ -25,8 +25,8 @@ from core import tools as T
 
 log = logging.getLogger(__name__)
 
-ALFRED_DIR = Path(__file__).resolve().parent.parent
-SKILLS_DIR = ALFRED_DIR / "domains" / "dynamic_skills"
+MANTIS_DIR = Path(__file__).resolve().parent.parent
+SKILLS_DIR = MANTIS_DIR / "domains" / "dynamic_skills"
 SKILLS_DIR.mkdir(parents=True, exist_ok=True)
 
 MAX_SKILLS_PER_DAY = 5
@@ -113,10 +113,10 @@ def _record_attempt() -> None:
 def _git_commit(message: str) -> str:
     try:
         subprocess.run(["git", "add", "-A", "domains/dynamic_skills"],
-                       cwd=ALFRED_DIR, capture_output=True, check=True)
+                       cwd=MANTIS_DIR, capture_output=True, check=True)
         subprocess.run(["git", "commit", "-m", message, "--no-gpg-sign", "--allow-empty"],
-                       cwd=ALFRED_DIR, capture_output=True, text=True)
-        out = subprocess.run(["git", "rev-parse", "HEAD"], cwd=ALFRED_DIR,
+                       cwd=MANTIS_DIR, capture_output=True, text=True)
+        out = subprocess.run(["git", "rev-parse", "HEAD"], cwd=MANTIS_DIR,
                              capture_output=True, text=True)
         return out.stdout.strip()
     except Exception as e:
@@ -172,7 +172,7 @@ def create_skill(skill_name: str, description: str, source_code: str) -> dict:
         return {"ok": False, "message": f"Validierung fehlgeschlagen: {e}"}
 
     header = (
-        f'"""Automatisch von Alfred erstelltes Skill: {description}\n'
+        f'"""Automatisch von Mantis erstelltes Skill: {description}\n'
         f'Erstellt: {datetime.now().isoformat(timespec="seconds")}\n"""\n'
         "from core import tools as T\n\n\n"
     )

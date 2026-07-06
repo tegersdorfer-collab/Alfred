@@ -2,7 +2,7 @@ import Foundation
 
 final class FitnessAPI {
     static let shared = FitnessAPI()
-    private let client = AlfredClient.shared
+    private let client = MantisClient.shared
 
     func fetchTodayPlan() async throws -> TodayPlan {
         try await client.get("/api/fitness/today-plan")

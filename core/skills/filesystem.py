@@ -1,10 +1,10 @@
 """
 Datei-/App-Zugriff — voller Zugriff auf das gesamte Mac-Dateisystem, nicht nur
-Alfred' eigene Codebase (dafür siehe core/skills/system.py::read_own_code etc.).
+Mantis' eigene Codebase (dafür siehe core/skills/system.py::read_own_code etc.).
 
-Bewusst OHNE Lösch-Tool — nur Lesen/Schreiben/Auflisten/Öffnen, damit Alfred
+Bewusst OHNE Lösch-Tool — nur Lesen/Schreiben/Auflisten/Öffnen, damit Mantis
 Dateien nicht versehentlich zerstören kann. Timo hat diesen vollen Zugriff
-explizit angefragt ("Alfred soll alle Rechte haben, alles zu öffnen und zu
+explizit angefragt ("Mantis soll alle Rechte haben, alles zu öffnen und zu
 bearbeiten") — dieselbe Vertrauensstufe wie das bereits bestehende
 claude_code_run-Tool (spawnt einen vollwertigen Claude-Code-Subprocess).
 """
@@ -24,7 +24,7 @@ def _resolve(path: str) -> Path:
 
 
 @T.register("read_any_file",
-    "Liest den Inhalt einer beliebigen Datei auf Timos Mac (nicht nur Alfred' eigene "
+    "Liest den Inhalt einer beliebigen Datei auf Timos Mac (nicht nur Mantis' eigene "
     "Codebase — dafür gibt es read_own_code). Nutze dies wenn Timo dich bittet, eine "
     "bestimmte Datei/Dokument/Notiz zu lesen oder ihren Inhalt zusammenzufassen.",
     {"path": {"type": "string", "description": "Absoluter Pfad oder mit ~ beginnender Pfad, z.B. '~/Dokumente/notiz.txt'"}},
@@ -43,7 +43,7 @@ async def _read_any_file(path: str) -> str:
 
 
 @T.register("write_any_file",
-    "Schreibt oder überschreibt eine beliebige Datei auf Timos Mac (nicht nur Alfred' "
+    "Schreibt oder überschreibt eine beliebige Datei auf Timos Mac (nicht nur Mantis' "
     "eigene Codebase — dafür gibt es write_own_code). Erstellt fehlende Ordner automatisch. "
     "Nutze dies wenn Timo dich bittet, eine Notiz/Datei/Dokument zu erstellen oder zu bearbeiten.",
     {

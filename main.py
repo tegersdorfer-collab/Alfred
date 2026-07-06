@@ -1,5 +1,5 @@
 """
-Alfred – Entry Point
+Mantis – Entry Point
 """
 import asyncio
 import logging
@@ -13,17 +13,17 @@ logging.basicConfig(
     format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
     datefmt="%H:%M:%S",
 )
-log = logging.getLogger("alfred")
+log = logging.getLogger("mantis")
 
 
 def ensure_single_instance():
-    pidfile = "/tmp/alfred.pid"
+    pidfile = "/tmp/mantis.pid"
     if os.path.exists(pidfile):
         try:
             with open(pidfile) as f:
                 old_pid = int(f.read().strip())
             os.kill(old_pid, 0)
-            log.error(f"Alfred läuft bereits (PID {old_pid}). Beende mit: kill {old_pid}")
+            log.error(f"Mantis läuft bereits (PID {old_pid}). Beende mit: kill {old_pid}")
             sys.exit(1)
         except (ProcessLookupError, ValueError, OSError):
             pass  # Alter Prozess tot

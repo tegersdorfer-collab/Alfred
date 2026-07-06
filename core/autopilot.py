@@ -1,5 +1,5 @@
 """
-Autopilot – die autonome Engine von Alfred.
+Autopilot – die autonome Engine von Mantis.
 Zeitbewusste, wertorientierte proaktive Aktivitäten statt simpler Zufallsgedanken:
 
 - Morgen-Briefing (Wetter, Termine, Tasks, Habits, Ziel-Fokus)
@@ -89,7 +89,7 @@ class Autopilot:
         try:
             from core import push
             import asyncio as _asyncio
-            await _asyncio.to_thread(push.send_push, "Alfred", text, "/?view=chat")
+            await _asyncio.to_thread(push.send_push, "Mantis", text, "/?view=chat")
         except Exception:
             pass
         try:
@@ -235,10 +235,10 @@ class Autopilot:
             except Exception as e:
                 log.debug(f"Health-Anomalie: {e}")
 
-        # 5. Alfred-Tasks abarbeiten (Deep Execution)
+        # 5. Mantis-Tasks abarbeiten (Deep Execution)
         try:
             active = db.query(
-                """SELECT * FROM tasks WHERE assigned_to='alfred'
+                """SELECT * FROM tasks WHERE assigned_to='mantis'
                    AND parent_id IS NULL
                    AND status NOT IN ('done','archived')
                    AND (suggestion_status IS NULL OR suggestion_status='accepted')
@@ -302,7 +302,7 @@ class Autopilot:
                     "research_query": s.get("research_query"),
                 }, ensure_ascii=False)
                 db.execute(
-                    "INSERT INTO tasks (title, notes, parent_id, assigned_to, sort_order, status) VALUES (%s,%s,%s,'alfred',%s,'todo')",
+                    "INSERT INTO tasks (title, notes, parent_id, assigned_to, sort_order, status) VALUES (%s,%s,%s,'mantis',%s,'todo')",
                     (s["title"], notes_payload, tid, i)
                 )
 
@@ -371,7 +371,7 @@ class Autopilot:
                 log.warning(f"❌ Task fehlgeschlagen (alle Unteraufgaben archiviert): {task['title']}")
             else:
                 db.execute(
-                    "UPDATE tasks SET status='done', execution_phase='done', completed_at=NOW(), alfred_result=%s WHERE id=%s",
+                    "UPDATE tasks SET status='done', execution_phase='done', completed_at=NOW(), mantis_result=%s WHERE id=%s",
                     (result[:4000], tid)
                 )
                 # Kurze Zusammenfassung senden
@@ -728,7 +728,7 @@ class Autopilot:
                 """SELECT title, due FROM tasks
                    WHERE status NOT IN ('done','archived')
                    AND due <= CURRENT_DATE + 2
-                   AND (assigned_to IS NULL OR assigned_to != 'alfred')
+                   AND (assigned_to IS NULL OR assigned_to != 'mantis')
                    ORDER BY due ASC LIMIT 5"""
             )
             if overdue:
@@ -859,7 +859,7 @@ class Autopilot:
         facts = "\n".join(lines)
         prompt = (
             f"{self.identity}\n\n"
-            "Du bist Alfreds End-of-Day-Reflexions-Engine. Analysiere Timos heutigen Tag. "
+            "Du bist Mantis' End-of-Day-Reflexions-Engine. Analysiere Timos heutigen Tag. "
             "Identifiziere: 1) Klare Wins, 2) Wiederkehrende Muster (positiv/negativ), "
             "3) Ein konkretes Risiko für morgen, 4) Eine messbare Verbesserungsidee. "
             "Schreibe präzise, direkt, max. 5-6 Sätze. Keine Floskeln.\n\n"

@@ -1,4 +1,4 @@
-export type LogEntry = { speaker: 'user' | 'alfred'; text: string };
+export type LogEntry = { speaker: 'user' | 'mantis'; text: string };
 
 export const MAX_LOG_ENTRIES = 12;
 

@@ -135,7 +135,7 @@ class PromptBuilder:
             "erinnern, abhaken etc.) MUSST du das passende Tool aufrufen. NIEMALS sagen 'ich habe "
             "keine Funktion dafür' oder 'ich kann das nicht' wenn ein passendes Tool existiert.\n"
             "AUFGABEN-ZUWEISUNG: Wenn du create_task aufrufst, entscheidet das System automatisch "
-            "ob du (Alfred) oder Timo die Aufgabe bekommt – ruf einfach create_task auf.\n"
+            "ob du (Mantis) oder Timo die Aufgabe bekommt – ruf einfach create_task auf.\n"
             "FÄHIGKEITSLÜCKEN: Wenn KEIN passendes Tool existiert → create_skill nutzen um dir selbst "
             "ein neues Tool zu bauen (Python-Code, sofort aktiv, kein Neustart nötig).\n"
             "ZEIT/DATUM: Nutze den Wert aus '## Aktuell'. Für Termine: 'morgen 14:00', 'heute 18:30' "

@@ -1,8 +1,8 @@
-# Alfred Desktop
+# Mantis Desktop
 
-Tauri-Desktop-Client für Alfred (Windows + macOS aus einer Codebasis) — reiner Client,
+Tauri-Desktop-Client für Mantis (Windows + macOS aus einer Codebasis) — reiner Client,
 das Backend (Whisper/Piper/Ollama/DB) läuft zentral auf dem Mac. Holographic-HUD-Stil,
-generatives UI (Alfred wählt Layout + Widgets selbst).
+generatives UI (Mantis wählt Layout + Widgets selbst).
 
 Architektur: `docs/superpowers/specs/2026-07-04-multi-device-jarvis-ui-design.md`.
 Phasen-Historie: `docs/superpowers/plans/2026-07-04-*.md`.

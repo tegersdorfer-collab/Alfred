@@ -50,7 +50,7 @@ export function startVoiceCapture(
   function playReplyAudio(audioB64: string): void {
     try {
       // Vorherige Wiedergabe hart stoppen — verhindert überlappende Antworten,
-      // falls ein weiteres Segment eintrifft während Alfred noch spricht.
+      // falls ein weiteres Segment eintrifft während Mantis noch spricht.
       if (currentReplyAudio) {
         currentReplyAudio.pause();
         currentReplyAudio.onended = null;
@@ -59,7 +59,7 @@ export function startVoiceCapture(
       currentReplyAudio = audio;
       isPlayingReply = true;
       // VAD während der Wiedergabe pausieren (siehe tick()) — sonst hört das
-      // Mikrofon Alfreds eigene Stimme und löst sofort ein neues Segment aus.
+      // Mikrofon Mantis' eigene Stimme und löst sofort ein neues Segment aus.
       const stopPlayingFlag = () => {
         isPlayingReply = false;
       };
@@ -145,7 +145,7 @@ export function startVoiceCapture(
         function tick(): void {
           if (stopped || !audioCtx) return;
           if (isPlayingReply) {
-            // Mikrofon-Auswertung pausiert solange Alfred selbst spricht (Echo-Vermeidung).
+            // Mikrofon-Auswertung pausiert solange Mantis selbst spricht (Echo-Vermeidung).
             rafId = requestAnimationFrame(tick);
             return;
           }

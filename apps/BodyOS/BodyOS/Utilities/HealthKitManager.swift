@@ -167,7 +167,7 @@ final class HealthKitManager: ObservableObject {
 
     /// Aktiviert HealthKit Background-Delivery + Observer für die relevanten Typen.
     /// iOS weckt die App danach „bald" nach neuen Daten kurz im Hintergrund,
-    /// die App pusht dann zu Alfred und hakt ggf. den Lauf-Tag ab.
+    /// die App pusht dann zu Mantis und hakt ggf. den Lauf-Tag ab.
     func enableBackgroundSync() async {
         guard isAvailable else { return }
         if !isAuthorized { await requestAuthorization() }

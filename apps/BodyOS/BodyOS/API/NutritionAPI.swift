@@ -2,7 +2,7 @@ import Foundation
 
 final class NutritionAPI {
     static let shared = NutritionAPI()
-    private let client = AlfredClient.shared
+    private let client = MantisClient.shared
 
     func analyzePhoto(imageData: Data, annotation: String?) async throws {
         _ = try await client.postMultipart("/api/nutrition/analyze-photo", imageData: imageData, text: annotation)

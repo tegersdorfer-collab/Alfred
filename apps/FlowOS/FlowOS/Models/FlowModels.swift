@@ -2,7 +2,7 @@ import Foundation
 
 // MARK: - Tasks
 
-struct AlfredTask: Codable, Identifiable {
+struct MantisTask: Codable, Identifiable {
     let id: Int
     let title: String
     let notes: String?

@@ -1,10 +1,10 @@
 import Foundation
 
-final class AlfredClient {
-    static let shared = AlfredClient()
+final class MantisClient {
+    static let shared = MantisClient()
 
     var baseURL: String {
-        UserDefaults.standard.string(forKey: "alfred_base_url") ?? "http://macbook-air-von-timo.tail7e29ff.ts.net:7779"
+        UserDefaults.standard.string(forKey: "mantis_base_url") ?? "http://macbook-air-von-timo.tail7e29ff.ts.net:7779"
     }
 
     /// Direkte Tailscale-IP als Fallback, falls MagicDNS auf dem Gerät mal nicht auflöst.
@@ -23,7 +23,7 @@ final class AlfredClient {
     private func perform(_ make: (String) throws -> URLRequest) async throws -> Data {
         do {
             return try await withRetry { try await self.session.data(for: try make(self.baseURL)) }
-        } catch let e as AlfredError {
+        } catch let e as MantisError {
             throw e
         } catch {
             return try await withRetry { try await self.session.data(for: try make(self.fallbackBase)) }
@@ -101,7 +101,7 @@ final class AlfredClient {
             let (data, response) = try await attempt()
             try checkStatus(response, data: data)
             return data
-        } catch let err as AlfredError {
+        } catch let err as MantisError {
             throw err
         } catch {
             try await Task.sleep(nanoseconds: 1_500_000_000)
@@ -112,7 +112,7 @@ final class AlfredClient {
     }
 
     private func makeURL(_ path: String, base: String? = nil) throws -> URL {
-        guard let url = URL(string: (base ?? baseURL) + path) else { throw AlfredError.invalidURL }
+        guard let url = URL(string: (base ?? baseURL) + path) else { throw MantisError.invalidURL }
         return url
     }
 
@@ -120,25 +120,25 @@ final class AlfredClient {
         guard let http = response as? HTTPURLResponse,
               !(200...299).contains(http.statusCode) else { return }
         let msg = data.flatMap { String(data: $0, encoding: .utf8) } ?? ""
-        throw AlfredError.httpError(http.statusCode, msg)
+        throw MantisError.httpError(http.statusCode, msg)
     }
 
     private func decode<T: Decodable>(_ type: T.Type, from data: Data) throws -> T {
         let dec = JSONDecoder()
         dec.keyDecodingStrategy = .convertFromSnakeCase
         do { return try dec.decode(T.self, from: data) }
-        catch { throw AlfredError.decodingError(error.localizedDescription) }
+        catch { throw MantisError.decodingError(error.localizedDescription) }
     }
 }
 
-enum AlfredError: LocalizedError {
+enum MantisError: LocalizedError {
     case invalidURL, httpError(Int, String), decodingError(String), offline
     var errorDescription: String? {
         switch self {
         case .invalidURL: return "Ungültige URL"
         case .httpError(let c, let m): return "HTTP \(c): \(m)"
         case .decodingError(let m): return "Parse: \(m)"
-        case .offline: return "Alfred nicht erreichbar"
+        case .offline: return "Mantis nicht erreichbar"
         }
     }
 }

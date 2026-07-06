@@ -3,6 +3,6 @@
 <plist version="1.0">
 <dict>
 	<key>NSMicrophoneUsageDescription</key>
-	<string>Alfred hört mit, um Sprachbefehle ohne Wake-Word zu erkennen.</string>
+	<string>Mantis hört mit, um Sprachbefehle ohne Wake-Word zu erkennen.</string>
 </dict>
 </plist>

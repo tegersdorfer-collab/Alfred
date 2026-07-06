@@ -1,7 +1,7 @@
 """
-Kalender-Domäne (alfred-nativ).
+Kalender-Domäne (mantis-nativ).
 Quelle: Google/iCloud ICS-Abo-URL(s) – direkt gefetcht & geparst mit korrekter
-Zeitzone. Plus alfred-eigene Events aus calendar_events. KEINE ai-dashboard-Abhängigkeit.
+Zeitzone. Plus mantis-eigene Events aus calendar_events. KEINE ai-dashboard-Abhängigkeit.
 Synchron (mit Cache) damit alle bestehenden Aufrufstellen es nutzen können.
 """
 import logging
@@ -85,7 +85,7 @@ def upcoming(days: int = 7) -> list[dict]:
     cutoff = now - timedelta(minutes=30)
     events = [e for e in ics if e["start"] >= cutoff and e["start"] <= horizon]
 
-    alfred_events = []
+    mantis_events = []
     try:
         rows = db.query(
             "SELECT uid, title, start_ts, end_ts, all_day, location FROM calendar_events "
@@ -96,18 +96,18 @@ def upcoming(days: int = 7) -> list[dict]:
             s = r["start_ts"]
             if getattr(s, "tzinfo", None):
                 s = s.astimezone(_TZ).replace(tzinfo=None)
-            alfred_events.append({"uid": r["uid"], "title": r["title"], "start": s,
+            mantis_events.append({"uid": r["uid"], "title": r["title"], "start": s,
                                   "end": r["end_ts"], "all_day": r["all_day"],
                                   "location": r["location"],
-                                  "calendar": "Alfred", "source": "alfred"})
+                                  "calendar": "Mantis", "source": "mantis"})
     except Exception as e:
-        log.debug(f"Alfred-Events: {e}")
+        log.debug(f"Mantis-Events: {e}")
 
-    # ICS-Duplikate entfernen: Alfred-Events die via Google Cal zurücksynchronisiert wurden
+    # ICS-Duplikate entfernen: Mantis-Events die via Google Cal zurücksynchronisiert wurden
     def _is_duplicate(ics_ev: dict) -> bool:
         t = ics_ev["start"]
         title_lower = ics_ev["title"].lower()
-        for je in alfred_events:
+        for je in mantis_events:
             if je["title"].lower() == title_lower:
                 diff = abs((je["start"] - t).total_seconds())
                 if diff < 300:  # gleicher Titel + max 5min Abweichung
@@ -115,13 +115,13 @@ def upcoming(days: int = 7) -> list[dict]:
         return False
 
     events = [e for e in events if not _is_duplicate(e)]
-    events += alfred_events
+    events += mantis_events
     events.sort(key=lambda e: e["start"])
     return events[:25]
 
 
 def find_event(query: str) -> dict | None:
-    """Findet einen Event per Titelsuche – zuerst in Alfred-DB, dann Google Calendar."""
+    """Findet einen Event per Titelsuche – zuerst in Mantis-DB, dann Google Calendar."""
     rows = db.query(
         "SELECT uid, title, start_ts, end_ts, all_day, location, gcal_id "
         "FROM calendar_events WHERE LOWER(title) LIKE %s ORDER BY start_ts LIMIT 1",
@@ -142,9 +142,9 @@ def find_event(query: str) -> dict | None:
 def update_event(uid: str | None, title: str = None, start: datetime = None,
                  end: datetime = None, location: str = None, notes: str = None,
                  gcal_id: str | None = None) -> bool:
-    """Aktualisiert einen Alfred-Event (DB + Google Calendar)."""
+    """Aktualisiert einen Mantis-Event (DB + Google Calendar)."""
     if not uid:
-        # Termin existiert nur in Google Calendar, nicht in der Alfred-DB
+        # Termin existiert nur in Google Calendar, nicht in der Mantis-DB
         if gcal_id and gcal_writer.is_available():
             return bool(gcal_writer.update_event(
                 gcal_id, title=title, start=start, end=end,
@@ -187,11 +187,11 @@ def delete_event(uid: str | None, gcal_id: str | None = None) -> bool:
 
 def create_event(title: str, start: datetime, end: datetime = None,
                  location: str = None, notes: str = None, all_day: bool = False) -> str:
-    uid = f"alfred-{uuid.uuid4()}"
+    uid = f"mantis-{uuid.uuid4()}"
     if end is None and not all_day:
         end = start + timedelta(hours=1)
 
-    # In Alfred-DB speichern (immer)
+    # In Mantis-DB speichern (immer)
     db.execute(
         "INSERT INTO calendar_events (uid, title, start_ts, end_ts, all_day, location, notes) "
         "VALUES (%s,%s,%s,%s,%s,%s,%s)",

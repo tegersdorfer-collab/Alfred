@@ -2,7 +2,7 @@ import SwiftUI
 
 @MainActor
 final class HealthViewModel: ObservableObject {
-    @Published var alfredHistory: [HealthEntry] = []
+    @Published var mantisHistory: [HealthEntry] = []
     @Published var localSnapshots: [DailyHealthSnapshot] = []
     @Published var isLoading = false
     @Published var isSyncing = false
@@ -20,10 +20,10 @@ final class HealthViewModel: ObservableObject {
     func load() async {
         isLoading = true
         do {
-            alfredHistory = try await HealthAPI.shared.fetchHistory(days: 30)
-            OfflineCache.shared.save(alfredHistory, key: "cache_health")
+            mantisHistory = try await HealthAPI.shared.fetchHistory(days: 30)
+            OfflineCache.shared.save(mantisHistory, key: "cache_health")
         } catch {
-            alfredHistory = OfflineCache.shared.load([HealthEntry].self, key: "cache_health") ?? []
+            mantisHistory = OfflineCache.shared.load([HealthEntry].self, key: "cache_health") ?? []
         }
         isLoading = false
     }
@@ -43,10 +43,10 @@ final class HealthViewModel: ObservableObject {
         isSyncing = false
     }
 
-    var latestEntry: HealthEntry? { alfredHistory.first }
+    var latestEntry: HealthEntry? { mantisHistory.first }
 
     func chartData(for metric: HealthMetric) -> [(String, Double)] {
-        alfredHistory.reversed().compactMap { entry in
+        mantisHistory.reversed().compactMap { entry in
             let value: Double?
             switch metric {
             case .steps: value = entry.steps.map(Double.init)
@@ -104,7 +104,7 @@ struct HealthView: View {
         VStack(spacing: 12) {
             Image(systemName: "heart.fill").font(.largeTitle).foregroundStyle(.red)
             Text("HealthKit Zugriff benötigt").font(.headline)
-            Text("Erlaube BodyOS den Zugriff auf deine Gesundheitsdaten um sie mit Alfred zu synchronisieren")
+            Text("Erlaube BodyOS den Zugriff auf deine Gesundheitsdaten um sie mit Mantis zu synchronisieren")
                 .font(.subheadline).foregroundStyle(.secondary).multilineTextAlignment(.center)
             Button("Zugriff erlauben") { Task { await hk.requestAuthorization() } }
                 .buttonStyle(.borderedProminent).tint(.red)
@@ -221,7 +221,7 @@ struct HealthView: View {
     private var historyList: some View {
         VStack(alignment: .leading, spacing: 8) {
             Text("Einträge").font(.headline).padding(.horizontal)
-            ForEach(vm.alfredHistory.prefix(14)) { entry in
+            ForEach(vm.mantisHistory.prefix(14)) { entry in
                 HealthEntryRow(entry: entry)
             }
         }

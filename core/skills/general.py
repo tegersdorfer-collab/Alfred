@@ -28,7 +28,7 @@ def _git_history_import(repos: str = "auto", limit: int = 100) -> str:
     from pathlib import Path
     from domains import second_brain as _brain
 
-    search_roots = [Path.home() / d for d in ["Documents", "Developer", "Projects", "repos", "code", "Alfred"]]
+    search_roots = [Path.home() / d for d in ["Documents", "Developer", "Projects", "repos", "code", "Mantis"]]
 
     if repos.strip().lower() == "auto":
         found = []
@@ -124,7 +124,7 @@ async def _delegate_task(goal: str, context: str = "", tools: list | None = None
 
 @T.register(
     "list_skill_procedures",
-    "Zeigt alle gespeicherten SKILL.md Prozeduren die Alfred über die Zeit gelernt hat.",
+    "Zeigt alle gespeicherten SKILL.md Prozeduren die Mantis über die Zeit gelernt hat.",
     [],
     category="general",
 )
@@ -139,7 +139,7 @@ def _list_skill_procedures() -> str:
 
 @T.register(
     "update_skill_procedure",
-    "Aktualisiert eine bestehende SKILL.md Prozedur. Nutzen wenn Alfred eine bessere Vorgehensweise für eine bekannte Aufgabe gelernt hat.",
+    "Aktualisiert eine bestehende SKILL.md Prozedur. Nutzen wenn Mantis eine bessere Vorgehensweise für eine bekannte Aufgabe gelernt hat.",
     {
         "name": {"type": "string", "description": "Skill-Name (snake_case)"},
         "new_body": {"type": "string", "description": "Neue Prozedur-Beschreibung"},

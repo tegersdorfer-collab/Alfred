@@ -6,7 +6,7 @@ Routing-Logik (Keyword-basiert, kein extra Router-Modell nötig):
   - Briefing/Insights       → BG_REASONING_MODEL (DeepSeek-R1-14B)
   - Alles andere            → BG_DEFAULT_MODEL  (qwen3.5:9b, bleibt Default)
 
-Für den Rest von Alfred ist RoutedLLMProvider ein normaler LLMProvider —
+Für den Rest von Mantis ist RoutedLLMProvider ein normaler LLMProvider —
 kein Caller muss geändert werden.
 """
 import logging

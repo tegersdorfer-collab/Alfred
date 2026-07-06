@@ -7,7 +7,7 @@ struct TodayPlan: Codable {
     let dayType: String
     let dayLabel: String
     let intensityFactor: Double
-    let alfredMessage: String
+    let mantisMessage: String
     let health: HealthSnapshot?
     let exercises: [PlannedExercise]
     let doneToday: Bool?

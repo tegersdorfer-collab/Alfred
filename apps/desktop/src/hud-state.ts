@@ -9,13 +9,13 @@ function formatTime(now: Date): string {
 export function deriveHudState(health: HealthStatus, now: Date): HudState {
   if (health.ok) {
     return {
-      label: 'Alfred ist bereit.',
+      label: 'Mantis ist bereit.',
       ringColor: '#00e5ff',
       statusLine: `Verbunden · ${formatTime(now)}`,
     };
   }
   return {
-    label: 'Keine Verbindung zu Alfred.',
+    label: 'Keine Verbindung zu Mantis.',
     ringColor: '#334155',
     statusLine: `Offline · ${formatTime(now)}`,
   };

@@ -64,7 +64,7 @@ async def _brain_search(query: str):
 
 @T.register("brain_inbox",
     "Wirft schnell einen Gedanken, eine Idee oder einen Brain-Dump in die Inbox des Second Brains. "
-    "Alfred sortiert die Inbox regelmäßig automatisch ein.",
+    "Mantis sortiert die Inbox regelmäßig automatisch ein.",
     {"content": {"type": "string", "description": "Der Gedanke oder die Idee die gespeichert werden soll"}},
     ["content"], "knowledge")
 async def _brain_inbox(content: str):

@@ -13,7 +13,7 @@ from pydantic import Field, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
-class AlfredSettings(BaseSettings):
+class MantisSettings(BaseSettings):
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",
@@ -72,7 +72,7 @@ class AlfredSettings(BaseSettings):
     CALENDAR_ICS_URLS: str = ""
 
     # ── Database ─────────────────────────────────────────────────────────────
-    DATABASE_URL: str = "postgresql://localhost:5432/alfred"
+    DATABASE_URL: str = "postgresql://localhost:5432/mantis"
 
     # ── Web Push (VAPID) ─────────────────────────────────────────────────────
     VAPID_PRIVATE_KEY_PATH: str = "data/vapid_private.pem"
@@ -125,7 +125,7 @@ class AlfredSettings(BaseSettings):
     def warn_owner_name(cls, v: str) -> str:
         if not v:
             import logging
-            logging.getLogger("alfred.settings").warning(
+            logging.getLogger("mantis.settings").warning(
                 "⚠️  OWNER_NAME nicht in .env gesetzt – bitte eintragen"
             )
         return v
@@ -138,7 +138,7 @@ class AlfredSettings(BaseSettings):
         return v
 
     @model_validator(mode="after")
-    def thermal_order(self) -> "AlfredSettings":
+    def thermal_order(self) -> "MantisSettings":
         if self.THERMAL_TARGET_CELSIUS >= self.THERMAL_MAX_CELSIUS:
             raise ValueError(
                 f"THERMAL_TARGET_CELSIUS ({self.THERMAL_TARGET_CELSIUS}) muss kleiner als "
@@ -147,4 +147,4 @@ class AlfredSettings(BaseSettings):
         return self
 
 
-cfg = AlfredSettings()
+cfg = MantisSettings()

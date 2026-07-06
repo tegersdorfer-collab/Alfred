@@ -12,7 +12,7 @@ from llm.base import LLMProvider, Message
 
 log = logging.getLogger(__name__)
 
-INSIGHT_PROMPT = """Du bist Alfred. Analysiere Timos Daten und generiere EINE sinnvolle, konkrete Aufgabe.
+INSIGHT_PROMPT = """Du bist Mantis. Analysiere Timos Daten und generiere EINE sinnvolle, konkrete Aufgabe.
 
 ## Gesundheitsdaten (letzte 14 Tage):
 {health_summary}
@@ -34,10 +34,10 @@ INSIGHT_PROMPT = """Du bist Alfred. Analysiere Timos Daten und generiere EINE si
 - Direkt aus einem KONKRETEN Datenmuster abgeleitet (benenne das Muster)
 - Kein "Python-Skript" – lieber: Trainingsplan, Ernährungsanalyse, Recherche, Strategie, Text
 - Nicht zu technisch, nicht zu abstrakt
-- ALFRED übernimmt alles was möglich ist
+- MANTIS übernimmt alles was möglich ist
 
 Antworte im Format:
-TITEL | KURZE BEGRÜNDUNG (Datenmuster) | ALFRED_ODER_USER"""
+TITEL | KURZE BEGRÜNDUNG (Datenmuster) | MANTIS_ODER_USER"""
 
 
 async def generate_insight_task(llm: LLMProvider, lzg=None) -> bool:
@@ -157,7 +157,7 @@ async def generate_insight_task(llm: LLMProvider, lzg=None) -> bool:
             return False
         title = parts[0]
         notes = parts[1] if len(parts) > 1 else None
-        assignee = "alfred" if len(parts) < 3 or "ALFRED" in parts[2].upper() else "user"
+        assignee = "mantis" if len(parts) < 3 or "MANTIS" in parts[2].upper() else "user"
     except Exception as e:
         log.warning(f"Insight-Generierung fehlgeschlagen: {e}")
         return False

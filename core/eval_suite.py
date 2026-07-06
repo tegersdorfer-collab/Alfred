@@ -1,7 +1,7 @@
 """
 core/eval_suite.py
 
-Eval-Suite: Benannte Test-Cases für Alfred-Verhalten.
+Eval-Suite: Benannte Test-Cases für Mantis-Verhalten.
 Läuft via `python -m core.eval_suite` oder API-Endpoint.
 
 Jeder Case läuft durch den ECHTEN Agent-Loop (System-Prompt aus prompt_builder,
@@ -44,13 +44,13 @@ EVAL_CASES: list[EvalCase] = [
         prompt="Erstelle eine Aufgabe: morgen Sport machen",
         must_call_tool=["create_task"],
         must_not_contain=["kann ich nicht", "habe keine Funktion", "bin nicht in der Lage"],
-        description="Alfred soll niemals sagen 'ich kann das nicht' wenn ein passendes Tool existiert",
+        description="Mantis soll niemals sagen 'ich kann das nicht' wenn ein passendes Tool existiert",
     ),
     EvalCase(
         name="no_memory_denial",
         prompt="Erinnerst du dich an was wir letzte Woche besprochen haben?",
         must_not_contain=["kein Gedächtnis", "kann mich nicht erinnern", "keine Erinnerungen"],
-        description="Alfred soll nicht leugnen ein Langzeit-Gedächtnis zu haben",
+        description="Mantis soll nicht leugnen ein Langzeit-Gedächtnis zu haben",
     ),
     EvalCase(
         name="task_create_on_request",
@@ -62,13 +62,13 @@ EVAL_CASES: list[EvalCase] = [
         name="german_response",
         prompt="Was ist das Wetter heute?",
         must_not_contain=["The weather", "Today's weather", "I don't"],
-        description="Alfred antwortet standardmäßig auf Deutsch",
+        description="Mantis antwortet standardmäßig auf Deutsch",
     ),
     EvalCase(
         name="no_hallucinated_data",
         prompt="Wie viele Kalorien habe ich gestern gegessen?",
         must_not_contain=["2500 kcal", "3000 kcal", "1800 kcal"],  # erfundene Zahlen
-        description="Alfred soll keine spezifischen Zahlen erfinden wenn keine Daten vorhanden",
+        description="Mantis soll keine spezifischen Zahlen erfinden wenn keine Daten vorhanden",
     ),
     EvalCase(
         name="recall_gate_fires",

@@ -1,11 +1,11 @@
-# Alfred
+# Mantis
 
 Persönlicher, autonomer AI-Concierge — läuft vollständig lokal auf einem Mac (Apple Silicon),
 erreichbar über Telegram und ein mobil-first PWA-Dashboard.
 
 ---
 
-## Was Alfred kann
+## Was Mantis kann
 
 ### Agent-Kern
 - **ReAct-Loop** mit 57 Tools, multi-step Ausführung, parallelem Tool-Calling
@@ -28,7 +28,7 @@ erreichbar über Telegram und ein mobil-first PWA-Dashboard.
 - **Background Review Loop**: Nach jedem Turn läuft ein Fork-Agent der automatisch Skills/Memories speichert
 
 ### Selbst-Verbesserung
-- **Skill-Factory**: Alfred schreibt Python-Skills zur Laufzeit (AST-validiert, sofort aktiv)
+- **Skill-Factory**: Mantis schreibt Python-Skills zur Laufzeit (AST-validiert, sofort aktiv)
 - **SKILL.md Prozeduren**: Natürlichsprachliche Workflows werden automatisch aus Konversationen gelernt
 - **Reflexions-Engine**: Ton/Stil-Anpassung, Längen-Kalibrierung, Proactive Engagement Decay
 - **Background Review Loop** (Hermes-Pattern): `BE ACTIVE` — die meisten Turns speichern etwas
@@ -68,7 +68,7 @@ erreichbar über Telegram und ein mobil-first PWA-Dashboard.
 - **Memory-Viewer**: Diary, Knowledge-Graph (vis.js), Mahlzeiten
 - **Home**: Top-3 Fokus, Slipping Tasks, Daily Resurfacing, Wetter, Health-Metriken
 - **Eval-Suite**: `/api/eval/run` — 6 benannte Test-Cases für Agent-Verhalten
-- **MCP-Server**: Alfred als Tool-Provider für Claude Code (`/mcp/` Endpunkte)
+- **MCP-Server**: Mantis als Tool-Provider für Claude Code (`/mcp/` Endpunkte)
 
 ### Native iOS-Apps
 Drei fokussierte SwiftUI-Apps gegen dieselbe FastAPI (`:7779`), erreichbar
@@ -76,7 +76,7 @@ Drei fokussierte SwiftUI-Apps gegen dieselbe FastAPI (`:7779`), erreichbar
 
 | App | Bündelt | Highlights |
 |-----|---------|-----------|
-| **BodyOS** | Training + Ernährung + Health | Alfred-generierte Sessions (HRV/Schlaf), Foto-Makros, HealthKit-Push |
+| **BodyOS** | Training + Ernährung + Health | Mantis-generierte Sessions (HRV/Schlaf), Foto-Makros, HealthKit-Push |
 | **BrainOS** | Second Brain | Wiki-Links, Force-directed Graph (SwiftUI Canvas), Quick Capture |
 | **FlowOS** | Tasks + Kalender + Habits | Today-View, Fokus-Timer, Habit-Grid |
 
@@ -102,8 +102,8 @@ Drei fokussierte SwiftUI-Apps gegen dieselbe FastAPI (`:7779`), erreichbar
 ```bash
 pip install -r requirements.txt
 cp .env.example .env       # API-Keys & DB-Config eintragen
-createdb alfred            # PostgreSQL + pgvector Extension
-python3 main.py            # Alfred + Dashboard starten (Port 7779)
+createdb mantis            # PostgreSQL + pgvector Extension
+python3 main.py            # Mantis + Dashboard starten (Port 7779)
 ```
 
 ---
@@ -111,7 +111,7 @@ python3 main.py            # Alfred + Dashboard starten (Port 7779)
 ## Architektur
 
 ```
-Alfred/
+Mantis/
 ├── main.py                  # Entry Point — Orchestrator + Dashboard im selben Prozess
 ├── orchestrator.py          # Schlanke Fassade: Init, Start/Stop, öffentliche API
 │
@@ -148,7 +148,7 @@ Alfred/
 ├── web/
 │   ├── api.py               # FastAPI App-Factory: bindet Router aus web/routers/
 │   ├── routers/             # REST + SSE pro Domäne (tasks, brain, fitness, …)
-│   ├── mcp_server.py        # Alfred als MCP-Server (stdio JSON-RPC)
+│   ├── mcp_server.py        # Mantis als MCP-Server (stdio JSON-RPC)
 │   ├── index.html           # PWA-Frontend (Single-File, ~2400 Zeilen)
 │   └── sw.js                # Service Worker
 │

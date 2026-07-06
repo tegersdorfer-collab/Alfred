@@ -1,5 +1,5 @@
 """
-Health-Domäne (alfred-nativ).
+Health-Domäne (mantis-nativ).
 Datenquelle: Swift-App pusht via POST /api/health/push (HealthKit background delivery).
 Fallback-Poll alle 30 Minuten falls Push nicht kommt (HEALTH_API_URL).
 """

@@ -2,13 +2,13 @@ import SwiftUI
 
 @MainActor
 final class TasksViewModel: ObservableObject {
-    @Published var tasks: [AlfredTask] = []
+    @Published var tasks: [MantisTask] = []
     @Published var filterStatus = "active"
     @Published var isLoading = false
     @Published var error: String?
-    @Published var selectedTask: AlfredTask?
+    @Published var selectedTask: MantisTask?
 
-    var filtered: [AlfredTask] {
+    var filtered: [MantisTask] {
         switch filterStatus {
         case "active": return tasks.filter { $0.status == "todo" || $0.status == "in_progress" }
         case "done": return tasks.filter { $0.status == "done" }
@@ -16,7 +16,7 @@ final class TasksViewModel: ObservableObject {
         }
     }
 
-    var grouped: [(String, [AlfredTask])] {
+    var grouped: [(String, [MantisTask])] {
         Dictionary(grouping: filtered) { $0.project ?? "Ohne Projekt" }
             .sorted { $0.key < $1.key }
     }
@@ -28,16 +28,16 @@ final class TasksViewModel: ObservableObject {
             OfflineCache.shared.save(tasks, key: "cache_tasks")
         } catch {
             self.error = error.localizedDescription
-            tasks = OfflineCache.shared.load([AlfredTask].self, key: "cache_tasks") ?? []
+            tasks = OfflineCache.shared.load([MantisTask].self, key: "cache_tasks") ?? []
         }
         isLoading = false
     }
 
-    func complete(_ task: AlfredTask) async {
+    func complete(_ task: MantisTask) async {
         try? await FlowAPI.shared.completeTask(task.id); await load()
     }
 
-    func delete(_ task: AlfredTask) async {
+    func delete(_ task: MantisTask) async {
         try? await FlowAPI.shared.deleteTask(task.id); await load()
     }
 }
@@ -109,7 +109,7 @@ struct TasksView: View {
 }
 
 struct TaskRowView: View {
-    let task: AlfredTask
+    let task: MantisTask
     let onComplete: () -> Void
 
     var body: some View {
@@ -172,7 +172,7 @@ struct TaskRowView: View {
 }
 
 struct TaskEditorView: View {
-    let task: AlfredTask?
+    let task: MantisTask?
     @State private var title: String
     @State private var notes: String
     @State private var status: String
@@ -185,7 +185,7 @@ struct TaskEditorView: View {
     @State private var error: String?
     @Environment(\.dismiss) private var dismiss
 
-    init(task: AlfredTask?) {
+    init(task: MantisTask?) {
         self.task = task
         _title = State(initialValue: task?.title ?? "")
         _notes = State(initialValue: task?.notes ?? "")
@@ -251,11 +251,11 @@ struct TaskEditorView: View {
                 let req = UpdateTaskRequest(title: title, notes: notes.isEmpty ? nil : notes, status: status,
                                            priority: priority, due: dueDateStr, project: project.isEmpty ? nil : project, tags: tagList)
                 struct StatusPatch: Encodable { let status: String }
-                let _: OkResponse = try await AlfredClient.shared.post("/api/tasks/\(id)/status", body: StatusPatch(status: req.status))
+                let _: OkResponse = try await MantisClient.shared.post("/api/tasks/\(id)/status", body: StatusPatch(status: req.status))
             } else {
                 let req = CreateTaskRequest(title: title, notes: notes.isEmpty ? nil : notes, status: status,
                                            priority: priority, due: dueDateStr, project: project.isEmpty ? nil : project, tags: tagList)
-                let _: OkResponse = try await AlfredClient.shared.post("/api/tasks", body: req)
+                let _: OkResponse = try await MantisClient.shared.post("/api/tasks", body: req)
             }
             dismiss()
         } catch { self.error = error.localizedDescription }

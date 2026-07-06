@@ -1,5 +1,5 @@
 """openWakeWord-Wrapper — erkennt das Wake-Word 'Mantis' im laufenden Audiostrom,
-ersetzt für die Erstaktivierung den LLM-basierten is_addressed_to_alfred()-Check
+ersetzt für die Erstaktivierung den LLM-basierten is_addressed_to_mantis()-Check
 aus core/voice.py (siehe docs/superpowers/specs/2026-07-05-vad-wakeword-streaming-design.md).
 
 WICHTIG: nutzt NICHT openwakeword.model.Model.predict()/predict_clip() — deren

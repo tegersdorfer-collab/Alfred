@@ -25,7 +25,7 @@ from domains.self_modify import write_file
 
 from web.routers._helpers import _has_body, _jsonable, _health_dict, _event_dict
 
-log = logging.getLogger("alfred.api")
+log = logging.getLogger("mantis.api")
 WEB_DIR = Path(__file__).parent.parent
 
 
@@ -98,7 +98,7 @@ def build_router(orch=None) -> APIRouter:
     @router.get("/manifest.json")
     def manifest():
         return JSONResponse({
-            "name": "Alfred", "short_name": "Alfred",
+            "name": "Mantis", "short_name": "Mantis",
             "start_url": "/", "display": "standalone",
             "background_color": "#0a0f1e", "theme_color": "#0a0f1e",
             "icons": [{"src": "https://em-content.zobj.net/source/apple/391/robot_1f916.png",

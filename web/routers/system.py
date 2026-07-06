@@ -25,7 +25,7 @@ from domains.self_modify import write_file
 
 from web.routers._helpers import _has_body, _jsonable, _health_dict, _event_dict
 
-log = logging.getLogger("alfred.api")
+log = logging.getLogger("mantis.api")
 WEB_DIR = Path(__file__).parent.parent
 
 
@@ -36,7 +36,7 @@ def build_router(orch=None) -> APIRouter:
     def status():
         pid = None; running = False
         try:
-            pid = int(open("/tmp/alfred.pid").read().strip())
+            pid = int(open("/tmp/mantis.pid").read().strip())
             os.kill(pid, 0); running = True
         except Exception:
             pass
@@ -116,7 +116,7 @@ def build_router(orch=None) -> APIRouter:
     @router.post("/api/push/test")
     async def push_test():
         from core import push as _push
-        n = await asyncio.to_thread(_push.send_push, "Alfred", "Test-Benachrichtigung — Push funktioniert! 🎉", "/")
+        n = await asyncio.to_thread(_push.send_push, "Mantis", "Test-Benachrichtigung — Push funktioniert! 🎉", "/")
         return {"ok": True, "sent": n}
 
     @router.get("/api/self-changes")

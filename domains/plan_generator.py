@@ -2,7 +2,7 @@
 import logging
 from datetime import date, datetime
 
-log = logging.getLogger("alfred.plan")
+log = logging.getLogger("mantis.plan")
 
 DEFAULT_PLAN = {
     "lower": [
@@ -164,7 +164,7 @@ async def generate_and_save(chat_llm, bg_llm=None) -> dict | None:
             if ex["name"] not in seen:
                 seen.add(ex["name"])
                 fitness.ensure_exercise(ex["name"])
-    fitness.save_training_plan(name="Alfred-Block", goal=profile.get("goal", "muscle"),
+    fitness.save_training_plan(name="Mantis-Block", goal=profile.get("goal", "muscle"),
                                weeks=6, plan=plan)
     log.info("Neuer A/B-Trainingsplan generiert und gespeichert")
     return plan

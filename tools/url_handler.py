@@ -196,7 +196,7 @@ async def _fetch_article(url: str) -> dict:
     try:
         import httpx
         async with httpx.AsyncClient(timeout=15, follow_redirects=True,
-                                      headers={"User-Agent": "Mozilla/5.0 Alfred/1.0"}) as c:
+                                      headers={"User-Agent": "Mozilla/5.0 Mantis/1.0"}) as c:
             r = await c.get(url)
         html = r.text
         extractor = _HTMLTextExtractor()

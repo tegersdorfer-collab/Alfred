@@ -53,7 +53,7 @@ final class NutritionViewModel: ObservableObject {
     }
 
     func deleteMeal(id: Int) async {
-        try? await AlfredClient.shared.delete("/api/nutrition/\(id)")
+        try? await MantisClient.shared.delete("/api/nutrition/\(id)")
         await load()
     }
 

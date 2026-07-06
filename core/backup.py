@@ -14,8 +14,8 @@ from core import db
 
 log = logging.getLogger(__name__)
 
-ALFRED_DIR = Path(__file__).resolve().parent.parent
-BACKUP_DIR = ALFRED_DIR / "data" / "backups"
+MANTIS_DIR = Path(__file__).resolve().parent.parent
+BACKUP_DIR = MANTIS_DIR / "data" / "backups"
 KEEP_DAYS = 30
 
 
@@ -23,7 +23,7 @@ def run_backup() -> dict:
     """Erstellt ein komprimiertes pg_dump-Backup. Gibt {'ok', 'path'/'message'} zurück."""
     BACKUP_DIR.mkdir(parents=True, exist_ok=True)
     stamp = datetime.now().strftime("%Y-%m-%d_%H%M%S")
-    out_path = BACKUP_DIR / f"alfred_{stamp}.sql.gz"
+    out_path = BACKUP_DIR / f"mantis_{stamp}.sql.gz"
 
     try:
         result = subprocess.run(
@@ -50,7 +50,7 @@ def run_backup() -> dict:
 
 def _prune_old(keep_days: int = KEEP_DAYS) -> None:
     cutoff = datetime.now() - timedelta(days=keep_days)
-    for p in BACKUP_DIR.glob("alfred_*.sql.gz"):
+    for p in BACKUP_DIR.glob("mantis_*.sql.gz"):
         try:
             if datetime.fromtimestamp(p.stat().st_mtime) < cutoff:
                 p.unlink()
@@ -63,7 +63,7 @@ def list_backups() -> list[dict]:
     if not BACKUP_DIR.exists():
         return []
     out = []
-    for p in sorted(BACKUP_DIR.glob("alfred_*.sql.gz"), reverse=True):
+    for p in sorted(BACKUP_DIR.glob("mantis_*.sql.gz"), reverse=True):
         st = p.stat()
         out.append({
             "name": p.name,

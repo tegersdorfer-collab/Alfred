@@ -10,7 +10,7 @@
 		FA01 /* FlowOSApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF01 /* FlowOSApp.swift */; };
 		FA02 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF02 /* ContentView.swift */; };
 		FA03 /* FlowModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF03 /* FlowModels.swift */; };
-		FA04 /* AlfredClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF04 /* AlfredClient.swift */; };
+		FA04 /* MantisClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF04 /* MantisClient.swift */; };
 		FA05 /* FlowAPI.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF05 /* FlowAPI.swift */; };
 		FA06 /* TodayView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF06 /* TodayView.swift */; };
 		FA07 /* HabitsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF07 /* HabitsView.swift */; };
@@ -27,7 +27,7 @@
 		FF01 /* FlowOSApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FlowOSApp.swift; sourceTree = "<group>"; };
 		FF02 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		FF03 /* FlowModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FlowModels.swift; sourceTree = "<group>"; };
-		FF04 /* AlfredClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AlfredClient.swift; sourceTree = "<group>"; };
+		FF04 /* MantisClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MantisClient.swift; sourceTree = "<group>"; };
 		FF05 /* FlowAPI.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FlowAPI.swift; sourceTree = "<group>"; };
 		FF06 /* TodayView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TodayView.swift; sourceTree = "<group>"; };
 		FF07 /* HabitsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HabitsView.swift; sourceTree = "<group>"; };
@@ -165,7 +165,7 @@
 				FA01 /* FlowOSApp.swift in Sources */,
 				FA02 /* ContentView.swift in Sources */,
 				FA03 /* FlowModels.swift in Sources */,
-				FA04 /* AlfredClient.swift in Sources */,
+				FA04 /* MantisClient.swift in Sources */,
 				FA05 /* FlowAPI.swift in Sources */,
 				FA06 /* TodayView.swift in Sources */,
 				FA07 /* HabitsView.swift in Sources */,

@@ -2,7 +2,7 @@
 Voice — API-Router für die Desktop-Sprachsteuerung (Phase 5a Erfassung + Phase 5b
 Agent-Anbindung + TTS-Antwort).
 Nimmt vom Tauri-Client hochgeladene Audio-Segmente entgegen, transkribiert sie
-lokal, prüft ob sie an Alfred gerichtet sind, und lässt bei Adressierung den
+lokal, prüft ob sie an Mantis gerichtet sind, und lässt bei Adressierung den
 echten Agenten (orch.dashboard_respond) antworten — Antwort kommt als Text UND
 als synthetisierte Sprache (Piper-TTS, base64) zurück, damit der Desktop-Client
 sie direkt abspielen kann.
@@ -16,11 +16,11 @@ from pathlib import Path
 from fastapi import APIRouter, UploadFile, File, WebSocket, WebSocketDisconnect
 
 from core import db
-from core.voice import transcribe_audio, is_addressed_to_alfred, mark_conversation_active, _conversation_active
+from core.voice import transcribe_audio, is_addressed_to_mantis, mark_conversation_active, _conversation_active
 from core.voice_stream import VoiceStreamSession
 from core.tts import synthesize
 
-log = logging.getLogger("alfred.api")
+log = logging.getLogger("mantis.api")
 
 
 def build_router(orch=None) -> APIRouter:
@@ -34,7 +34,7 @@ def build_router(orch=None) -> APIRouter:
             tmp.flush()
             text = await transcribe_audio(tmp.name)
 
-        addressed = await is_addressed_to_alfred(text) if text else False
+        addressed = await is_addressed_to_mantis(text) if text else False
 
         reply = None
         audio_b64 = None

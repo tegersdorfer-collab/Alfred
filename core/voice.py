@@ -21,8 +21,8 @@ log = logging.getLogger(__name__)
 _whisper_model = None
 _whisper_lock = asyncio.Lock()
 
-# Nach jeder Alfred-Antwort bleibt für dieses Fenster jede Folge-Äußerung automatisch
-# "adressiert" — ohne das würde is_addressed_to_alfred() kurze Antworten wie "ja",
+# Nach jeder Mantis-Antwort bleibt für dieses Fenster jede Folge-Äußerung automatisch
+# "adressiert" — ohne das würde is_addressed_to_mantis() kurze Antworten wie "ja",
 # "zeig mir das" oder "und morgen?" (kein Name, kein eindeutiger Befehl) ignorieren,
 # weil jede Äußerung isoliert bewertet wird statt als Teil eines laufenden Gesprächs.
 CONVERSATION_FOLLOWUP_WINDOW_S = 15
@@ -30,7 +30,7 @@ _conversation_active_until = 0.0
 
 
 def mark_conversation_active() -> None:
-    """Vom Voice-Router nach jeder erfolgreichen Alfred-Antwort aufzurufen."""
+    """Vom Voice-Router nach jeder erfolgreichen Mantis-Antwort aufzurufen."""
     global _conversation_active_until
     _conversation_active_until = time.monotonic() + CONVERSATION_FOLLOWUP_WINDOW_S
 
@@ -70,27 +70,27 @@ async def transcribe_audio(audio_path: str) -> str:
             return ""
 
 
-async def is_addressed_to_alfred(text: str) -> bool:
-    """Schneller Ja/Nein-Check: ist dieser transkribierte Text ein an Alfred
+async def is_addressed_to_mantis(text: str) -> bool:
+    """Schneller Ja/Nein-Check: ist dieser transkribierte Text ein an Mantis
     gerichteter Befehl/Anfrage? Leerer Text spart den LLM-Call.
 
-    Drei Layer: (1) Keyword-Vorfilter — wird "Alfred" explizit genannt, sofort JA
+    Drei Layer: (1) Keyword-Vorfilter — wird "Mantis" explizit genannt, sofort JA
     ohne LLM-Call (Latenz ~0). (2) Konversations-Fortsetzung — läuft gerade ein
     Gespräch (siehe mark_conversation_active()), gilt jede Folge-Äußerung als
     adressiert, auch ohne Namen oder klaren Befehl. (3) Sonst entscheidet ein
     kleines dediziertes Modell (core.fast mit ADDRESS_CHECK_MODEL statt dem großen
-    AGENT_MODEL_FAST), ob es sich auch ohne Namensnennung um eine an Alfred
+    AGENT_MODEL_FAST), ob es sich auch ohne Namensnennung um eine an Mantis
     gerichtete Anfrage handelt (Spec: "nicht nur Wake-Word")."""
     stripped = text.strip()
     if not stripped:
         return False
-    if "alfred" in stripped.lower():
+    if "mantis" in stripped.lower():
         return True
     if time.monotonic() < _conversation_active_until:
         return True
     return await fast.yes_no(
         f"Ist dieser Satz eine Anfrage oder ein Befehl an einen persönlichen KI-Assistenten "
-        f"namens Alfred (nicht nur Small Talk mit jemand anderem im Raum), auch wenn der Name "
-        f"'Alfred' nicht genannt wird?\n\n\"{stripped}\"",
+        f"namens Mantis (nicht nur Small Talk mit jemand anderem im Raum), auch wenn der Name "
+        f"'Mantis' nicht genannt wird?\n\n\"{stripped}\"",
         model=config.ADDRESS_CHECK_MODEL,
     )

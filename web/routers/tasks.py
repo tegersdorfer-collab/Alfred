@@ -25,7 +25,7 @@ from domains.self_modify import write_file
 
 from web.routers._helpers import _has_body, _jsonable, _health_dict, _event_dict
 
-log = logging.getLogger("alfred.api")
+log = logging.getLogger("mantis.api")
 WEB_DIR = Path(__file__).parent.parent
 
 
@@ -46,7 +46,7 @@ def build_router(orch=None) -> APIRouter:
                                   notes=d.get("notes"), parent_id=d.get("parent_id"))
         # Zuweisung: explizit > auto-klassifizieren
         explicit = d.get("assigned_to")
-        if explicit in ("user", "alfred"):
+        if explicit in ("user", "mantis"):
             db.execute("UPDATE tasks SET assigned_to=%s WHERE id=%s", (explicit, tid))
         elif orch:
             try:
@@ -79,7 +79,7 @@ def build_router(orch=None) -> APIRouter:
             "UPDATE tasks SET suggestion_status='rejected', rejection_reason=%s, status='archived' WHERE id=%s",
             (reason, tid)
         )
-        # Alfred lernt daraus
+        # Mantis lernt daraus
         if orch and reason:
             async def _learn():
                 try:
@@ -91,7 +91,7 @@ def build_router(orch=None) -> APIRouter:
 
     @router.post("/api/tasks/generate")
     async def generate_task_suggestion():
-        """Manueller Trigger: Alfred überlegt sich sofort einen neuen Task-Vorschlag."""
+        """Manueller Trigger: Mantis überlegt sich sofort einen neuen Task-Vorschlag."""
         if not orch:
             return {"ok": False, "error": "Kein Orchestrator"}
         import asyncio as _aio

@@ -1,5 +1,5 @@
 """
-Subagent Delegation — Alfred kann isolierte Kind-Agenten spawnen.
+Subagent Delegation — Mantis kann isolierte Kind-Agenten spawnen.
 
 Inspiriert von Hermes Agent's delegate_tool.py:
 - Echter isolierter Context (kein Parent-History-Leak)
@@ -9,10 +9,10 @@ Inspiriert von Hermes Agent's delegate_tool.py:
 - Ergebnis wird als String zurückgegeben
 
 Verwendung:
-  Alfred: "Schreibe einen ausführlichen Report über meine Habits"
+  Mantis: "Schreibe einen ausführlichen Report über meine Habits"
   → delegate_task(goal="Analysiere Habit-Daten und schreibe detaillierten Report", ...)
   → Kind-Agent läuft isoliert, sammelt Daten, schreibt Report
-  → Alfred bekommt Ergebnis zurück
+  → Mantis bekommt Ergebnis zurück
 """
 import asyncio
 import logging
@@ -137,7 +137,7 @@ async def _execute_subagent(
 
     agent = Agent(llm=llm)
 
-    system = f"""Du bist ein spezialisierter Unteragent von Alfred.
+    system = f"""Du bist ein spezialisierter Unteragent von Mantis.
 
 DEINE AUFGABE:
 {goal}

@@ -4,7 +4,7 @@ UI-State — Grundlage des generativen UI.
 Phase 2: Tool-Aufrufe werden deterministisch Widget-Typen zugeordnet (kein
 Extra-LLM-Call), ein einzelner Slot hielt den aktiven Widget-Zustand.
 Phase 3: Mehrere gleichzeitig sichtbare Widgets über ein begrenztes Set an
-Layout-Vorlagen (LAYOUT_PRESETS) — Alfred wählt selbst, wann mehrere Dinge
+Layout-Vorlagen (LAYOUT_PRESETS) — Mantis wählt selbst, wann mehrere Dinge
 gleichzeitig sichtbar sein sollen (explizite Tools in core/skills/ui.py),
 während einfache Anfragen weiterhin automatisch (maybe_update_ui) ins
 "main"-Slot der Standard-Vorlage gehen.
@@ -180,7 +180,7 @@ def brain_widget_payload(limit: int = 8) -> dict:
 
 def skills_widget_payload() -> dict:
     """Baut den Skill-Factory-Status fürs Skills-Widget — welche Tools sich
-    Alfred selbst zur Laufzeit gebaut hat, plus Gesamt-Tool-Anzahl."""
+    Mantis selbst zur Laufzeit gebaut hat, plus Gesamt-Tool-Anzahl."""
     from core import skill_factory, tools as T
     return {
         "dynamic_skills": skill_factory.list_dynamic_skills(),

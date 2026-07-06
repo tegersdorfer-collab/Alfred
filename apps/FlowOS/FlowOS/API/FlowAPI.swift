@@ -2,22 +2,22 @@ import Foundation
 
 final class FlowAPI {
     static let shared = FlowAPI()
-    private let c = AlfredClient.shared
+    private let c = MantisClient.shared
 
     // MARK: - Tasks
 
-    func fetchTasks(status: String? = nil) async throws -> [AlfredTask] {
+    func fetchTasks(status: String? = nil) async throws -> [MantisTask] {
         var path = "/api/tasks"
         if let s = status { path += "?status=\(s == "active" ? "open" : s)" }
         return try await c.get(path)
     }
 
-    func createTask(_ req: CreateTaskRequest) async throws -> AlfredTask {
+    func createTask(_ req: CreateTaskRequest) async throws -> MantisTask {
         let resp: OkResponse = try await c.post("/api/tasks", body: req)
-        guard let id = resp.id else { throw AlfredError.invalidURL }
-        let tasks: [AlfredTask] = try await c.get("/api/tasks")
+        guard let id = resp.id else { throw MantisError.invalidURL }
+        let tasks: [MantisTask] = try await c.get("/api/tasks")
         return tasks.first { $0.id == id } ??
-            AlfredTask(id: id, title: req.title, notes: req.notes, status: req.status,
+            MantisTask(id: id, title: req.title, notes: req.notes, status: req.status,
                        priority: req.priority, due: req.due, kind: nil, createdAt: nil, completedAt: nil)
     }
 

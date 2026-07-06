@@ -1,4 +1,4 @@
-// Alfred Service Worker – network-first, kein Caching.
+// Mantis Service Worker – network-first, kein Caching.
 // Sorgt dafür, dass die installierte Homescreen-App immer die neueste Version lädt.
 self.addEventListener('install', (e) => self.skipWaiting());
 self.addEventListener('activate', (e) => e.waitUntil(self.clients.claim()));
@@ -8,7 +8,7 @@ self.addEventListener('fetch', (e) => {
 
 // Push-Benachrichtigungen (PWA-Alternative zu Telegram)
 self.addEventListener('push', (e) => {
-  let data = {title: 'Alfred', body: '', url: '/'};
+  let data = {title: 'Mantis', body: '', url: '/'};
   try { data = Object.assign(data, e.data.json()); } catch (err) {}
   const ICON = 'https://em-content.zobj.net/source/apple/391/robot_1f916.png';
   e.waitUntil(self.registration.showNotification(data.title, {

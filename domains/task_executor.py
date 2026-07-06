@@ -1,5 +1,5 @@
 """
-Alfred Deep Task Executor
+Mantis Deep Task Executor
 - Planning: Bricht Tasks in Unteraufgaben auf, überlegt Strategie
 - Research: DuckDuckGo + Claude Haiku für komplexe Analyse
 - Clarification: Stellt Rückfragen via Telegram, hält Task in Hold
@@ -18,31 +18,31 @@ log = logging.getLogger(__name__)
 
 # ── Prompts ──────────────────────────────────────────────────────────────────
 
-CLASSIFY_PROMPT = """Du bist Alfred. Eine neue Aufgabe wurde erstellt:
+CLASSIFY_PROMPT = """Du bist Mantis. Eine neue Aufgabe wurde erstellt:
 
 "{title}"
 {notes_line}
 
-Entscheide: Soll ich (Alfred) diese Aufgabe übernehmen oder Timo selbst?
+Entscheide: Soll ich (Mantis) diese Aufgabe übernehmen oder Timo selbst?
 
-Standard: ALFRED – ich übernehme alles was ich auch nur ansatzweise erledigen kann.
-Im Zweifel immer ALFRED.
+Standard: MANTIS – ich übernehme alles was ich auch nur ansatzweise erledigen kann.
+Im Zweifel immer MANTIS.
 
 Nur USER wenn die Aufgabe ZWINGEND physische Präsenz erfordert:
 - Einkaufen, Pakete abholen, irgendwo hinfahren
 - Jemanden persönlich anrufen oder treffen
 - Physische Objekte bedienen (Gerät kaufen, reparieren lassen)
 
-Alles andere gehört zu ALFRED:
+Alles andere gehört zu MANTIS:
 - Recherche, Analyse, Texte, Pläne, Entwürfe
 - Daten auswerten (Training, Gesundheit, Finanzen)
 - Strategien, Empfehlungen, Zusammenfassungen ausarbeiten
 - Events, Erinnerungen, Notizen anlegen
 - Entscheidungsgrundlagen vorbereiten
 
-Antworte NUR mit: ALFRED oder USER"""
+Antworte NUR mit: MANTIS oder USER"""
 
-PLAN_PROMPT = """Du bist Alfred. Du sollst diese Aufgabe gründlich erledigen:
+PLAN_PROMPT = """Du bist Mantis. Du sollst diese Aufgabe gründlich erledigen:
 
 Aufgabe: {title}
 {notes_line}
@@ -66,7 +66,7 @@ Antworte im JSON-Format:
   ]
 }}"""
 
-EXECUTE_SUBTASK_PROMPT = """Du bist Alfred. Erledige diesen Schritt einer größeren Aufgabe:
+EXECUTE_SUBTASK_PROMPT = """Du bist Mantis. Erledige diesen Schritt einer größeren Aufgabe:
 
 Hauptaufgabe: {main_title}
 Aktueller Schritt: {subtask_title}
@@ -77,7 +77,7 @@ Bisherige Ergebnisse:
 Liefere ein konkretes, präzises Ergebnis für diesen Schritt.
 Kein "ich könnte..." – direkt das Ergebnis."""
 
-SYNTHESIZE_PROMPT = """Du bist Alfred. Du hast eine Aufgabe Schritt für Schritt erledigt.
+SYNTHESIZE_PROMPT = """Du bist Mantis. Du hast eine Aufgabe Schritt für Schritt erledigt.
 
 Aufgabe: {title}
 {notes_line}
@@ -88,7 +88,7 @@ Ergebnisse der einzelnen Schritte:
 Fasse alles zu einer klaren, strukturierten Gesamtantwort zusammen.
 Das ist das finale Ergebnis das Timo sieht."""
 
-SUGGEST_PROMPT = """Du bist Alfred. Basierend auf einem neuen Impuls/neuen Daten überlege dir EINE einzige sinnvolle Aufgabe für Timo.
+SUGGEST_PROMPT = """Du bist Mantis. Basierend auf einem neuen Impuls/neuen Daten überlege dir EINE einzige sinnvolle Aufgabe für Timo.
 
 Neuer Impuls/Kontext:
 {trigger}
@@ -107,12 +107,12 @@ Regeln:
 - Konkreter Mehrwert, direkt aus dem Impuls abgeleitet
 - Nicht etwas das bereits offen ist oder abgelehnt wurde
 - Klar formuliert, umsetzbar
-- Standard: ALFRED – nur USER wenn die Aufgabe zwingend physische Präsenz erfordert
+- Standard: MANTIS – nur USER wenn die Aufgabe zwingend physische Präsenz erfordert
 
 Antworte im Format:
-TITEL | KURZE BEGRÜNDUNG | ALFRED_ODER_USER"""
+TITEL | KURZE BEGRÜNDUNG | MANTIS_ODER_USER"""
 
-EVALUATE_SUGGESTION_PROMPT = """Du bist Alfred. Du möchtest Timo diese Aufgabe vorschlagen:
+EVALUATE_SUGGESTION_PROMPT = """Du bist Mantis. Du möchtest Timo diese Aufgabe vorschlagen:
 
 "{title}"
 Begründung: {notes}
@@ -136,7 +136,7 @@ Antworte NUR mit: JA oder NEIN"""
 # ── Classifier ────────────────────────────────────────────────────────────────
 
 async def classify(title: str, notes: str | None, llm: LLMProvider) -> str:
-    """Gibt 'alfred' oder 'user' zurück."""
+    """Gibt 'mantis' oder 'user' zurück."""
     notes_line = f"Notiz: {notes}" if notes else ""
     try:
         resp = await llm.chat(
@@ -145,7 +145,7 @@ async def classify(title: str, notes: str | None, llm: LLMProvider) -> str:
             ))],
             temperature=0.2, max_tokens=10,
         )
-        return "alfred" if resp.strip().upper().startswith("ALFRED") else "user"
+        return "mantis" if resp.strip().upper().startswith("MANTIS") else "user"
     except Exception as e:
         log.warning(f"Task-Klassifikation fehlgeschlagen: {e}")
         return "user"
@@ -360,7 +360,7 @@ async def suggest_one(trigger: str, llm: LLMProvider, lzg=None) -> bool:
             return False
         title = parts[0]
         notes = parts[1] if len(parts) > 1 else None
-        assignee = "alfred" if len(parts) > 2 and "ALFRED" in parts[2].upper() else "user"
+        assignee = "mantis" if len(parts) > 2 and "MANTIS" in parts[2].upper() else "user"
     except Exception as e:
         log.warning(f"Suggestion-Generierung fehlgeschlagen: {e}")
         return False
@@ -396,7 +396,7 @@ async def suggest_one(trigger: str, llm: LLMProvider, lzg=None) -> bool:
         _db.execute(
             """INSERT INTO tasks (title, notes, assigned_to, suggestion_status, priority)
                VALUES (%s, %s, %s, 'proposed', %s)""",
-            (title, notes, assignee, "high" if assignee == "alfred" else "medium"),
+            (title, notes, assignee, "high" if assignee == "mantis" else "medium"),
         )
         log.info(f"💡 Neuer Task-Vorschlag: {title} ({assignee})")
         return True

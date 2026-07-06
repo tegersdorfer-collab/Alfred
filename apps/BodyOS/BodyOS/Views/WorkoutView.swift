@@ -116,14 +116,14 @@ struct WorkoutView: View {
     private var todayContent: some View {
         if vm.isLoading {
             Spacer()
-            ProgressView("Alfred denkt nach…")
+            ProgressView("Mantis denkt nach…")
             Spacer()
         } else if let plan = vm.plan {
             ScrollView {
                 VStack(alignment: .leading, spacing: 16) {
                     dayHeaderCard(plan)
-                    if let week = plan.planWeek, plan.planSource == "alfred" {
-                        Text("Plan: Woche \(week)/6 · von Alfred")
+                    if let week = plan.planWeek, plan.planSource == "mantis" {
+                        Text("Plan: Woche \(week)/6 · von Mantis")
                             .font(.caption).foregroundStyle(.secondary)
                             .frame(maxWidth: .infinity, alignment: .leading)
                             .padding(.horizontal)
@@ -133,7 +133,7 @@ struct WorkoutView: View {
                     } else if plan.dayType == "jog" {
                         jogCard(plan)
                     } else {
-                        if !plan.alfredMessage.isEmpty { alfredCard(plan.alfredMessage) }
+                        if !plan.mantisMessage.isEmpty { mantisCard(plan.mantisMessage) }
                         if let health = plan.health { healthCard(health) }
                         exerciseList(plan)
                         startButton
@@ -287,7 +287,7 @@ struct WorkoutView: View {
         .padding(.horizontal)
     }
 
-    private func alfredCard(_ msg: String) -> some View {
+    private func mantisCard(_ msg: String) -> some View {
         HStack(alignment: .top, spacing: 12) {
             Image(systemName: "brain.head.profile").font(.title2).foregroundStyle(.orange)
             Text(msg).font(.subheadline)
@@ -354,7 +354,7 @@ struct WorkoutView: View {
     private var errorView: some View {
         VStack(spacing: 16) {
             Image(systemName: "wifi.slash").font(.largeTitle).foregroundStyle(.secondary)
-            Text("Alfred nicht erreichbar").font(.headline)
+            Text("Mantis nicht erreichbar").font(.headline)
             if let err = vm.error { Text(err).font(.caption).foregroundStyle(.secondary) }
             Button("Erneut") { Task { await vm.loadPlan() } }.buttonStyle(.bordered)
         }

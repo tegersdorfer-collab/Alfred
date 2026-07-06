@@ -11,7 +11,7 @@ from fastapi.responses import StreamingResponse
 
 from core.ui_state import UI_BUS, WIDGET_TYPES, build_widget_payload
 
-log = logging.getLogger("alfred.api")
+log = logging.getLogger("mantis.api")
 
 
 def build_router(orch=None) -> APIRouter:

@@ -4,7 +4,7 @@ export function initChatInput(
 ): void {
   const wrap = document.createElement('div');
   wrap.id = 'chat-input-wrap';
-  wrap.innerHTML = `<input type="text" id="chat-input" placeholder="Nachricht an Alfred …" autocomplete="off" />`;
+  wrap.innerHTML = `<input type="text" id="chat-input" placeholder="Nachricht an Mantis …" autocomplete="off" />`;
   document.body.appendChild(wrap);
 
   const input = wrap.querySelector<HTMLInputElement>('#chat-input')!;
@@ -25,7 +25,7 @@ export function initChatInput(
       const data = await res.json();
       onReply(data.response ?? '', text);
     } catch {
-      onReply('Fehler beim Senden — Verbindung zu Alfred geprüft?', text);
+      onReply('Fehler beim Senden — Verbindung zu Mantis geprüft?', text);
     } finally {
       input.disabled = false;
       input.focus();

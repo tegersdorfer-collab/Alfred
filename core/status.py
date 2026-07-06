@@ -1,7 +1,7 @@
 """
 core/status.py
 
-Globaler Status-Bus – Alfred-Aktivitäten in Echtzeit.
+Globaler Status-Bus – Mantis-Aktivitäten in Echtzeit.
 
 Jede Komponente kann Status-Updates emittieren:
     from core.status import BUS

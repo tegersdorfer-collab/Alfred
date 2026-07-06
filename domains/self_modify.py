@@ -1,5 +1,5 @@
 """
-Self-Modify: Alfred kann seine eigene Codebase lesen und verändern.
+Self-Modify: Mantis kann seine eigene Codebase lesen und verändern.
 Jede Änderung wird per Git gesichert; ein Watchdog-Subprocess übernimmt
 Neustart + Health-Check + automatischen Rollback bei Fehler.
 """
@@ -12,9 +12,9 @@ from typing import Optional
 
 log = logging.getLogger(__name__)
 
-ALFRED_DIR = Path(__file__).resolve().parent.parent
+MANTIS_DIR = Path(__file__).resolve().parent.parent
 
-# Erlaubte Pfade (relativ zu ALFRED_DIR)
+# Erlaubte Pfade (relativ zu MANTIS_DIR)
 _ALLOWED_DIRS = {"domains", "core", "web", "memory", "tools", "llm", "identity"}
 _ALLOWED_EXTENSIONS = {".py", ".html", ".md", ".json", ".css", ".js"}
 _BLOCKED_FILES = {
@@ -27,10 +27,10 @@ _BLOCKED_FILES = {
 
 def _safe_path(rel_path: str) -> Optional[Path]:
     """Gibt absoluten Pfad zurück wenn erlaubt, sonst None."""
-    p = (ALFRED_DIR / rel_path).resolve()
+    p = (MANTIS_DIR / rel_path).resolve()
     # is_relative_to statt String-Prefix-Vergleich: ein Geschwisterverzeichnis
-    # wie "AlfredEvilTwin" würde den reinen str.startswith()-Check sonst bestehen.
-    if not p.is_relative_to(ALFRED_DIR):
+    # wie "MantisEvilTwin" würde den reinen str.startswith()-Check sonst bestehen.
+    if not p.is_relative_to(MANTIS_DIR):
         return None
     if rel_path in _BLOCKED_FILES:
         return None
@@ -45,7 +45,7 @@ def _safe_path(rel_path: str) -> Optional[Path]:
 
 
 def read_file(rel_path: str) -> str:
-    """Liest eine Datei aus der Alfred-Codebase."""
+    """Liest eine Datei aus der Mantis-Codebase."""
     p = _safe_path(rel_path)
     if p is None:
         return f"Fehler: Pfad '{rel_path}' nicht erlaubt."
@@ -59,31 +59,31 @@ def read_file(rel_path: str) -> str:
 
 def list_files(rel_dir: str = "") -> list[str]:
     """Listet Dateien in einem Verzeichnis der Codebase."""
-    base = (ALFRED_DIR / rel_dir).resolve() if rel_dir else ALFRED_DIR
-    if not base.is_relative_to(ALFRED_DIR):
+    base = (MANTIS_DIR / rel_dir).resolve() if rel_dir else MANTIS_DIR
+    if not base.is_relative_to(MANTIS_DIR):
         return []
     result = []
     for p in sorted(base.rglob("*")):
         if p.is_file() and p.suffix in _ALLOWED_EXTENSIONS:
-            rel = str(p.relative_to(ALFRED_DIR))
-            if not any(part.startswith(".") or part == "__pycache__" for part in p.parts):
-                result.append(rel)
+            rel_path = p.relative_to(MANTIS_DIR)
+            if not any(part.startswith(".") or part == "__pycache__" for part in rel_path.parts):
+                result.append(str(rel_path))
     return result[:80]
 
 
 def git_backup(description: str) -> str:
     """Committed aktuellen Zustand als Backup. Gibt Commit-Hash zurück."""
     try:
-        subprocess.run(["git", "add", "-A"], cwd=ALFRED_DIR, capture_output=True, check=True)
+        subprocess.run(["git", "add", "-A"], cwd=MANTIS_DIR, capture_output=True, check=True)
         result = subprocess.run(
             ["git", "commit", "-m", f"auto-backup: {description}", "--no-gpg-sign",
              "--allow-empty"],
-            cwd=ALFRED_DIR, capture_output=True, text=True
+            cwd=MANTIS_DIR, capture_output=True, text=True
         )
         # Commit-Hash holen
         hash_result = subprocess.run(
             ["git", "rev-parse", "HEAD"],
-            cwd=ALFRED_DIR, capture_output=True, text=True
+            cwd=MANTIS_DIR, capture_output=True, text=True
         )
         return hash_result.stdout.strip()
     except Exception as e:
@@ -131,7 +131,7 @@ def write_file(rel_path: str, content: str, description: str) -> dict:
 
 def _log_change(kind: str, path: str, description: str, old_content: str,
                 new_content: str, commit: str = "") -> None:
-    """Protokolliert eine Selbst-Veränderung fürs Dashboard ('Was hat Alfred selbst verändert')."""
+    """Protokolliert eine Selbst-Veränderung fürs Dashboard ('Was hat Mantis selbst verändert')."""
     import difflib
     from core import db as _db
 
@@ -149,15 +149,15 @@ def _log_change(kind: str, path: str, description: str, old_content: str,
 
 def _trigger_restart(rollback_commit: str) -> bool:
     """Spawnt Watchdog-Subprocess der Neustart + Health-Check + ggf. Rollback übernimmt."""
-    watchdog = str(ALFRED_DIR / "scripts" / "restart_watchdog.py")
-    logfile  = "/tmp/alfred_out.log"
+    watchdog = str(MANTIS_DIR / "scripts" / "restart_watchdog.py")
+    logfile  = "/tmp/mantis_out.log"
     old_pid  = os.getpid()
 
     try:
         subprocess.Popen(
             [sys.executable, watchdog, str(old_pid), rollback_commit, logfile],
-            start_new_session=True,   # überlebt Alfred-Exit
-            stdout=open("/tmp/alfred_watchdog.log", "a"),
+            start_new_session=True,   # überlebt Mantis-Exit
+            stdout=open("/tmp/mantis_watchdog.log", "a"),
             stderr=subprocess.STDOUT,
         )
         log.info(f"🔄 Watchdog gestartet (rollback: {rollback_commit[:8]})")

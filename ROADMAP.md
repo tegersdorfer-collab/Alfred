@@ -1,4 +1,4 @@
-# Alfred — Roadmap
+# Mantis — Roadmap
 
 > **Ziel**: Ein lokaler, autonomer AI-Concierge der das eigene Leben managt —
 > reaktionsschnell, proaktiv, selbst-verbessernd. *"Leben auf Autopilot."*
@@ -57,7 +57,7 @@
 - Proactive Engagement Decay: Frequenz sinkt wenn Nachrichten ignoriert werden
 - Embedding-basiertes Tool-Routing (TF-IDF Semantic Fallback)
 - Tool Discovery Escape Hatch (`refresh_tools`)
-- Claude Code Subprocess: "Alfred, bau X" → spawnt `claude`-Subprocess
+- Claude Code Subprocess: "Mantis, bau X" → spawnt `claude`-Subprocess
 
 ### Autopilot
 - Morgen-Briefing, Abend-Review, Wöchentlicher Rückblick
@@ -93,7 +93,7 @@
 - Top-3 Tages-Fokus, Daily Resurfacing, Slipping Tasks
 - Web Push (VAPID) + Push-Templates + Dedup-Filterung
 - Eval-Suite (6 Test-Cases, `/api/eval/run`)
-- Alfred als MCP-Server (stdio JSON-RPC + HTTP `/mcp/`)
+- Mantis als MCP-Server (stdio JSON-RPC + HTTP `/mcp/`)
 - Eval-Suite v2: echter Agent-Lauf (prompt_builder + agent.run), Dry-Run-Tools,
   must_call_tool-Check, Timeout pro Case — deckte den warm_profile-Crash auf
 - LLM-Usage-Tracking: Token + Kosten pro Call (`llm_usage`), `/api/usage`,
@@ -106,10 +106,10 @@
 - Neues UI-Design (dunklere Tokens, cleaner Home, bessere Typografie)
 
 ### Native iOS-Apps (SwiftUI)
-- **BodyOS** — Training (Alfred-Sessions aus HRV/Schlaf) + Ernährung (Foto-Makros) + HealthKit-Push
+- **BodyOS** — Training (Mantis-Sessions aus HRV/Schlaf) + Ernährung (Foto-Makros) + HealthKit-Push
 - **BrainOS** — Second Brain: Wiki-Links, Force-directed Graph (SwiftUI Canvas, eigene Physik)
 - **FlowOS** — Tasks + Kalender + Habits + Fokus-Timer
-- Gemeinsamer `AlfredClient` pro App: `waitsForConnectivity` + Retry → übersteht Tailscale-Aussetzer
+- Gemeinsamer `MantisClient` pro App: `waitsForConnectivity` + Retry → übersteht Tailscale-Aussetzer
 - Details in `apps/README.md` (konsolidiert aus ursprünglich 5 geplanten Apps)
 
 ### Code-Architektur
@@ -126,14 +126,14 @@
 
 ## In Arbeit — autonome Nachtsession (2026-07-05)
 
-> Timo schläft, Auftrag: "Revolutioniere Alfred" — Stimme, Adress-Erkennung,
+> Timo schläft, Auftrag: "Revolutioniere Mantis" — Stimme, Adress-Erkennung,
 > Desktop-App groß ausbauen (Jarvis-Look, modulare Screens, Vollzugriff),
 > Windows-Readiness, Jarvis-Feature-Parität recherchieren. Durchgehend
 > autonom bis Nutzungslimit, Fortschritt hier laufend aktualisieren.
 
 ### Sofort-Fixes (hohe Priorität, konkret gemeldete Bugs)
 - [x] **Adress-Erkennung ignoriert Folge-Antworten** — behoben (Commit 9d3670d):
-  `mark_conversation_active()` öffnet ein 15s-Fenster nach jeder Alfred-Antwort,
+  `mark_conversation_active()` öffnet ein 15s-Fenster nach jeder Mantis-Antwort,
   in dem Folge-Sprache ohne Namen/klaren Befehl automatisch als adressiert gilt.
 - [x] **TTS-Engine-Wahl abgeschlossen für diese Session** — Piper
   (de_DE-thorsten-high) gewählt: 0.7s Laden, ~1.6s Synthese, native deutsche
@@ -153,11 +153,11 @@
 - [x] **Modulare/adaptive Screens großzügig ausgebaut** (Commit e13d801 +
   vorherige Widget-Commits): Widget-Bibliothek von 6 auf 10 Typen erweitert
   (system/brain/skills/weather neu), Fade-In/Scale-Übergangsanimation bei
-  jedem Widget-Wechsel. Layout-Wahl (single/split2) + Alfred' eigene
+  jedem Widget-Wechsel. Layout-Wahl (single/split2) + Mantis' eigene
   Entscheidung welches Widget wann erscheint bestand schon aus Phase 2-4.
-- [x] **Alfred volle Rechte** (Commits b7247d8, 72f25e0): 5 neue Agent-Tools
+- [x] **Mantis volle Rechte** (Commits b7247d8, 72f25e0): 5 neue Agent-Tools
   (read_any_file/write_any_file/list_directory/open_path/open_app) —
-  Zugriff auf das GESAMTE Mac-Dateisystem, nicht nur Alfred' eigene Codebase.
+  Zugriff auf das GESAMTE Mac-Dateisystem, nicht nur Mantis' eigene Codebase.
   Bewusst OHNE Lösch-Tool. Live-Test deckte einen Folgefehler auf: das
   Keyword-Tool-Routing (core/tools.py::select_tools) kannte die neue
   Kategorie 'filesystem' nicht — Datei-Anfragen fielen in den 'reines
@@ -217,7 +217,7 @@
   sind fiktionsspezifisch/kampfbezogen und nicht sinnvoll übertragbar. Die
   realistisch übertragbaren Kernmerkmale — natürlichsprachliche Konversation,
   proaktive Analyse/Warnungen, Multi-Tasking im Hintergrund, visuelle
-  Datenanzeige — deckt Alfred über Autopilot/Reflexions-Engine/Background-
+  Datenanzeige — deckt Mantis über Autopilot/Reflexions-Engine/Background-
   Review-Loop/HUD bereits ab oder sie stehen schon im Brainstorm unten
   (Smart-Home, Screen-Context-Awareness). Kein neuer Feature-Fund, der nicht
   schon anderswo in dieser Roadmap steht.
@@ -236,9 +236,9 @@
   bei filesystem) → Keywords ergänzt. **Verbleibende Blockade (braucht Timo):**
   macOS verweigert den Screenshot mit "could not create image from display" —
   fehlende Bildschirmaufnahme-Berechtigung (Privacy & Security). Das ist eine
-  Systemeinstellung, die ich nicht selbst ändern darf/kann — Alfred gibt jetzt
+  Systemeinstellung, die ich nicht selbst ändern darf/kann — Mantis gibt jetzt
   eine konkrete Anleitung dazu aus, aber Timo muss die Berechtigung einmalig
-  manuell erteilen und Alfred neu starten, damit das Tool nutzbar wird.
+  manuell erteilen und Mantis neu starten, damit das Tool nutzbar wird.
 - [x] **Kalender-Konflikt-Erkennung** — existierte bereits (`_calendar_check()`
   in core/autopilot.py, nutzt domains/calendar_optimizer.py::analyze_day),
   läuft jeden Morgen proaktiv, keine Umsetzung nötig gewesen.
@@ -250,7 +250,7 @@
   "nur wenn leichtgewichtig verfügbar" die Kosten-Nutzen-Abwägung nicht wert;
   aufgeschoben statt eine fragile schwere Abhängigkeit zu riskieren.
 - [x] Multi-Turn-Konversations-Historie im HUD (Commit 7b265a9):
-  conversation-log.ts zeigt die letzten 12 Turns (Nutzer + Alfred) oben
+  conversation-log.ts zeigt die letzten 12 Turns (Nutzer + Mantis) oben
   links, statt nur den letzten Austausch zu überschreiben
 - [x] **Fehler-Selbstheilung Stufe 1** (Commit cb28517): core/tools.py::execute()
   zählt aufeinanderfolgende Fehlschläge pro Tool, ab 3x wird 'tool_failure'
@@ -340,7 +340,7 @@ Diese Items brauchen externe Infrastruktur oder Hardware die nicht im Code lösb
 2. **Modulare Backends** — LLM, DB, Kommunikation sind austauschbar
 3. **Kein Over-Engineering** — einfacher Code > komplexe Abstraktionen
 4. **Funktionalität > Ästhetik** — ein Feature das funktioniert > fünf die aussehen
-5. **Alfred soll lernen** — jede Interaktion macht ihn besser, nicht nur reaktiver
+5. **Mantis soll lernen** — jede Interaktion macht ihn besser, nicht nur reaktiver
 
 ## Voice-Pipeline-Latenz-Untersuchung + lokales Voice-Modell (2026-07-05, spät)
 

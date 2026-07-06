@@ -56,7 +56,7 @@ class TelegramChannel(CommunicationChannel):
 
     async def send(self, text: str) -> None:
         if not self._app or not self._chat_id:
-            print(f"[Alfred → Telegram nicht verbunden]: {text}")
+            print(f"[Mantis → Telegram nicht verbunden]: {text}")
             return
 
         # Lange Nachrichten aufteilen (Telegram-Limit: 4096 Zeichen)
@@ -173,7 +173,7 @@ class TelegramChannel(CommunicationChannel):
             pass  # "message is not modified" o.ä. ignorieren
 
     def _authorized(self, update: Update) -> bool:
-        """Darf dieser Absender mit Alfred reden?
+        """Darf dieser Absender mit Mantis reden?
         Mit konfigurierter Allowlist: strikt (User- oder Chat-ID muss passen).
         Ohne Allowlist: Trust-on-first-use – der erste Absender wird für die
         Laufzeit gesperrt, alle anderen abgewiesen (statt offen für jeden)."""
@@ -244,7 +244,7 @@ class TelegramChannel(CommunicationChannel):
     async def _handle_voice(
         self, update: Update, context: ContextTypes.DEFAULT_TYPE
     ) -> None:
-        """Sprachnachricht → Whisper-Transkription → Alfred-Handler."""
+        """Sprachnachricht → Whisper-Transkription → Mantis-Handler."""
         if not update.message:
             return
         if not self._authorized(update):
@@ -320,7 +320,7 @@ class TelegramChannel(CommunicationChannel):
         description = await _describe_image(image_bytes)
 
         if description.startswith("🍽️ MAHLZEIT:"):
-            # Mahlzeit erkannt → als Tracking-Befehl an Alfred weiterleiten
+            # Mahlzeit erkannt → als Tracking-Befehl an Mantis weiterleiten
             meal_text = (
                 f"{description}\n\n"
                 f"Bitte diese Mahlzeit in meinem Journal tracken."
@@ -362,7 +362,7 @@ class TelegramChannel(CommunicationChannel):
           task_skip:<id>       — Task überspringen / zurückstellen
           habit_done:<id>      — Habit für heute abhaken
           habit_skip:<id>      — Habit heute überspringen
-          confirm:<free_text>  — Freitext-Bestätigung an Alfred weiterleiten
+          confirm:<free_text>  — Freitext-Bestätigung an Mantis weiterleiten
         """
         query = update.callback_query
         if not query or not query.data:
@@ -396,7 +396,7 @@ class TelegramChannel(CommunicationChannel):
                 await query.edit_message_text(f"⏭ Gewohnheit #{payload} übersprungen.")
 
             elif action == "confirm":
-                # Freitext als normale Nachricht an Alfred weiterleiten
+                # Freitext als normale Nachricht an Mantis weiterleiten
                 if self._handler:
                     from communication.base import IncomingMessage
                     msg = IncomingMessage(
@@ -429,7 +429,7 @@ class TelegramChannel(CommunicationChannel):
             return
         self._chat_id = str(update.message.chat_id)
         await update.message.reply_text(
-            "Alfred online. Was brauchst du?"
+            "Mantis online. Was brauchst du?"
         )
 
     async def _handle_status(

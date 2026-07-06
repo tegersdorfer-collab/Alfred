@@ -1,7 +1,7 @@
 """
 memory/forgetting.py
 
-Simuliert die Ebbinghaussche Vergessenskurve für das Alfred-Langzeitgedächtnis.
+Simuliert die Ebbinghaussche Vergessenskurve für das Mantis-Langzeitgedächtnis.
 
 Formel:
     retention = exp(-t / S)

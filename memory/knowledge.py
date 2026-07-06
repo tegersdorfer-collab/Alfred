@@ -1,13 +1,13 @@
 """
 memory/knowledge.py
 
-Wissens-Graph (Knowledge Graph) für Alfred.
+Wissens-Graph (Knowledge Graph) für Mantis.
 Speichert Entitäten (Personen, Orte, Projekte …) und ihre Relationen relational
 in PostgreSQL – ergänzt den Vektor-Store (LZG) um strukturierte Beziehungen.
 
 Beispiel:
     Anna  -[ist_schwester_von]→  Timo
-    Alfred -[ist_projekt_von]→   Timo
+    Mantis -[ist_projekt_von]→   Timo
     Nürnberg -[ist_wohnort_von]→ Timo
 
 Entity-Typen: person | place | project | organization | concept | habit | goal

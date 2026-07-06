@@ -19,7 +19,7 @@ def _make_autopilot() -> Autopilot:
         channel=MagicMock(send=AsyncMock()),
         proactive=MagicMock(),
         tracker=MagicMock(),
-        identity="Alfred",
+        identity="Mantis",
     )
 
 

@@ -1,5 +1,5 @@
 """
-Screen-Context-Awareness — Alfred kann sich einen Screenshot machen und
+Screen-Context-Awareness — Mantis kann sich einen Screenshot machen und
 beschreiben lassen, um kontextbezogen zu helfen (z.B. "was siehst du gerade
 auf meinem Bildschirm?", "hilf mir bei diesem Fehler").
 
@@ -46,7 +46,7 @@ async def _see_screen() -> str:
                 return (
                     "FEHLER: Keine Bildschirmaufnahme-Berechtigung. Bitte in "
                     "Systemeinstellungen → Privacy & Security → Bildschirmaufnahme "
-                    "den Alfred-Prozess (Python) erlauben und Alfred neu starten."
+                    "den Mantis-Prozess (Python) erlauben und Mantis neu starten."
                 )
             return f"FEHLER: Screenshot fehlgeschlagen: {err}"
         image_bytes = Path(path).read_bytes()

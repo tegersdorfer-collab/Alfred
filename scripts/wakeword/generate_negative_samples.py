@@ -8,7 +8,7 @@ Zwei Kategorien, bewusst getrennt gehalten:
      Mandant, Fantasie, "man das ist", ...) — die schwierigsten und wertvollsten
      Negativbeispiele, weil sie genau die Verwechslungen abdecken, die in der
      Praxis am ehesten zu Fehlauslösern führen.
-  2. EVERYDAY_SENTENCES: normale Alltags-/Alfred-Kommandosätze ohne "Mantis" —
+  2. EVERYDAY_SENTENCES: normale Alltags-/Assistenten-Kommandosätze ohne "Mantis" —
      deckt den generellen "das ist kein Wake-Word"-Fall breiter ab.
 """
 from pathlib import Path

@@ -25,7 +25,7 @@ from domains.self_modify import write_file
 
 from web.routers._helpers import _has_body, _jsonable, _health_dict, _event_dict
 
-log = logging.getLogger("alfred.api")
+log = logging.getLogger("mantis.api")
 WEB_DIR = Path(__file__).parent.parent
 
 

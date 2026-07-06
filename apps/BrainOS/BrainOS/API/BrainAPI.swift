@@ -2,7 +2,7 @@ import Foundation
 
 final class BrainAPI {
     static let shared = BrainAPI()
-    private let c = AlfredClient.shared
+    private let c = MantisClient.shared
 
     func fetchNotes(category: String? = nil, limit: Int = 200) async throws -> [BrainNote] {
         var path = "/api/brain/notes?limit=\(limit)"
@@ -16,7 +16,7 @@ final class BrainAPI {
 
     func createNote(_ req: CreateNoteRequest) async throws -> BrainNote {
         let resp: OkResponse = try await c.post("/api/brain/notes", body: req)
-        guard let id = resp.id else { throw AlfredError.invalidURL }
+        guard let id = resp.id else { throw MantisError.invalidURL }
         return try await fetchNote(id)
     }
 

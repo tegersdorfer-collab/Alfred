@@ -31,10 +31,10 @@ class TestTranscribeAudio:
 
     def test_verkettet_mehrere_segmente(self):
         fake_model = MagicMock()
-        fake_model.transcribe.return_value = [MagicMock(text="Hallo"), MagicMock(text="Alfred")]
+        fake_model.transcribe.return_value = [MagicMock(text="Hallo"), MagicMock(text="Mantis")]
         with patch("pywhispercpp.model.Model", return_value=fake_model):
             text = asyncio.run(voice.transcribe_audio("/tmp/fake.wav"))
-        assert text == "Hallo Alfred"
+        assert text == "Hallo Mantis"
 
     def test_laedt_modell_nur_einmal(self):
         fake_model = MagicMock()
@@ -98,41 +98,41 @@ class TestTranscribeAudio:
         assert text == ""
 
 
-class TestIsAddressedToAlfred:
+class TestIsAddressedToMantis:
     def test_namensnennung_liefert_true_ohne_llm_call(self):
         with patch("core.fast.yes_no", new=AsyncMock()) as mock_yes_no:
-            result = asyncio.run(voice.is_addressed_to_alfred("Alfred, wie wird das Wetter morgen?"))
+            result = asyncio.run(voice.is_addressed_to_mantis("Mantis, wie wird das Wetter morgen?"))
         assert result is True
         mock_yes_no.assert_not_called()
 
     def test_namensnennung_gross_klein_unabhaengig(self):
         with patch("core.fast.yes_no", new=AsyncMock()) as mock_yes_no:
-            result = asyncio.run(voice.is_addressed_to_alfred("hey ALFRED wie geht's"))
+            result = asyncio.run(voice.is_addressed_to_mantis("hey MANTIS wie geht's"))
         assert result is True
         mock_yes_no.assert_not_called()
 
     def test_ohne_namen_faellt_auf_kleines_modell_zurueck_ja(self):
         with patch("core.fast.yes_no", new=AsyncMock(return_value=True)) as mock_yes_no:
-            result = asyncio.run(voice.is_addressed_to_alfred("Ruf mir die Nacht-Zusammenfassung auf"))
+            result = asyncio.run(voice.is_addressed_to_mantis("Ruf mir die Nacht-Zusammenfassung auf"))
         assert result is True
         mock_yes_no.assert_called_once()
         assert mock_yes_no.call_args.kwargs["model"] == voice.config.ADDRESS_CHECK_MODEL
 
     def test_ohne_namen_faellt_auf_kleines_modell_zurueck_nein(self):
         with patch("core.fast.yes_no", new=AsyncMock(return_value=False)):
-            result = asyncio.run(voice.is_addressed_to_alfred("Ich rede gerade mit jemand anderem"))
+            result = asyncio.run(voice.is_addressed_to_mantis("Ich rede gerade mit jemand anderem"))
         assert result is False
 
     def test_leerer_text_liefert_false_ohne_llm_call(self):
         with patch("core.fast.yes_no", new=AsyncMock()) as mock_yes_no:
-            result = asyncio.run(voice.is_addressed_to_alfred(""))
+            result = asyncio.run(voice.is_addressed_to_mantis(""))
         assert result is False
         mock_yes_no.assert_not_called()
 
 
 class TestConversationFollowup:
-    """Nach einer Alfred-Antwort gilt ein kurzes Zeitfenster, in dem Folge-Sprache
-    automatisch als adressiert gilt — sonst ignoriert Alfred kurze Antworten wie
+    """Nach einer Mantis-Antwort gilt ein kurzes Zeitfenster, in dem Folge-Sprache
+    automatisch als adressiert gilt — sonst ignoriert Mantis kurze Antworten wie
     'ja', 'zeig mir das' oder 'und morgen?', die keinen Namen/klaren Befehl enthalten."""
 
     def setup_method(self):
@@ -141,18 +141,18 @@ class TestConversationFollowup:
     def test_folge_antwort_innerhalb_des_fensters_gilt_als_adressiert(self):
         voice.mark_conversation_active()
         with patch("core.fast.yes_no", new=AsyncMock()) as mock_yes_no:
-            result = asyncio.run(voice.is_addressed_to_alfred("ja genau das meinte ich"))
+            result = asyncio.run(voice.is_addressed_to_mantis("ja genau das meinte ich"))
         assert result is True
         mock_yes_no.assert_not_called()
 
     def test_ausserhalb_des_fensters_normaler_check(self):
         voice._conversation_active_until = 0.0  # Fenster abgelaufen/nie aktiv
         with patch("core.fast.yes_no", new=AsyncMock(return_value=False)) as mock_yes_no:
-            result = asyncio.run(voice.is_addressed_to_alfred("ja genau das meinte ich"))
+            result = asyncio.run(voice.is_addressed_to_mantis("ja genau das meinte ich"))
         assert result is False
         mock_yes_no.assert_called_once()
 
     def test_leerer_text_bleibt_false_auch_im_fenster(self):
         voice.mark_conversation_active()
-        result = asyncio.run(voice.is_addressed_to_alfred(""))
+        result = asyncio.run(voice.is_addressed_to_mantis(""))
         assert result is False

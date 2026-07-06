@@ -2,7 +2,7 @@ import Foundation
 
 final class HealthAPI {
     static let shared = HealthAPI()
-    private let client = AlfredClient.shared
+    private let client = MantisClient.shared
 
     func fetchHistory(days: Int = 30) async throws -> [HealthEntry] {
         try await client.get("/api/health?days=\(days)")

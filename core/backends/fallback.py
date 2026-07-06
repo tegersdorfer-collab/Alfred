@@ -3,7 +3,7 @@ FallbackBackend — hält den Agenten am Leben wenn das primäre Backend ausfäl
 
 Primär: Claude API (Haiku). Fällt sie aus (Netz weg, Anthropic-Ausfall,
 Rate-Limit, Timeout), übernimmt das lokale Ollama-Backend transparent —
-Alfred bleibt offline funktionsfähig ("Lokal first").
+Mantis bleibt offline funktionsfähig ("Lokal first").
 
 Circuit-Breaker light: Nach einem Primär-Fehler gehen Folge-Calls für
 COOLDOWN_S direkt ans Fallback, damit ein toter API-Endpunkt nicht jeden

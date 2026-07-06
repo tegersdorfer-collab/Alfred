@@ -382,16 +382,16 @@ subscribeUiState(getBaseUrl(), applyUiEvent);
 function renderVoiceStatus(result: VoiceSegmentResult): void {
   const el = document.getElementById('voice-status');
   if (!el) return;
-  const marker = result.addressed ? '🎙️ an Alfred' : '🎙️ ignoriert';
+  const marker = result.addressed ? '🎙️ an Mantis' : '🎙️ ignoriert';
   let text = `${marker}: "${result.text}"`;
   if (result.addressed && result.reply) {
-    text += `\n🔊 Alfred: "${result.reply}"`;
+    text += `\n🔊 Mantis: "${result.reply}"`;
   }
   el.textContent = text;
 
   if (result.addressed) {
     appendToLog({ speaker: 'user', text: result.text });
-    if (result.reply) appendToLog({ speaker: 'alfred', text: result.reply });
+    if (result.reply) appendToLog({ speaker: 'mantis', text: result.reply });
     playTone(TONES.addressed);
   }
 }
@@ -426,10 +426,10 @@ function renderChatReply(reply: string, userText: string): void {
   const el = document.getElementById('chat-status');
   if (!el) return;
   el.innerHTML = icon('chat');
-  el.appendChild(document.createTextNode(` Alfred: "${reply}"`));
+  el.appendChild(document.createTextNode(` Mantis: "${reply}"`));
 
   appendToLog({ speaker: 'user', text: userText });
-  appendToLog({ speaker: 'alfred', text: reply });
+  appendToLog({ speaker: 'mantis', text: reply });
 }
 
 initChatInput(getBaseUrl(), renderChatReply);

@@ -1,5 +1,5 @@
 """Unit-Tests für core/skills/vision.py: Screen-Context-Awareness ('see_screen').
-Alfred macht einen Screenshot (macOS screencapture) und beschreibt ihn via
+Mantis macht einen Screenshot (macOS screencapture) und beschreibt ihn via
 core.vision.describe_image (Ollama-Vision, bereits für Telegram-Fotos genutzt)."""
 import sys, os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
@@ -43,7 +43,7 @@ class TestSeeScreen:
     def test_fehlende_bildschirmaufnahme_berechtigung_gibt_konkreten_hinweis(self):
         """'could not create image from display' ist macOS' Standardfehler wenn
         die App keine Screen-Recording-Berechtigung hat (Privacy & Security) —
-        Alfred soll das erkennen und Timo konkret sagen was zu tun ist."""
+        Mantis soll das erkennen und Timo konkret sagen was zu tun ist."""
         with patch("core.skills.vision.subprocess.run") as mock_run, \
              patch("core.skills.vision.tempfile.NamedTemporaryFile") as mock_tmp:
             mock_tmp.return_value.__enter__.return_value.name = "/tmp/fake_nonexistent_screen.png"

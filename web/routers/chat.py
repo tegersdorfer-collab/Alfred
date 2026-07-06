@@ -25,7 +25,7 @@ from domains.self_modify import write_file
 
 from web.routers._helpers import _has_body, _jsonable, _health_dict, _event_dict
 
-log = logging.getLogger("alfred.api")
+log = logging.getLogger("mantis.api")
 WEB_DIR = Path(__file__).parent.parent
 
 
@@ -41,7 +41,7 @@ def build_router(orch=None) -> APIRouter:
     async def chat(req: Request):
         d = await req.json()
         if not orch:
-            return {"response": "Alfred-Kern nicht verbunden."}
+            return {"response": "Mantis-Kern nicht verbunden."}
         resp, trace = await orch.dashboard_respond(d["text"])
         return {"response": resp, "tools": [t["tool"] for t in trace]}
 
@@ -79,7 +79,7 @@ def build_router(orch=None) -> APIRouter:
 
     @router.get("/api/status/stream")
     async def status_stream():
-        """SSE-Stream mit Echtzeit-Status-Updates von Alfred."""
+        """SSE-Stream mit Echtzeit-Status-Updates von Mantis."""
         q = BUS.subscribe()
 
         async def gen():

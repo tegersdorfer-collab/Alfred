@@ -2,9 +2,9 @@
 SKILL.md System — Skills als natürlichsprachliche Prozeduren in Markdown-Dateien.
 
 Zweite Art von Skills neben Python-Code-Skills:
-- Gespeichert in Alfred/skills/*.md
+- Gespeichert in Mantis/skills/*.md
 - YAML-Frontmatter: name, description, triggers, platforms
-- Body: natürlichsprachliche Prozedur die Alfred folgen soll
+- Body: natürlichsprachliche Prozedur die Mantis folgen soll
 - Werden in den System-Prompt injiziert wenn Trigger-Keywords matchen
 - Werden vom Background-Review-Loop automatisch erstellt und aktualisiert
 

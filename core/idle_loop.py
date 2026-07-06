@@ -152,7 +152,7 @@ class IdleLoop:
         if not turns:
             return
         lines = "\n".join(
-            f"{'Timo' if t.role == 'user' else 'Alfred'}: {t.content}" for t in turns
+            f"{'Timo' if t.role == 'user' else 'Mantis'}: {t.content}" for t in turns
         )
         prompt = (
             "Fasse das folgende Gespräch prägnant auf Deutsch zusammen (max 200 Wörter). "
@@ -212,7 +212,7 @@ class IdleLoop:
         if _elapsed_since(self._last_insight_run, now) < 14400:
             return
         has_active = db.query(
-            "SELECT 1 FROM tasks WHERE assigned_to='alfred' AND status NOT IN ('done','archived') "
+            "SELECT 1 FROM tasks WHERE assigned_to='mantis' AND status NOT IN ('done','archived') "
             "AND (suggestion_status IS NULL OR suggestion_status='accepted') LIMIT 1"
         )
         if has_active:
@@ -241,10 +241,10 @@ class IdleLoop:
                 if unhealthy:
                     _failures += 1
                     if _failures >= 2:
-                        msg = f"⚠️ Alfred Health-Check: {', '.join(unhealthy)} fehlerhaft"
+                        msg = f"⚠️ Mantis Health-Check: {', '.join(unhealthy)} fehlerhaft"
                         try:
                             from core.push import send_push
-                            await asyncio.to_thread(send_push, "Alfred Health Alert", msg)
+                            await asyncio.to_thread(send_push, "Mantis Health Alert", msg)
                         except Exception:
                             pass
                         log.warning(msg)
@@ -262,7 +262,7 @@ class IdleLoop:
         except Exception:
             nxt = None
         has_active = db.query(
-            "SELECT 1 FROM tasks WHERE assigned_to='alfred' AND status='in_progress' "
+            "SELECT 1 FROM tasks WHERE assigned_to='mantis' AND status='in_progress' "
             "AND execution_phase IN ('executing','finalizing') LIMIT 1"
         )
         if has_active:

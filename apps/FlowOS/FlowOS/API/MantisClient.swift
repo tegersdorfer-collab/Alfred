@@ -1,10 +1,10 @@
 import Foundation
 
-final class AlfredClient {
-    static let shared = AlfredClient()
+final class MantisClient {
+    static let shared = MantisClient()
 
     var baseURL: String {
-        UserDefaults.standard.string(forKey: "alfred_base_url") ?? "http://macbook-air-von-timo.tail7e29ff.ts.net:7779"
+        UserDefaults.standard.string(forKey: "mantis_base_url") ?? "http://macbook-air-von-timo.tail7e29ff.ts.net:7779"
     }
 
     private let session: URLSession = {
@@ -61,7 +61,7 @@ final class AlfredClient {
             let (data, response) = try await attempt()
             try checkStatus(response, data: data)
             return data
-        } catch let err as AlfredError {
+        } catch let err as MantisError {
             throw err
         } catch {
             try await Task.sleep(nanoseconds: 1_500_000_000)
@@ -72,7 +72,7 @@ final class AlfredClient {
     }
 
     private func makeURL(_ path: String) throws -> URL {
-        guard let url = URL(string: baseURL + path) else { throw AlfredError.invalidURL }
+        guard let url = URL(string: baseURL + path) else { throw MantisError.invalidURL }
         return url
     }
 
@@ -80,25 +80,25 @@ final class AlfredClient {
         guard let http = response as? HTTPURLResponse,
               !(200...299).contains(http.statusCode) else { return }
         let msg = data.flatMap { String(data: $0, encoding: .utf8) } ?? ""
-        throw AlfredError.httpError(http.statusCode, msg)
+        throw MantisError.httpError(http.statusCode, msg)
     }
 
     private func decode<T: Decodable>(_ type: T.Type, from data: Data) throws -> T {
         let dec = JSONDecoder()
         dec.keyDecodingStrategy = .convertFromSnakeCase
         do { return try dec.decode(T.self, from: data) }
-        catch { throw AlfredError.decodingError(error.localizedDescription) }
+        catch { throw MantisError.decodingError(error.localizedDescription) }
     }
 }
 
-enum AlfredError: LocalizedError {
+enum MantisError: LocalizedError {
     case invalidURL, httpError(Int, String), decodingError(String), offline
     var errorDescription: String? {
         switch self {
         case .invalidURL: return "Ungültige URL"
         case .httpError(let c, let m): return "HTTP \(c): \(m)"
         case .decodingError(let m): return "Parse: \(m)"
-        case .offline: return "Alfred nicht erreichbar"
+        case .offline: return "Mantis nicht erreichbar"
         }
     }
 }

@@ -1,7 +1,7 @@
 """Pro-Verbindung Session-Manager für /ws/voice/stream: kombiniert Silero-VAD-
 Segmentierung mit openWakeWord-Erkennung. Ersetzt für den WebSocket-Pfad sowohl
 die client-seitige RMS-Erkennung als auch den LLM-basierten
-is_addressed_to_alfred()-Text-Check aus core/voice.py (siehe
+is_addressed_to_mantis()-Text-Check aus core/voice.py (siehe
 docs/superpowers/specs/2026-07-05-vad-wakeword-streaming-design.md)."""
 from __future__ import annotations
 

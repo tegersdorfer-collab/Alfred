@@ -36,8 +36,8 @@ final class FocusTimerViewModel: ObservableObject {
     @Published var secondsRemaining: Int = 25 * 60
     @Published var isRunning = false
     @Published var sessionsCompleted: Int = 0
-    @Published var tasks: [AlfredTask] = []
-    @Published var selectedTask: AlfredTask?
+    @Published var tasks: [MantisTask] = []
+    @Published var selectedTask: MantisTask?
     @Published var showTaskPicker = false
 
     private var timerTask: Task<Void, Never>?
@@ -222,7 +222,7 @@ struct FocusTimerView: View {
         }
     }
 
-    private func activeTaskBadge(_ task: AlfredTask) -> some View {
+    private func activeTaskBadge(_ task: MantisTask) -> some View {
         HStack(spacing: 6) {
             Image(systemName: "target").font(.caption).foregroundStyle(.indigo)
             Text(task.title).font(.caption.bold()).lineLimit(1)

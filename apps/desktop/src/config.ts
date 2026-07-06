@@ -1,6 +1,6 @@
 export const DEFAULT_BASE_URL = 'http://localhost:7779';
 
-const STORAGE_KEY = 'alfred_base_url';
+const STORAGE_KEY = 'mantis_base_url';
 
 export function getBaseUrl(): string {
   return localStorage.getItem(STORAGE_KEY) ?? DEFAULT_BASE_URL;

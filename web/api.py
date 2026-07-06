@@ -1,5 +1,5 @@
 """
-Alfred Dashboard API – läuft IM Alfred-Prozess (geteilter State mit dem Agent).
+Mantis Dashboard API – läuft IM Mantis-Prozess (geteilter State mit dem Agent).
 Voll interaktiv: REST für alle Domänen + 2-Wege-Chat (SSE-Streaming) + Live-Feeds.
 
 App-Factory: `/health` bleibt hier, alle übrigen Endpoints liegen in
@@ -16,11 +16,11 @@ import config
 from core import db, tools as T
 from datetime import datetime
 
-log = logging.getLogger("alfred.api")
+log = logging.getLogger("mantis.api")
 
 
 def create_app(orch=None) -> FastAPI:
-    app = FastAPI(title="Alfred Dashboard", docs_url=None, redoc_url=None)
+    app = FastAPI(title="Mantis Dashboard", docs_url=None, redoc_url=None)
 
     # Kein App-Token: main.py bindet den Server nur ins Tailnet, das Netzwerk
     # selbst ist die Zugriffskontrolle. Macht PWA-Homescreen-start_url "/" möglich.

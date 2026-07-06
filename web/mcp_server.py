@@ -1,21 +1,21 @@
 """
 web/mcp_server.py
 
-Alfred als MCP-Server für Claude Code.
-Exponiert Alfreds Kernfunktionen als MCP-Tools über SSE oder stdio.
+Mantis als MCP-Server für Claude Code.
+Exponiert Mantis' Kernfunktionen als MCP-Tools über SSE oder stdio.
 
 Einbinden in Claude Code: ~/.claude/claude_desktop_config.json
 {
   "mcpServers": {
-    "alfred": {
+    "mantis": {
       "command": "python3",
-      "args": ["/Users/timoegersdorfer/Alfred/web/mcp_server.py"],
+      "args": ["/Users/timoegersdorfer/Mantis/web/mcp_server.py"],
       "env": {}
     }
   }
 }
 
-Oder via HTTP (wenn Alfred läuft): GET /mcp/tools, POST /mcp/call
+Oder via HTTP (wenn Mantis läuft): GET /mcp/tools, POST /mcp/call
 """
 import json
 import sys
@@ -25,19 +25,19 @@ log = logging.getLogger(__name__)
 
 MCP_TOOLS = [
     {
-        "name": "alfred_chat",
-        "description": "Schick Alfred eine Nachricht und erhalte seine Antwort. Nutze ihn für Kontext über Timos Leben, Gesundheit, Tasks, Kalender, Erinnerungen.",
+        "name": "mantis_chat",
+        "description": "Schick Mantis eine Nachricht und erhalte seine Antwort. Nutze ihn für Kontext über Timos Leben, Gesundheit, Tasks, Kalender, Erinnerungen.",
         "inputSchema": {
             "type": "object",
             "properties": {
-                "message": {"type": "string", "description": "Deine Frage oder Anweisung an Alfred"}
+                "message": {"type": "string", "description": "Deine Frage oder Anweisung an Mantis"}
             },
             "required": ["message"]
         }
     },
     {
-        "name": "alfred_memory_search",
-        "description": "Durchsucht Alfreds Langzeit-Gedächtnis semantisch nach relevanten Fakten über Timo.",
+        "name": "mantis_memory_search",
+        "description": "Durchsucht Mantis' Langzeit-Gedächtnis semantisch nach relevanten Fakten über Timo.",
         "inputSchema": {
             "type": "object",
             "properties": {
@@ -47,8 +47,8 @@ MCP_TOOLS = [
         }
     },
     {
-        "name": "alfred_brain_search",
-        "description": "Durchsucht Alfreds Second Brain (Notizen, Projekte, Ressourcen).",
+        "name": "mantis_brain_search",
+        "description": "Durchsucht Mantis' Second Brain (Notizen, Projekte, Ressourcen).",
         "inputSchema": {
             "type": "object",
             "properties": {
@@ -58,7 +58,7 @@ MCP_TOOLS = [
         }
     },
     {
-        "name": "alfred_get_tasks",
+        "name": "mantis_get_tasks",
         "description": "Gibt Timos offene Tasks zurück.",
         "inputSchema": {
             "type": "object",
@@ -68,7 +68,7 @@ MCP_TOOLS = [
         }
     },
     {
-        "name": "alfred_get_health",
+        "name": "mantis_get_health",
         "description": "Gibt aktuelle Gesundheitsdaten zurück (HRV, Schlaf, Schritte etc.).",
         "inputSchema": {"type": "object", "properties": {}}
     },
@@ -82,23 +82,23 @@ def _handle_mcp_call(tool: str, args: dict) -> str:
     base = f"http://127.0.0.1:{port}"
 
     try:
-        if tool == "alfred_chat":
+        if tool == "mantis_chat":
             r = httpx.post(f"{base}/api/chat", json={"message": args["message"]}, timeout=30)
             return r.json().get("response", r.text)
 
-        elif tool == "alfred_memory_search":
+        elif tool == "mantis_memory_search":
             r = httpx.get(f"{base}/api/memory/search",
                           params={"q": args["query"]}, timeout=10)
             items = r.json() if r.status_code == 200 else []
             return "\n".join(f"- {m.get('content','')}" for m in items[:5]) or "Nichts gefunden."
 
-        elif tool == "alfred_brain_search":
+        elif tool == "mantis_brain_search":
             r = httpx.get(f"{base}/api/brain/search",
                           params={"q": args["query"], "limit": 5}, timeout=10)
             items = r.json() if r.status_code == 200 else []
             return "\n".join(f"- [{n.get('title')}] {n.get('content','')[:120]}" for n in items) or "Nichts gefunden."
 
-        elif tool == "alfred_get_tasks":
+        elif tool == "mantis_get_tasks":
             status = args.get("status", "open")
             r = httpx.get(f"{base}/api/tasks", params={"status": status}, timeout=10)
             tasks = r.json() if r.status_code == 200 else []
@@ -106,7 +106,7 @@ def _handle_mcp_call(tool: str, args: dict) -> str:
                 return "\n".join(f"- [{t.get('priority','?')}] {t.get('title')}" for t in tasks[:10])
             return str(tasks)
 
-        elif tool == "alfred_get_health":
+        elif tool == "mantis_get_health":
             r = httpx.get(f"{base}/api/health-data", timeout=10)
             d = r.json() if r.status_code == 200 else {}
             if isinstance(d, list) and d:
@@ -142,7 +142,7 @@ def run_stdio() -> None:
                 resp = {"jsonrpc": "2.0", "id": rid, "result": {
                     "protocolVersion": "2024-11-05",
                     "capabilities": {"tools": {}},
-                    "serverInfo": {"name": "alfred-mcp", "version": "1.0.0"},
+                    "serverInfo": {"name": "mantis-mcp", "version": "1.0.0"},
                 }}
             else:
                 resp = {"jsonrpc": "2.0", "id": rid, "error": {"code": -32601, "message": "Method not found"}}

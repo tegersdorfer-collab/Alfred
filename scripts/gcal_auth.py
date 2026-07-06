@@ -1,20 +1,20 @@
 #!/usr/bin/env python3
 """
-Einmaliger Google OAuth2 Auth-Flow für Alfred → Google Calendar.
+Einmaliger Google OAuth2 Auth-Flow für Mantis → Google Calendar.
 
 Ausführen:
-  cd /Users/timoegersdorfer/alfred
+  cd /Users/timoegersdorfer/mantis
   python3 scripts/gcal_auth.py
 
 Der Flow öffnet einen lokalen Server auf http://localhost:8081.
 Du wirst einmalig im Browser nach Google-Berechtigungen gefragt.
-Danach wird data/gcal_token.json gespeichert – Alfred läuft danach vollautomatisch.
+Danach wird data/gcal_token.json gespeichert – Mantis läuft danach vollautomatisch.
 """
 import json
 import sys
 from pathlib import Path
 
-# Alfred root in sys.path
+# Mantis root in sys.path
 ROOT = Path(__file__).parent.parent
 sys.path.insert(0, str(ROOT))
 
@@ -114,7 +114,7 @@ def main():
         }, f, indent=2)
 
     print(f"\n✅ Token gespeichert: {TOKEN_PATH}")
-    print("   Alfred kann jetzt Google Kalender-Termine schreiben!")
+    print("   Mantis kann jetzt Google Kalender-Termine schreiben!")
 
 
 if __name__ == "__main__":

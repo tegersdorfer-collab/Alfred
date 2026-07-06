@@ -1,14 +1,14 @@
 import SwiftUI
 
 struct FlowSettingsView: View {
-    @AppStorage("alfred_base_url") private var baseURL = "http://macbook-air-von-timo.tail7e29ff.ts.net:7779"
+    @AppStorage("mantis_base_url") private var baseURL = "http://macbook-air-von-timo.tail7e29ff.ts.net:7779"
     @State private var isConnected: Bool? = nil
     @State private var isTesting = false
 
     var body: some View {
         NavigationStack {
             Form {
-                Section("Alfred Verbindung") {
+                Section("Mantis Verbindung") {
                     TextField("URL", text: $baseURL)
                         .keyboardType(.URL)
                         .autocapitalization(.none)
@@ -44,7 +44,7 @@ struct FlowSettingsView: View {
 
     private func testConnection() async {
         isTesting = true
-        isConnected = await AlfredClient.shared.isReachable
+        isConnected = await MantisClient.shared.isReachable
         isTesting = false
     }
 

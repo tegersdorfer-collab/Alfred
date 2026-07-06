@@ -41,13 +41,13 @@ async def _recall(query: str):
     return CTX.lzg.format_for_context(mems)
 
 @T.register("add_directive",
-    "Speichert eine stehende Anweisung von Timo die Alfred ab sofort IMMER beachten soll. "
+    "Speichert eine stehende Anweisung von Timo die Mantis ab sofort IMMER beachten soll. "
     "Beispiel: 'Antworte immer auf Englisch wenn ich Englisch schreibe', "
     "'Erinnere mich immer an X wenn ich Y erwähne', 'Nutze nie Gedankenstriche'. "
     "Diese Anweisung wird bei jeder Antwort automatisch injiziert.",
     {
         "name":        {"type": "string", "description": "Kurzer Name der Anweisung"},
-        "description": {"type": "string", "description": "Was Alfred immer tun/lassen soll"},
+        "description": {"type": "string", "description": "Was Mantis immer tun/lassen soll"},
     },
     ["name", "description"], "memory")
 async def _add_directive(name: str, description: str):

@@ -32,8 +32,8 @@ export function startVoiceCaptureStream(
       const audio = new Audio(`data:audio/ogg;base64,${audioB64}`);
       currentReplyAudio = audio;
       sendMute(true);
-      // Solange Alfred spricht: Server-seitige VAD/Wake-Word-Auswertung pausieren
-      // (per Mute-Flag), sonst hört das Mikrofon Alfreds eigene Stimme und löst
+      // Solange Mantis spricht: Server-seitige VAD/Wake-Word-Auswertung pausieren
+      // (per Mute-Flag), sonst hört das Mikrofon Mantis' eigene Stimme und löst
       // ein neues Segment aus (Echo-Vermeidung, siehe alte voice-capture.ts).
       const stopPlayingFlag = () => sendMute(false);
       audio.onended = stopPlayingFlag;

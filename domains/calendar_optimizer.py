@@ -10,7 +10,7 @@ from llm.base import LLMProvider, Message
 
 log = logging.getLogger(__name__)
 
-# Typen die Alfred frei verschieben darf (keine externen Teilnehmer)
+# Typen die Mantis frei verschieben darf (keine externen Teilnehmer)
 FLEXIBLE_KEYWORDS = [
     "deep work", "deep-work", "fokus", "lernen", "coding", "lesen",
     "sport", "gym", "training", "lauf", "workout", "meditation",
@@ -75,7 +75,7 @@ async def analyze_day(events: list, llm: LLMProvider, date_str: str = None) -> d
             for c in conflicts
         )
 
-    prompt = f"""Du bist Alfred, Timos persönlicher Assistent. Analysiere seinen heutigen Tagesplan.
+    prompt = f"""Du bist Mantis, Timos persönlicher Assistent. Analysiere seinen heutigen Tagesplan.
 
 Termine heute ({today}):
 {chr(10).join(event_lines)}

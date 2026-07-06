@@ -24,7 +24,7 @@ log = logging.getLogger("core.skills")
 async def _create_task(title: str, priority: str = "medium", kind: str = "task", due: str = None, notes: str = None):
     due_dt = parse_datetime(due) if due else None
     tid = tasks_d.create_task(title=title, notes=notes, priority=priority, kind=kind, due=due_dt)
-    # Auto-Klassifikation: kann Alfred diese Task erledigen?
+    # Auto-Klassifikation: kann Mantis diese Task erledigen?
     assignee = "user"
     if CTX.llm:
         try:
@@ -34,7 +34,7 @@ async def _create_task(title: str, priority: str = "medium", kind: str = "task",
             _db.execute("UPDATE tasks SET assigned_to=%s WHERE id=%s", (assignee, tid))
         except Exception:
             pass
-    who = "Alfred übernimmt das" if assignee == "alfred" else "für dich eingetragen"
+    who = "Mantis übernimmt das" if assignee == "mantis" else "für dich eingetragen"
     return f"Aufgabe erstellt: {title} ({priority}) – {who}"
 
 @T.register("add_subtask",
@@ -132,7 +132,7 @@ async def _update_event(query: str, title: str = None, start: str = None,
 @T.register("delete_calendar_event",
     "Löscht einen Kalendereintrag. Nutze dies wenn Timo sagt 'lösch den Termin', "
     "'streich den Termin', 'cancel', 'absagen' o.ä. Sucht per Titel-Stichwort.",
-    {"query": {"type": "string", "description": "Stichwort aus dem Termintitel, z.B. 'Zahnarzt' oder 'Alfred Test'"}},
+    {"query": {"type": "string", "description": "Stichwort aus dem Termintitel, z.B. 'Zahnarzt' oder 'Mantis Test'"}},
     ["query"], "productivity")
 async def _delete_event(query: str):
     if not CTX.dashboard:

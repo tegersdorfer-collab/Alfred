@@ -1,5 +1,5 @@
 """Unit-Tests für core/skills/filesystem.py: voller Datei-/App-Zugriff (nicht nur
-Alfred' eigene Codebase wie core/skills/system.py::read_own_code etc.).
+Mantis' eigene Codebase wie core/skills/system.py::read_own_code etc.).
 Bewusst OHNE Lösch-Tool — nur Lesen/Schreiben/Auflisten/Öffnen."""
 import sys, os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))

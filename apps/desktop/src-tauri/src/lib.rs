@@ -19,7 +19,7 @@ pub fn run() {
             None,
         ))
         .setup(|app| {
-            let show_item = MenuItem::with_id(app, "show", "Alfred anzeigen", true, None::<&str>)?;
+            let show_item = MenuItem::with_id(app, "show", "Mantis anzeigen", true, None::<&str>)?;
             let quit_item = MenuItem::with_id(app, "quit", "Beenden", true, None::<&str>)?;
             let menu = Menu::with_items(app, &[&show_item, &quit_item])?;
 

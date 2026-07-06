@@ -1,5 +1,5 @@
 #!/bin/bash
-# Modell wechseln und Alfred neu starten.
+# Modell wechseln und Mantis neu starten.
 #
 #   ./switch.sh            → zeigt aktuelles Modell + Routing-Status
 #   ./switch.sh route on   → Auto-Routing AN (4B schnell ↔ 9B bei komplexen Anfragen)
@@ -27,7 +27,7 @@ case "$1" in
       printf '\nLLM_ROUTING=%s\n' "$VAL" >> .env
     fi
     echo "✅ Routing → $VAL"
-    echo "🔄 Starte Alfred neu ..."
+    echo "🔄 Starte Mantis neu ..."
     ./start.sh
     exit 0 ;;
   4b)     MODEL="qwen3.5:4b" ;;
@@ -64,5 +64,5 @@ else
 fi
 
 echo "✅ Modell → $MODEL"
-echo "🔄 Starte Alfred neu ..."
+echo "🔄 Starte Mantis neu ..."
 ./start.sh

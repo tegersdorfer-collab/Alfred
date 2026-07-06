@@ -26,7 +26,7 @@ from domains.self_modify import write_file
 
 from web.routers._helpers import _has_body, _jsonable, _health_dict, _event_dict
 
-log = logging.getLogger("alfred.api")
+log = logging.getLogger("mantis.api")
 WEB_DIR = Path(__file__).parent.parent
 
 
@@ -89,14 +89,14 @@ def build_router(orch=None) -> APIRouter:
         sleep_score = min(sleep_h / 8.0, 1.1) if sleep_h > 0 else 1.0
         intensity = round(max(0.85, min(1.05, (hrv_score + sleep_score) / 2.0)), 2)
 
-        alfred_note = ""
+        mantis_note = ""
         if hrv > 0 and sleep_h > 0 and day_type != "jog":
             if intensity >= 1.0:
-                alfred_note = f"HRV {hrv:.0f}, Schlaf {sleep_h:.1f}h — top Werte, Gewichte leicht erhöhen."
+                mantis_note = f"HRV {hrv:.0f}, Schlaf {sleep_h:.1f}h — top Werte, Gewichte leicht erhöhen."
             elif intensity <= 0.88:
-                alfred_note = f"HRV {hrv:.0f}, Schlaf {sleep_h:.1f}h — Erholung niedrig, Gewichte reduzieren."
+                mantis_note = f"HRV {hrv:.0f}, Schlaf {sleep_h:.1f}h — Erholung niedrig, Gewichte reduzieren."
             else:
-                alfred_note = f"HRV {hrv:.0f}, Schlaf {sleep_h:.1f}h — normale Session."
+                mantis_note = f"HRV {hrv:.0f}, Schlaf {sleep_h:.1f}h — normale Session."
 
         def last_set(exercise_name: str) -> dict | None:
             return db.query_one(
@@ -136,9 +136,9 @@ def build_router(orch=None) -> APIRouter:
 
         variant = _variant(day_type) if day_type in ("lower", "upper") else "A"
         plan_key = f"{day_type}{variant}"
-        plan_source = "alfred" if isinstance(plan_json, dict) and plan_json.get(plan_key) else "default"
+        plan_source = "mantis" if isinstance(plan_json, dict) and plan_json.get(plan_key) else "default"
         plan_week = None
-        if plan_source == "alfred":
+        if plan_source == "mantis":
             created = plan_row.get("created_at")
             if created is not None:
                 from datetime import datetime as _dt2, date as _date2
@@ -160,7 +160,7 @@ def build_router(orch=None) -> APIRouter:
             exercises_list = _block("upper")
         else:  # jog
             exercises_list = []
-            alfred_note = "Heute: Joggen — läuft über Strava."
+            mantis_note = "Heute: Joggen — läuft über Strava."
 
         day_label = fitness.CYCLE_LABEL[day_type]
         if day_type in ("lower", "upper"):
@@ -174,7 +174,7 @@ def build_router(orch=None) -> APIRouter:
             "next_label": state["next_label"],
             "plan_week": plan_week,
             "plan_source": plan_source,
-            "alfred_message": alfred_note or f"Heute: {fitness.CYCLE_LABEL[day_type]}.",
+            "mantis_message": mantis_note or f"Heute: {fitness.CYCLE_LABEL[day_type]}.",
             "health": {
                 "hrv": hrv or None,
                 "sleep_hours": sleep_h or None,

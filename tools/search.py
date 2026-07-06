@@ -1,5 +1,5 @@
 """
-Web-Suche für Alfred.
+Web-Suche für Mantis.
 Primär: DuckDuckGo (kostenlos, kein API-Key)
 Fallback: Brave Search API (falls BRAVE_API_KEY gesetzt)
 """

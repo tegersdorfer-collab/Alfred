@@ -1,7 +1,7 @@
 """
-DataReader – Facade über alfred-native Datenquellen (Health, Kalender).
+DataReader – Facade über mantis-native Datenquellen (Health, Kalender).
 KEINE Abhängigkeit mehr von der ai-dashboard. Health kommt aus health_data
-(gespeist von iCloud Health.json), Kalender live aus ICS + alfred-eigenen Events.
+(gespeist von iCloud Health.json), Kalender live aus ICS + mantis-eigenen Events.
 Klassenname/Methoden bleiben kompatibel zu den bestehenden Aufrufstellen.
 """
 import logging
@@ -77,7 +77,7 @@ class CalendarItem:
 
 
 class DashboardReader:
-    """Liest alfred-native Daten (Health + Kalender)."""
+    """Liest mantis-native Daten (Health + Kalender)."""
 
     def __init__(self):
         pass

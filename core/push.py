@@ -12,11 +12,11 @@ from core import db
 
 log = logging.getLogger(__name__)
 
-ALFRED_DIR = Path(__file__).resolve().parent.parent
+MANTIS_DIR = Path(__file__).resolve().parent.parent
 
 
 def _private_key_pem() -> str:
-    p = ALFRED_DIR / config.VAPID_PRIVATE_KEY_PATH
+    p = MANTIS_DIR / config.VAPID_PRIVATE_KEY_PATH
     return p.read_text()
 
 

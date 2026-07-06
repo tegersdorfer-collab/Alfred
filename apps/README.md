@@ -1,6 +1,6 @@
-# Alfred iOS Apps
+# Mantis iOS Apps
 
-Drei fokussierte SwiftUI-Apps, die alle gegen Alfreds FastAPI-Backend laufen
+Drei fokussierte SwiftUI-Apps, die alle gegen Mantis' FastAPI-Backend laufen
 (`:7779`). Sie ersetzen das frühere, überladene PWA-Dashboard durch jeweils
 ein klar abgegrenztes Werkzeug. Ziel: niedrige Reibung — wenn etwas nervt,
 wird es nicht benutzt.
@@ -17,11 +17,11 @@ wird es nicht benutzt.
 **Ordner:** `apps/BodyOS/` · **Bundle:** `de.timoegersdorfer.BodyOS`
 
 Gym-Tracker, Ernährung und Health-Daten in einer App.
-- **Training:** Alfred generiert die Session (3-Tage-Zyklus Upper/Jog/Lower)
+- **Training:** Mantis generiert die Session (3-Tage-Zyklus Upper/Jog/Lower)
   basierend auf HRV + Schlaf. RPE-Feedback pro Übung, Rest-Timer.
 - **Ernährung:** Foto → `qwen3-vl:8b`-Analyse → Makros bestätigen. Makro-Ringe,
   adaptive Kalorienziele.
-- **Health:** HealthKit-Background-Push (Schritte, HRV, Schlaf, Gewicht) an Alfred.
+- **Health:** HealthKit-Background-Push (Schritte, HRV, Schlaf, Gewicht) an Mantis.
 - **Endpoints:** `/api/fitness/{today-plan,exercises,log-rpe}`,
   `/api/nutrition/{analyze-photo,log-meal,goals}`, `/api/health/{push,manual}`,
   `/api/workouts`
@@ -39,7 +39,7 @@ Obsidian-artige Notizen mit Graph.
 **Ordner:** `apps/FlowOS/` · **Bundle:** `de.timoegersdorfer.FlowOS`
 
 Tagesplanung und Gewohnheiten.
-- Today-View (Alfred-Nachricht + Termine + priorisierte Tasks)
+- Today-View (Mantis-Nachricht + Termine + priorisierte Tasks)
 - Tasks mit Unteraufgaben, Kalender (lesen/schreiben), Habits-Grid, Fokus-Timer
 - **Endpoints:** `/api/tasks`, `/api/calendar`, `/api/habits`
 
@@ -48,20 +48,20 @@ Tagesplanung und Gewohnheiten.
 ## Gemeinsame Architektur
 
 - **SwiftUI** (Swift 5.9+), SwiftData für lokalen Offline-Cache
-- **Netzwerk:** jede App hat einen `AlfredClient` (`API/AlfredClient.swift`),
+- **Netzwerk:** jede App hat einen `MantisClient` (`API/MantisClient.swift`),
   `URLSession` async/await. Identisches Muster in allen drei Apps:
-  - Base-URL in `UserDefaults` (`alfred_base_url`), per Settings-View änderbar
+  - Base-URL in `UserDefaults` (`mantis_base_url`), per Settings-View änderbar
   - Default: `http://macbook-air-von-timo.tail7e29ff.ts.net:7779` (Tailscale)
   - `waitsForConnectivity = true` + ein Retry nach 1,5 s → übersteht kurze
     Tailscale-Aussetzer ohne Fehler
-  - `keyDecodingStrategy = .convertFromSnakeCase` (Alfred liefert snake_case)
+  - `keyDecodingStrategy = .convertFromSnakeCase` (Mantis liefert snake_case)
 - **Keine Auth** — nur im privaten Tailnet erreichbar
 - **App Transport Security:** `Info.plist` erlaubt HTTP zum Tailscale-Host
   (`NSExceptionDomains` → `*.tail7e29ff.ts.net`)
 
 ## Tailscale-Setup
 
-Alfred bindet auf `0.0.0.0:7779` (siehe `settings.py` / `.env`
+Mantis bindet auf `0.0.0.0:7779` (siehe `settings.py` / `.env`
 `DASHBOARD_HOST`), ist also über jede Schnittstelle des Macs erreichbar —
 inklusive der Tailscale-IP/-MagicDNS-Adresse. Die Apps sprechen den Mac über
 seinen MagicDNS-Namen an, damit sich nichts ändert wenn die IP wechselt.

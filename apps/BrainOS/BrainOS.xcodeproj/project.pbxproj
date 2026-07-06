@@ -10,7 +10,7 @@
 		A001 /* BrainOSApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = F001 /* BrainOSApp.swift */; };
 		A002 /* BrainContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F002 /* BrainContentView.swift */; };
 		A003 /* NoteModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = F003 /* NoteModels.swift */; };
-		A004 /* AlfredClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = F004 /* AlfredClient.swift */; };
+		A004 /* MantisClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = F004 /* MantisClient.swift */; };
 		A005 /* BrainAPI.swift in Sources */ = {isa = PBXBuildFile; fileRef = F005 /* BrainAPI.swift */; };
 		A006 /* WikiLinkParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = F006 /* WikiLinkParser.swift */; };
 		A007 /* NoteListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F007 /* NoteListView.swift */; };
@@ -29,7 +29,7 @@
 		F001 /* BrainOSApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BrainOSApp.swift; sourceTree = "<group>"; };
 		F002 /* BrainContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BrainContentView.swift; sourceTree = "<group>"; };
 		F003 /* NoteModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NoteModels.swift; sourceTree = "<group>"; };
-		F004 /* AlfredClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AlfredClient.swift; sourceTree = "<group>"; };
+		F004 /* MantisClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MantisClient.swift; sourceTree = "<group>"; };
 		F005 /* BrainAPI.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BrainAPI.swift; sourceTree = "<group>"; };
 		F006 /* WikiLinkParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WikiLinkParser.swift; sourceTree = "<group>"; };
 		F007 /* NoteListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NoteListView.swift; sourceTree = "<group>"; };
@@ -178,7 +178,7 @@
 				A001 /* BrainOSApp.swift in Sources */,
 				A002 /* BrainContentView.swift in Sources */,
 				A003 /* NoteModels.swift in Sources */,
-				A004 /* AlfredClient.swift in Sources */,
+				A004 /* MantisClient.swift in Sources */,
 				A005 /* BrainAPI.swift in Sources */,
 				A006 /* WikiLinkParser.swift in Sources */,
 				A007 /* NoteListView.swift in Sources */,

@@ -25,7 +25,7 @@ from domains.self_modify import write_file
 
 from web.routers._helpers import _has_body, _jsonable, _health_dict, _event_dict
 
-log = logging.getLogger("alfred.api")
+log = logging.getLogger("mantis.api")
 WEB_DIR = Path(__file__).parent.parent
 
 
@@ -58,7 +58,7 @@ def build_router(orch=None) -> APIRouter:
             ctx_lines.append(f"Durchschnittliche Stimmung letzte 7 Tage: {avg_mood:.1f}/5")
         ctx = "\n".join(ctx_lines) or "Keine bisherigen Einträge."
         prompt = (
-            f"Du bist Alfred, ein persönlicher AI-Begleiter. Generiere genau 3 kurze, "
+            f"Du bist Mantis, ein persönlicher AI-Begleiter. Generiere genau 3 kurze, "
             f"persönliche Journalfragen für den Abend-Check-in von Timo. "
             f"Die Fragen sollen zur Selbstreflexion anregen, variieren und nicht zu allgemein sein. "
             f"Kontext:\n{ctx}\n\n"

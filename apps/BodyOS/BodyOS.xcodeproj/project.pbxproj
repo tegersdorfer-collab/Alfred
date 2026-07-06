@@ -10,7 +10,7 @@
 		BA01 /* BodyOSApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = BF01 /* BodyOSApp.swift */; };
 		BA02 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BF02 /* ContentView.swift */; };
 		BA03 /* BodyModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = BF03 /* BodyModels.swift */; };
-		BA04 /* AlfredClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = BF04 /* AlfredClient.swift */; };
+		BA04 /* MantisClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = BF04 /* MantisClient.swift */; };
 		BA05 /* FitnessAPI.swift in Sources */ = {isa = PBXBuildFile; fileRef = BF05 /* FitnessAPI.swift */; };
 		BA06 /* NutritionAPI.swift in Sources */ = {isa = PBXBuildFile; fileRef = BF06 /* NutritionAPI.swift */; };
 		BA07 /* HealthAPI.swift in Sources */ = {isa = PBXBuildFile; fileRef = BF07 /* HealthAPI.swift */; };
@@ -32,7 +32,7 @@
 		BF01 /* BodyOSApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BodyOSApp.swift; sourceTree = "<group>"; };
 		BF02 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		BF03 /* BodyModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BodyModels.swift; sourceTree = "<group>"; };
-		BF04 /* AlfredClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AlfredClient.swift; sourceTree = "<group>"; };
+		BF04 /* MantisClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MantisClient.swift; sourceTree = "<group>"; };
 		BF05 /* FitnessAPI.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FitnessAPI.swift; sourceTree = "<group>"; };
 		BF06 /* NutritionAPI.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NutritionAPI.swift; sourceTree = "<group>"; };
 		BF07 /* HealthAPI.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HealthAPI.swift; sourceTree = "<group>"; };
@@ -182,7 +182,7 @@
 				BA01 /* BodyOSApp.swift in Sources */,
 				BA02 /* ContentView.swift in Sources */,
 				BA03 /* BodyModels.swift in Sources */,
-				BA04 /* AlfredClient.swift in Sources */,
+				BA04 /* MantisClient.swift in Sources */,
 				BA05 /* FitnessAPI.swift in Sources */,
 				BA06 /* NutritionAPI.swift in Sources */,
 				BA07 /* HealthAPI.swift in Sources */,

@@ -20,17 +20,17 @@ SKILLS_MD_DIR = Path(__file__).resolve().parent.parent / "skills"
 SKILLS_MD_DIR.mkdir(parents=True, exist_ok=True)
 
 _REVIEW_PROMPT = """\
-Du bist Alfreds Lern-Agent. Analysiere den letzten Gesprächsaustausch und entscheide,
+Du bist Mantis' Lern-Agent. Analysiere den letzten Gesprächsaustausch und entscheide,
 ob ein Skill oder eine Erinnerung gespeichert werden soll.
 
 DIREKTIVE — SEI AKTIV:
 Die meisten Turns sollten ein Update produzieren. Fehler auf der Seite des Speicherns.
 
 WANN EINEN SKILL ANLEGEN (SKILL.md):
-- Alfred hat eine nicht-triviale Technik/Prozedur benutzt (mehr als 2 Tool-Schritte)
+- Mantis hat eine nicht-triviale Technik/Prozedur benutzt (mehr als 2 Tool-Schritte)
 - Der User hat Alfrends Stil/Ton/Format korrigiert ("kürzer", "andere Reihenfolge" etc.)
 - Ein Muster taucht zum zweiten Mal auf (gleiche Anfrage-Klasse)
-- Alfred hat eine clevere Kombination von Tools gefunden die wiederverwendbar ist
+- Mantis hat eine clevere Kombination von Tools gefunden die wiederverwendbar ist
 
 WANN EINE ERINNERUNG SPEICHERN:
 - Neue Präferenz des Users erkannt ("ich mag X", "mach das nie")
@@ -50,7 +50,7 @@ name: <snake_case_name>
 description: <was dieser Skill tut, 1 Zeile>
 triggers: [<keyword1>, <keyword2>]
 ---
-<Natürlichsprachliche Prozedur die Alfred in der Zukunft folgen soll.
+<Natürlichsprachliche Prozedur die Mantis in der Zukunft folgen soll.
 Konkret: Schritt 1, Schritt 2 etc. Referenziere Tool-Namen wenn relevant.>
 ```
 
@@ -80,7 +80,7 @@ async def run_background_review(
     try:
         context = f"""USER: {user_text}
 
-ALFRED ANTWORT: {assistant_response[:600]}
+MANTIS ANTWORT: {assistant_response[:600]}
 
 GENUTZTE TOOLS: {', '.join(tools_used) if tools_used else 'keine'}
 """

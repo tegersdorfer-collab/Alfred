@@ -113,7 +113,7 @@ class KZG:
         """Gibt KZG-Inhalt für LZG-Komprimierung zurück."""
         lines = []
         for t in self._turns:
-            prefix = "Timo" if t.role == "user" else "Alfred"
+            prefix = "Timo" if t.role == "user" else "Mantis"
             lines.append(f"{prefix}: {t.content}")
         return "\n".join(lines)
 

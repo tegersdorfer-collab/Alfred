@@ -2,13 +2,13 @@ import SwiftUI
 
 @MainActor
 final class TodayViewModel: ObservableObject {
-    @Published var tasks: [AlfredTask] = []
+    @Published var tasks: [MantisTask] = []
     @Published var events: [CalendarEvent] = []
     @Published var habits: [Habit] = []
     @Published var isLoading = false
     @Published var isOffline = false
 
-    var todayTasks: [AlfredTask] {
+    var todayTasks: [MantisTask] {
         tasks.filter { $0.status == "todo" || $0.status == "in_progress" }
               .sorted { priorityWeight($0.priority ?? "medium") > priorityWeight($1.priority ?? "medium") }
               .prefix(5).map { $0 }
@@ -25,12 +25,12 @@ final class TodayViewModel: ObservableObject {
 
     func load() async {
         isLoading = true; isOffline = false
-        async let t: [AlfredTask]? = { try? await FlowAPI.shared.fetchTasks() }()
+        async let t: [MantisTask]? = { try? await FlowAPI.shared.fetchTasks() }()
         async let e: [CalendarEvent]? = { try? await FlowAPI.shared.fetchEvents(days: 7) }()
         async let h: [Habit]? = { try? await FlowAPI.shared.fetchHabits() }()
 
         let tv = await t; let ev = await e; let hv = await h
-        tasks = tv ?? OfflineCache.shared.load([AlfredTask].self, key: "cache_tasks") ?? []
+        tasks = tv ?? OfflineCache.shared.load([MantisTask].self, key: "cache_tasks") ?? []
         events = ev ?? OfflineCache.shared.load([CalendarEvent].self, key: "cache_events") ?? []
         habits = hv ?? OfflineCache.shared.load([Habit].self, key: "cache_habits") ?? []
         isOffline = tv == nil && ev == nil && hv == nil
@@ -41,7 +41,7 @@ final class TodayViewModel: ObservableObject {
         isLoading = false
     }
 
-    func completeTask(_ task: AlfredTask) async {
+    func completeTask(_ task: MantisTask) async {
         try? await FlowAPI.shared.completeTask(task.id)
         await load()
     }
@@ -320,7 +320,7 @@ struct TodayHabitChip: View {
 }
 
 struct TodayTaskRow: View {
-    let task: AlfredTask
+    let task: MantisTask
     let onComplete: () -> Void
 
     var body: some View {

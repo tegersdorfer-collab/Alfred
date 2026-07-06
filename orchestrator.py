@@ -54,7 +54,7 @@ log = logging.getLogger(__name__)
 
 
 def _load_identity() -> str:
-    text = (Path(__file__).parent / "identity" / "alfred.md").read_text()
+    text = (Path(__file__).parent / "identity" / "mantis.md").read_text()
     text = text.replace("{{OWNER}}", config.OWNER_NAME)
     text = text.replace("{{TIMEZONE}}", config.OWNER_TIMEZONE)
     if config.OWNER_EMAIL:
@@ -190,8 +190,8 @@ class Orchestrator:
         self.idle_loop.resume()
         self._bg_tasks.append(asyncio.create_task(self.idle_loop.monitoring_loop()))
         await self.channel.start()
-        log_event("system", "Alfred gestartet")
-        log.info("Alfred bereit ✅")
+        log_event("system", "Mantis gestartet")
+        log.info("Mantis bereit ✅")
 
     def _register_services(self) -> None:
         """Kern-Services im Container registrieren, damit Domain-Module sie nutzen können."""
@@ -206,7 +206,7 @@ class Orchestrator:
         log.debug(f"Services registriert: {services.registered()}")
 
     async def _init_db(self) -> None:
-        """DB-Setup — Fehler bricht Start ab (kein Alfred ohne persistente Memory)."""
+        """DB-Setup — Fehler bricht Start ab (kein Mantis ohne persistente Memory)."""
         try:
             self.lzg.setup()
             self._reminders.setup()
@@ -216,7 +216,7 @@ class Orchestrator:
             log.info("Datenbank bereit")
         except Exception as e:
             log.error(f"DB-Fehler: {e}")
-            raise  # Alfred ohne DB sinnlos
+            raise  # Mantis ohne DB sinnlos
 
     async def _init_skills(self) -> None:
         """Skills binden + dynamische Skills aus vorherigen Sessions laden."""
@@ -275,5 +275,5 @@ class Orchestrator:
                 closer()
             except Exception as e:
                 log.debug(f"Stop/{label}: {e}")
-        log_event("system", "Alfred gestoppt")
+        log_event("system", "Mantis gestoppt")
         log.info("Orchestrator gestoppt")

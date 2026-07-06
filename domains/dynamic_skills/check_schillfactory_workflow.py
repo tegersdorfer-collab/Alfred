@@ -1,4 +1,4 @@
-"""Automatisch von Alfred erstelltes Skill: Startet den Schillfactory-Workflow und prüft die Erreichbarkeit der Postkristartenbank
+"""Automatisch von Mantis erstelltes Skill: Startet den Schillfactory-Workflow und prüft die Erreichbarkeit der Postkristartenbank
 Erstellt: 2026-07-05T21:59:48
 """
 from core import tools as T

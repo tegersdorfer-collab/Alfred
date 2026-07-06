@@ -49,7 +49,7 @@ class TestVoiceSegmentEndpoint:
         fake_orch = MagicMock()
         fake_orch.voice_respond = AsyncMock(return_value=("Dein Schlaf war gut.", []))
         with patch("web.routers.voice.transcribe_audio", new=AsyncMock(return_value="Wie war mein Schlaf?")), \
-             patch("web.routers.voice.is_addressed_to_alfred", new=AsyncMock(return_value=True)), \
+             patch("web.routers.voice.is_addressed_to_mantis", new=AsyncMock(return_value=True)), \
              patch("web.routers.voice.synthesize", new=AsyncMock(return_value=b"FAKE_OGG_BYTES")):
             client = _make_client(fake_orch)
             resp = client.post(
@@ -68,7 +68,7 @@ class TestVoiceSegmentEndpoint:
         fake_orch = MagicMock()
         fake_orch.voice_respond = AsyncMock()
         with patch("web.routers.voice.transcribe_audio", new=AsyncMock(return_value="Und dann meinte er zu mir...")), \
-             patch("web.routers.voice.is_addressed_to_alfred", new=AsyncMock(return_value=False)), \
+             patch("web.routers.voice.is_addressed_to_mantis", new=AsyncMock(return_value=False)), \
              patch("web.routers.voice.synthesize", new=AsyncMock()) as mock_synth:
             client = _make_client(fake_orch)
             resp = client.post(
@@ -87,7 +87,7 @@ class TestVoiceSegmentEndpoint:
         fake_orch = MagicMock()
         fake_orch.voice_respond = AsyncMock()
         with patch("web.routers.voice.transcribe_audio", new=AsyncMock(return_value="")), \
-             patch("web.routers.voice.is_addressed_to_alfred", new=AsyncMock()) as mock_addr:
+             patch("web.routers.voice.is_addressed_to_mantis", new=AsyncMock()) as mock_addr:
             client = _make_client(fake_orch)
             resp = client.post(
                 "/api/voice/segment",
@@ -101,7 +101,7 @@ class TestVoiceSegmentEndpoint:
     def test_ohne_orchestrator_liefert_text_ohne_agent_antwort(self):
         """Wenn kein orch verbunden ist (z.B. Startup-Race), darf der Endpunkt nicht crashen."""
         with patch("web.routers.voice.transcribe_audio", new=AsyncMock(return_value="Wie war mein Schlaf?")), \
-             patch("web.routers.voice.is_addressed_to_alfred", new=AsyncMock(return_value=True)):
+             patch("web.routers.voice.is_addressed_to_mantis", new=AsyncMock(return_value=True)):
             client = _make_client(orch=None)
             resp = client.post(
                 "/api/voice/segment",
@@ -117,7 +117,7 @@ class TestVoiceSegmentEndpoint:
         fake_orch = MagicMock()
         fake_orch.voice_respond = AsyncMock(return_value=("Dein Schlaf war gut.", []))
         with patch("web.routers.voice.transcribe_audio", new=AsyncMock(return_value="Wie war mein Schlaf?")), \
-             patch("web.routers.voice.is_addressed_to_alfred", new=AsyncMock(return_value=True)), \
+             patch("web.routers.voice.is_addressed_to_mantis", new=AsyncMock(return_value=True)), \
              patch("web.routers.voice.synthesize", new=AsyncMock(return_value=b"")):
             client = _make_client(fake_orch)
             resp = client.post(

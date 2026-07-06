@@ -14,13 +14,13 @@ describe('appendToLog', () => {
 
   it('zeigt Sprecher und Text an', () => {
     appendToLog({ speaker: 'user', text: 'Wie war mein Schlaf?' });
-    appendToLog({ speaker: 'alfred', text: 'Sehr gut, 8 Stunden.' });
+    appendToLog({ speaker: 'mantis', text: 'Sehr gut, 8 Stunden.' });
     const entries = document.querySelectorAll('.log-entry');
     expect(entries.length).toBe(2);
     expect(entries[0].textContent).toContain('Wie war mein Schlaf?');
     expect(entries[1].textContent).toContain('Sehr gut, 8 Stunden.');
     expect(entries[0].className).toContain('log-user');
-    expect(entries[1].className).toContain('log-alfred');
+    expect(entries[1].className).toContain('log-mantis');
   });
 
   it('begrenzt die Historie auf MAX_LOG_ENTRIES', () => {

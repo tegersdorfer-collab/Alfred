@@ -1,8 +1,8 @@
 """
-Restart-Watchdog: wird von Alfred als Subprocess gespawnt.
-Überlebt den Alfred-Neustart, prüft Gesundheit, rollt zurück bei Fehler.
+Restart-Watchdog: wird von Mantis als Subprocess gespawnt.
+Überlebt den Mantis-Neustart, prüft Gesundheit, rollt zurück bei Fehler.
 
-Aufruf: python3 scripts/restart_watchdog.py <alfred_pid> <rollback_commit> [<logfile>]
+Aufruf: python3 scripts/restart_watchdog.py <mantis_pid> <rollback_commit> [<logfile>]
 """
 import os
 import sys
@@ -11,9 +11,9 @@ import signal
 import subprocess
 import urllib.request
 
-ALFRED_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+MANTIS_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 HEALTH_URL = "http://localhost:7779/api/status"
-HEALTH_TIMEOUT = 90   # Sekunden bis Alfred hochkommen muss
+HEALTH_TIMEOUT = 90   # Sekunden bis Mantis hochkommen muss
 CHECK_INTERVAL = 3
 
 
@@ -21,7 +21,7 @@ def log(msg: str):
     print(f"[watchdog] {msg}", flush=True)
 
 
-def alfred_healthy() -> bool:
+def mantis_healthy() -> bool:
     try:
         with urllib.request.urlopen(HEALTH_URL, timeout=5) as r:
             return r.status == 200
@@ -29,20 +29,20 @@ def alfred_healthy() -> bool:
         return False
 
 
-def start_alfred(logfile: str) -> subprocess.Popen:
+def start_mantis(logfile: str) -> subprocess.Popen:
     with open(logfile, "a") as lf:
         proc = subprocess.Popen(
             [sys.executable, "main.py"],
-            cwd=ALFRED_DIR,
+            cwd=MANTIS_DIR,
             stdout=lf, stderr=lf,
         )
-    log(f"Alfred gestartet (PID {proc.pid})")
+    log(f"Mantis gestartet (PID {proc.pid})")
     return proc
 
 
 def git_rollback(commit: str):
     log(f"Rollback zu Commit {commit[:8]}…")
-    subprocess.run(["git", "reset", "--hard", commit], cwd=ALFRED_DIR, capture_output=True)
+    subprocess.run(["git", "reset", "--hard", commit], cwd=MANTIS_DIR, capture_output=True)
 
 
 def main():
@@ -52,11 +52,11 @@ def main():
 
     old_pid     = int(sys.argv[1])
     rollback_to = sys.argv[2]
-    logfile     = sys.argv[3] if len(sys.argv) > 3 else "/tmp/alfred_out.log"
+    logfile     = sys.argv[3] if len(sys.argv) > 3 else "/tmp/mantis_out.log"
 
-    log(f"Starte — beende alten Alfred (PID {old_pid}), Rollback-Commit: {rollback_to[:8]}")
+    log(f"Starte — beende alten Mantis (PID {old_pid}), Rollback-Commit: {rollback_to[:8]}")
 
-    # 1. Alten Alfred beenden
+    # 1. Alten Mantis beenden
     try:
         os.kill(old_pid, signal.SIGTERM)
         for _ in range(20):
@@ -71,24 +71,24 @@ def main():
         pass
     log("Alter Prozess beendet")
 
-    # 2. Neuen Alfred starten
-    proc = start_alfred(logfile)
+    # 2. Neuen Mantis starten
+    proc = start_mantis(logfile)
     time.sleep(5)  # Startzeit
 
     # 3. Health-Check
     deadline = time.time() + HEALTH_TIMEOUT
     healthy  = False
     while time.time() < deadline:
-        if alfred_healthy():
+        if mantis_healthy():
             healthy = True
             break
         if proc.poll() is not None:
-            log("Alfred abgestürzt!")
+            log("Mantis abgestürzt!")
             break
         time.sleep(CHECK_INTERVAL)
 
     if healthy:
-        log("✅ Alfred läuft gesund — Update erfolgreich")
+        log("✅ Mantis läuft gesund — Update erfolgreich")
         return
 
     # 4. Rollback
@@ -101,13 +101,13 @@ def main():
 
     git_rollback(rollback_to)
 
-    log("Starte Alfred mit alter Version…")
-    proc2 = start_alfred(logfile)
+    log("Starte Mantis mit alter Version…")
+    proc2 = start_mantis(logfile)
 
     # Kurze Verifikation nach Rollback
     time.sleep(8)
-    if alfred_healthy():
-        log("✅ Rollback erfolgreich — Alfred läuft mit alter Version")
+    if mantis_healthy():
+        log("✅ Rollback erfolgreich — Mantis läuft mit alter Version")
     else:
         log("⚠️  Rollback-Start braucht mehr Zeit — Watchdog beendet sich")
 
