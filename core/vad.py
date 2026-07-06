@@ -31,11 +31,26 @@ class SileroVAD:
     via `s.get_inputs()` / `s.get_outputs()` on the downloaded model:
       inputs:  input [None, None] float32, state [2, None, 128] float32, sr [] int64
       outputs: output [None, 1] float32, stateN [None, None, None] float32
-    """
+
+    CONTEXT PREPENDING: Silero VAD v5+'s ONNX graph expects the last 64 samples
+    of the PREVIOUS chunk prepended to the current 512-sample chunk (making the
+    actual "input" tensor 576 samples) — this is separate from the recurrent
+    `state` tensor and is NOT documented in the graph's input shape metadata
+    (which just shows `[None, None]`). Confirmed against the official
+    `silero-vad` PyPI package's `OnnxWrapper.__call__` (`context_size = 64` for
+    16kHz, `x = torch.cat([self._context, x], dim=1)`). Without this, the model
+    silently returns near-zero speech probability for real audio containing
+    genuine speech — found via a live end-to-end test that fed real recordings
+    through the whole VAD+wake-word pipeline (docs/superpowers/plans/2026-07-05-
+    vad-wakeword-streaming.md, Task 6) after the original Task 1 implementation
+    only ever exercised this class against a mocked ONNX session."""
+
+    CONTEXT_SAMPLES = 64
 
     def __init__(self, model_path: Path):
         self._session = _load_session(model_path)
         self._state = np.zeros((2, 1, 128), dtype=np.float32)
+        self._context = np.zeros(self.CONTEXT_SAMPLES, dtype=np.float32)
 
     def speech_probability(self, pcm_chunk: bytes) -> float:
         n_samples = len(pcm_chunk) // 2
@@ -49,14 +64,16 @@ class SileroVAD:
             )
         samples = struct.unpack(f"<{n_samples}h", pcm_chunk)
         audio = np.array(samples, dtype=np.float32) / 32768.0
+        audio_with_context = np.concatenate([self._context, audio])
         inputs = {
-            "input": audio[np.newaxis, :],
+            "input": audio_with_context[np.newaxis, :],
             "sr": np.array(SAMPLE_RATE, dtype=np.int64),
             "state": self._state,
         }
         outputs = self._session.run(None, inputs)
         if len(outputs) > 1:
             self._state = np.array(outputs[1], dtype=np.float32)
+        self._context = audio_with_context[-self.CONTEXT_SAMPLES:]
         return float(np.array(outputs[0]).flatten()[0])
 
 

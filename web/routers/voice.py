@@ -67,7 +67,10 @@ def build_router(orch=None) -> APIRouter:
         # (32ms @ 16kHz) frames before calling process_chunk(), so chunk_ms
         # here must match that buffered frame size (see core/voice_stream.py).
         segmenter = VadSegmenter(vad_model, chunk_ms=32)
-        wakeword_detector = _StubWakeWordDetector()  # Task 6 ersetzt dies durch den echten Detector
+
+        from core.wakeword import WakeWordDetector
+        wakeword_path = Path(__file__).parent.parent.parent / "data" / "wakeword" / "mantis.onnx"
+        wakeword_detector = WakeWordDetector(wakeword_path)
         session = VoiceStreamSession(
             vad_segmenter=segmenter,
             wakeword_detector=wakeword_detector,
@@ -121,9 +124,3 @@ def build_router(orch=None) -> APIRouter:
             log.error(f"Voice-WebSocket-Handler abgebrochen: {e}")
 
     return router
-
-
-class _StubWakeWordDetector:
-    """Platzhalter bis Task 6 den echten, validierten Mantis-Detector einsetzt."""
-    def check(self, pcm_chunk: bytes) -> bool:
-        return False

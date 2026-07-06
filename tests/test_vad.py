@@ -54,6 +54,46 @@ class TestSileroVAD:
                 mock_session.run.call_args_list[1].args[1]["state"], state_output
             )
 
+    def test_prepends_previous_chunk_tail_as_context(self, tmp_path):
+        """Regression test for a real bug found via live end-to-end testing (see
+        docs/superpowers/plans/2026-07-05-vad-wakeword-streaming.md Task 6): the
+        official Silero VAD v5+ ONNX graph requires the last 64 samples of the
+        PREVIOUS chunk prepended to the current 512-sample chunk (576 total),
+        separately from the recurrent `state` tensor. Without this, the model
+        silently returns near-zero speech probability for real speech audio —
+        confirmed against the official `silero-vad` PyPI package's
+        `OnnxWrapper.__call__` (`context_size = 64` for 16kHz)."""
+        import numpy as np
+
+        model_path = tmp_path / "fake.onnx"
+        model_path.write_bytes(b"fake")
+        with patch.object(vad, "_load_session") as mock_load:
+            mock_session = MagicMock()
+            mock_session.run.return_value = [np.array([[0.5]])]
+            mock_load.return_value = mock_session
+
+            model = vad.SileroVAD(model_path)
+
+            chunk1_samples = [1000] * 512
+            chunk1 = struct.pack("<512h", *chunk1_samples)
+            model.speech_probability(chunk1)
+            first_input = mock_session.run.call_args_list[0].args[1]["input"]
+            assert first_input.shape == (1, 512 + vad.SileroVAD.CONTEXT_SAMPLES)
+            # Erster Aufruf: Context ist noch der initiale Null-Puffer
+            np.testing.assert_array_equal(
+                first_input[0, : vad.SileroVAD.CONTEXT_SAMPLES], np.zeros(vad.SileroVAD.CONTEXT_SAMPLES)
+            )
+
+            chunk2_samples = [2000] * 512
+            chunk2 = struct.pack("<512h", *chunk2_samples)
+            model.speech_probability(chunk2)
+            second_input = mock_session.run.call_args_list[1].args[1]["input"]
+            # Zweiter Aufruf: Context sind die letzten 64 Samples von Chunk 1 (1000/32768.0)
+            expected_context = np.full(vad.SileroVAD.CONTEXT_SAMPLES, 1000 / 32768.0, dtype=np.float32)
+            np.testing.assert_allclose(
+                second_input[0, : vad.SileroVAD.CONTEXT_SAMPLES], expected_context, rtol=1e-5
+            )
+
 
 class FakeVAD:
     """Test-Double: gibt vordefinierte Wahrscheinlichkeiten in Aufrufreihenfolge zurück."""
