@@ -42,8 +42,10 @@ class Autonomy:
         self.fwd_interval = 0.35
         self.back_secs = 0.5
         self.back_pause = 0.55
-        self.turn_secs = 0.6
-        self.turn_pause = 0.65
+        self.turn_secs = 0.45
+        self.turn_pause = 0.35
+        self.turn_power = 0.6          # kräftiger als Fahren → sauberere Drehung
+        self.max_turn_bursts = 10      # Sicherheitslimit gegen Endlos-Drehen (~volle Drehung)
 
         self._turn_dir = "rechts"
 
@@ -116,8 +118,24 @@ class Autonomy:
             await asyncio.sleep(self.back_pause)
         # Drehrichtung abwechseln, um nicht in Ecken festzuhängen
         self._turn_dir = "links" if self._turn_dir == "rechts" else "rechts"
-        await self.mgr.drive(self._turn_dir, self.power, self.turn_secs)
-        await asyncio.sleep(self.turn_pause)
+        # Geschlossene Regelung: in Schritten weiterdrehen, BIS vorne frei ist.
+        # Eine einzelne kurze Drehung reicht sonst nicht — der Droid schaut die
+        # Wand danach immer noch an.
+        for _ in range(self.max_turn_bursts):
+            await self.mgr.drive(self._turn_dir, self.turn_power, self.turn_secs)
+            await asyncio.sleep(self.turn_pause)
+            front = await self._front_value()
+            if front is None or front <= self.threshold:
+                return  # freie Bahn gefunden
+        # Nach voller Drehung immer noch blockiert (Ecke/umzingelt): nur zurücksetzen,
+        # wenn hinten frei ist — sonst stehen bleiben (nirgends hin).
+        self.status = "steckt fest"
+        rear = await self._rear_value()
+        if rear is None or rear <= self.threshold:
+            await self.mgr.drive("zurueck", self.power, self.back_secs)
+            await asyncio.sleep(self.back_pause)
+        else:
+            await self.mgr.stop()
 
     # ── Loop ─────────────────────────────────────────────────────────────────
     async def _loop(self) -> None:

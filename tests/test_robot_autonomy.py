@@ -25,10 +25,36 @@ class FakeManager:
         self.calls.append(("stop",))
 
 
+class SeqManager:
+    """Fake, bei dem jede Drehung die Frontsicht ändert (fronts[k] = Wert nach k Drehungen)."""
+
+    def __init__(self, fronts, rear=13):
+        self.fronts = list(fronts)
+        self.rear = rear
+        self.idx = 0
+        self.calls: list = []
+
+    async def sensors(self):
+        i = min(self.idx, len(self.fronts) - 1)
+        return Sensors(self.fronts[i], self.rear, 13, 13, b"")
+
+    async def drive(self, action, power, secs):
+        self.calls.append(("drive", action, power, secs))
+        if action in ("links", "rechts"):
+            self.idx += 1  # Drehung → neue Front-Sicht
+
+    async def stop(self):
+        self.calls.append(("stop",))
+
+
 def _fast(a: Autonomy) -> Autonomy:
     a.threshold = 60
     a.back_pause = a.turn_pause = 0.0  # keine echten Wartezeiten im Test
     return a
+
+
+def _turns(calls):
+    return [c for c in calls if c[0] == "drive" and c[1] in ("links", "rechts")]
 
 
 def test_forward_when_clear():
@@ -84,6 +110,34 @@ def test_avoid_skips_backup_when_rear_blocked():
     asyncio.run(a.step())
     assert not any(c[:2] == ("drive", "zurueck") for c in fm.calls)  # nicht rückwärts
     assert any(c[0] == "drive" and c[1] in ("links", "rechts") for c in fm.calls)  # aber drehen
+
+
+def test_avoid_turns_until_front_clear():
+    # vorne blockiert, wird erst nach 2 Drehungen frei
+    mgr = SeqManager(fronts=[200, 200, 10])
+    a = _fast(Autonomy(manager=mgr))
+    asyncio.run(a.step())
+    assert len(_turns(mgr.calls)) == 2  # dreht weiter bis frei, nicht nur einmal
+
+
+def test_avoid_is_bounded_and_recovers():
+    # vorne dauerhaft blockiert, hinten frei → begrenzte Drehungen, dann Rückzug
+    mgr = SeqManager(fronts=[200], rear=13)
+    a = _fast(Autonomy(manager=mgr))
+    a.max_turn_bursts = 5
+    asyncio.run(a.step())
+    assert len(_turns(mgr.calls)) == 5                 # kein Endlos-Spin
+    assert mgr.calls[-1][:2] == ("drive", "zurueck")   # Fest-steck-Rückzug am Ende
+
+
+def test_avoid_when_fully_surrounded_stops():
+    # vorne UND hinten blockiert → dreht begrenzt, fährt aber nirgends hin
+    mgr = SeqManager(fronts=[200], rear=200)
+    a = _fast(Autonomy(manager=mgr))
+    a.max_turn_bursts = 5
+    asyncio.run(a.step())
+    assert len(_turns(mgr.calls)) == 5
+    assert not any(c[:2] == ("drive", "zurueck") for c in mgr.calls)  # nicht in die Wand
 
 
 def test_no_data_when_sensors_none():
