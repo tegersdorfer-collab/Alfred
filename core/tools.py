@@ -161,6 +161,8 @@ _CATEGORY_KEYWORDS = {
     "vision":       ["bildschirm", "screenshot", "bildschirmfoto", "siehst du",
                      "was siehst du", "schau dir meinen bildschirm", "guck dir an",
                      "bildschirminhalt"],
+    "robot":        ["roboter", "droide", "droid", "x5", "greifer", "greif",
+                     "autonom", "patrouill", "fahr los", "fahr vor", "fahr zurück"],
 }
 
 # Generelle Aktionsverben → es soll etwas GETAN werden

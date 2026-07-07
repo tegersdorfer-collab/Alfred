@@ -32,6 +32,9 @@ def registry():
         ("list_directory",      "Listet Dateien eines Verzeichnisses auf", "filesystem"),
         ("open_app",            "Startet eine Mac-Anwendung",             "filesystem"),
         ("see_screen",          "Macht einen Screenshot und beschreibt ihn", "vision"),
+        ("robot_control",       "Steuert den X5-Roboter: fahren, drehen, greifen, Sound", "robot"),
+        ("robot_sensors",       "Liest die Roboter-Sensoren (IR-Abstand, Druck)", "robot"),
+        ("robot_autonomy",      "Autonomer Fahrmodus des Roboters", "robot"),
     ]
     for name, desc, cat in fakes:
         T.REGISTRY[name] = T.Tool(name=name, description=desc, parameters={},
@@ -77,6 +80,22 @@ class TestSelectTools:
     def test_datei_anfrage_liefert_filesystem_tools(self, registry):
         names = T.select_tools("Liste bitte die Dateien im Ordner ~/Desktop auf")
         assert "list_directory" in names
+
+    def test_roboter_fahrbefehl_liefert_robot_tools(self, registry):
+        names = T.select_tools("fahr den roboter 2 sekunden vor")
+        assert "robot_control" in names
+
+    def test_autonom_liefert_robot_autonomy(self, registry):
+        names = T.select_tools("starte den autonomen modus")
+        assert "robot_autonomy" in names
+
+    def test_greifer_liefert_robot_tools(self, registry):
+        names = T.select_tools("mach den greifer zu")
+        assert "robot_control" in names
+
+    def test_roboter_sensorfrage_liefert_robot_tools(self, registry):
+        names = T.select_tools("was sehen die roboter-sensoren gerade?")
+        assert "robot_sensors" in names
 
     def test_oeffne_anfrage_liefert_filesystem_tools(self, registry):
         names = T.select_tools("Öffne bitte die Datei ~/Dokumente/rechnung.pdf")
