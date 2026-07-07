@@ -41,3 +41,6 @@ google-auth-oauthlib>=1.2
 google-auth-httplib2>=0.2
 
 openwakeword>=0.6.0
+
+# Robotik — BLE-Steuerung X5-Droid (Clementoni RoboMaker)
+bleak>=3.0.0
