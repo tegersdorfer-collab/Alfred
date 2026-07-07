@@ -72,8 +72,24 @@ def dump_services(client: BleakClient):
 
 
 def make_notify_cb():
+    """Dekodiert das 9-Byte-Sensorframe (4x uint16 LE + Konstante) und
+    druckt nur bei nennenswerter Änderung, um die Konsole nicht zu fluten."""
+    state = {"last": None}
+
     def cb(ch: BleakGATTCharacteristic, data: bytearray):
-        print(f"  {ts()} NOTIFY {ch.uuid}  <-  {data.hex(' ')}   ({len(data)} B)")
+        if len(data) == 9:
+            ch0 = int.from_bytes(data[0:2], "little")
+            ch1 = int.from_bytes(data[2:4], "little")
+            ch2 = int.from_bytes(data[4:6], "little")
+            ch3 = int.from_bytes(data[6:8], "little")
+            vals = (ch0, ch1, ch2, ch3)
+            last = state["last"]
+            if last is None or any(abs(a - b) > 3 for a, b in zip(vals, last)):
+                state["last"] = vals
+                print(f"  {ts()} SENS  ch0={ch0:5}  ch1={ch1:5}  "
+                      f"ch2={ch2:5}  ch3={ch3:5}   raw={data.hex(' ')}")
+        else:
+            print(f"  {ts()} NOTIFY {ch.uuid} <- {data.hex(' ')} ({len(data)} B)")
     return cb
 
 
