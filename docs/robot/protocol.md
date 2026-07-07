@@ -21,12 +21,41 @@ Ein einziger Custom-Service:
 | `cc9151df-c5eb-477a-a793-287a5500fc81` | 20 | read, write | Config? (kein WWR) |
 | `26c8d1e9-f4ae-4f76-97ea-8576d5e23079` | 22 | write-without-response, read, write | Befehle (Kandidat B) |
 
-## Befehls-Bytes (Bytes → Wirkung)
-_(wird beim Ausprobieren gefüllt)_
+## Befehls-Protokoll — DEKODIERT ✅
 
-| Charakteristik | Bytes (hex) | Wirkung |
-|---|---|---|
-| | | |
+Quelle: Reverse-Engineering der Android-App `it.clementoni.robomaker` (Unity/IL2CPP,
+Klasse `ClemRobotBLE`, disassembliert mit Il2CppDumper + capstone). **Die App nutzt nur
+Handle 15/18/20; Handle 22 (`26c8d1e9…`) ist ungenutzt.**
+
+### Kanäle
+| Konstante | Charakteristik | Handle | Zweck |
+|---|---|---|---|
+| `CH_SENSORS` | `5e366294…` | 15 | Notify: Sensor-Stream (siehe oben) |
+| `CH_MOTORS` | `165aecf8…` | 18 | **Motoren** (Fahren + Greifer) |
+| `CH_AUDIO`  | `cc9151df…` | 20 | **Sound** |
+
+### Sound (CH_AUDIO, Handle 20)
+- **1 Byte** = Sound-ID. Gültig `0x01`–`0x0f`. `>= 0x16` → Firmware trennt Verbindung (meiden).
+- App-API: `PlaySound(int sample, bool loop)`.
+
+### Motoren (CH_MOTORS, Handle 18) — `Motors(int[] commands, float[] forces, float[] times)`
+Genau **9 Bytes**, kein Header/Terminator. **3 Motoren × 3 Bytes**:
+```
+[cmd0 pow0 time0] [cmd1 pow1 time1] [cmd2 pow2 time2]
+   Motor 0            Motor 1            Motor 2
+```
+- **cmd**: `0x00`=rückwärts, `0x01`=vorwärts, `0x02`=Bremse (aus `.cctor`: BACKWARD=0, FORWARD=1, BRAKE=2)
+- **pow**: `force × 255`, also `0x00`–`0xff` (0–100 % Leistung)
+- **time**: `Sekunden × 100`, geclamped auf 2.55 s → `0x00`–`0xff`; `0x00` = vermutlich Dauerlauf (bis zum nächsten Befehl)
+- Motor-Index → physische Zuordnung (2× Antrieb + Greifer) wird empirisch bestimmt.
+
+### Richtungs-/Greifer-Enums (App-intern)
+- `STATE_MOVE`: STOP=0, UP=1, UP_RIGHT=2, UP_LEFT=3, RIGHT=4, LEFT=5, DOWN_RIGHT=6, DOWN_LEFT=7, DOWN=8
+- `PINZA_MOVE` (Greifer): CLOSE=−1, STOP=0, OPEN=1
+- weitere API: `RealtimeMotorCommand(idMotor, power)`, `RealtimePinzaCommand(PINZA_MOVE)`, `RealtimeMode(bool)`
+
+### Verbinden
+- Per **Name** `EVRobot2` (macOS-Adresse variiert). Nach Connect: Notify auf `5e366294…` abonnieren.
 
 ## Sensor-Frames (Notify 5e36…) — DEKODIERT ✅
 
