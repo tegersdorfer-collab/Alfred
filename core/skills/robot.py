@@ -9,6 +9,7 @@ import logging
 
 from core import tools as T
 from tools.robot.manager import MANAGER
+from tools.robot.autonomy import AUTO
 
 log = logging.getLogger("core.skills")
 
@@ -70,3 +71,32 @@ async def _robot_sensors():
     naeher = lambda v: " (nah!)" if v > 60 else ""
     return (f"IR vorne/hinten: ir0={s.ir0}{naeher(s.ir0)}, ir1={s.ir1}{naeher(s.ir1)} · "
             f"Greifer-Druck={s.pressure} · (höher=näher, Ruhe≈13)")
+
+
+@T.register(
+    "robot_autonomy",
+    "Schaltet den autonomen Fahrmodus des X5 ein/aus: der Roboter fährt selbstständig "
+    "und weicht Hindernissen aus (via IR-Sensoren). action=start beginnt, stopp beendet, "
+    "status zeigt den Zustand. Es gibt einen Sicherheits-Auto-Stopp nach einigen Minuten.",
+    {
+        "action": {"type": "string", "enum": ["start", "stopp", "status"]},
+        "schwelle": {"type": "integer", "description": "Hindernis-Schwelle (Sensorwert, Standard 60; höher=näher)"},
+        "front_sensor": {"type": "string", "enum": ["ir0", "ir1"], "description": "welcher IR-Sensor vorne ist (Standard ir0)"},
+    },
+    ["action"],
+    "robot",
+)
+async def _robot_autonomy(action: str, schwelle: int = 0, front_sensor: str = ""):
+    if front_sensor in ("ir0", "ir1"):
+        AUTO.front = front_sensor
+    if schwelle and schwelle > 0:
+        AUTO.threshold = int(schwelle)
+    try:
+        if action == "start":
+            return await AUTO.start()
+        if action == "stopp":
+            return await AUTO.stop()
+        return AUTO.status_line()
+    except Exception as e:
+        log.warning("robot_autonomy fehlgeschlagen: %s", e)
+        return f"❌ Autonomie-Fehler: {e}"
