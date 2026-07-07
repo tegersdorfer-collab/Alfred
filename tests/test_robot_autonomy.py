@@ -71,6 +71,21 @@ def test_turn_direction_alternates():
     assert first != second  # abwechselnd, um nicht in Ecken festzuhängen
 
 
+def test_avoid_backs_up_when_rear_clear():
+    fm = FakeManager(ir0=200, ir1=13)  # vorne Hindernis, hinten frei
+    a = _fast(Autonomy(manager=fm))
+    asyncio.run(a.step())
+    assert any(c[:2] == ("drive", "zurueck") for c in fm.calls)
+
+
+def test_avoid_skips_backup_when_rear_blocked():
+    fm = FakeManager(ir0=200, ir1=200)  # vorne UND hinten Hindernis
+    a = _fast(Autonomy(manager=fm))
+    asyncio.run(a.step())
+    assert not any(c[:2] == ("drive", "zurueck") for c in fm.calls)  # nicht rückwärts
+    assert any(c[0] == "drive" and c[1] in ("links", "rechts") for c in fm.calls)  # aber drehen
+
+
 def test_no_data_when_sensors_none():
     class NoSensors(FakeManager):
         async def sensors(self):

@@ -31,7 +31,8 @@ class Autonomy:
         self.status = "aus"
 
         # Tunables
-        self.front = "ir0"       # welcher Sensor vorne ist (empirisch prüfen)
+        self.front = "ir0"       # vorderer IR-Sensor (bestätigt)
+        self.rear = "ir1"        # hinterer IR-Sensor (bestätigt)
         self.threshold = 60      # Sensorwert ab dem ein Hindernis gilt (Ruhe≈13)
         self.power = 0.45
         self.max_seconds = 300   # globaler Sicherheits-Auto-Stopp
@@ -86,6 +87,12 @@ class Autonomy:
             return None
         return getattr(s, self.front, s.ir0)
 
+    async def _rear_value(self) -> Optional[int]:
+        s = await self.mgr.sensors()
+        if s is None:
+            return None
+        return getattr(s, self.rear, s.ir1)
+
     async def step(self) -> str:
         """Eine Wahrnehmen-Entscheiden-Handeln-Iteration. Gibt die Aktion zurück."""
         front = await self._front_value()
@@ -102,8 +109,11 @@ class Autonomy:
     async def _avoid(self) -> None:
         self.status = "weicht aus"
         await self.mgr.stop()
-        await self.mgr.drive("zurueck", self.power, self.back_secs)
-        await asyncio.sleep(self.back_pause)
+        # Nur zurücksetzen, wenn hinten (ir1) frei ist — sonst direkt drehen.
+        rear = await self._rear_value()
+        if rear is None or rear <= self.threshold:
+            await self.mgr.drive("zurueck", self.power, self.back_secs)
+            await asyncio.sleep(self.back_pause)
         # Drehrichtung abwechseln, um nicht in Ecken festzuhängen
         self._turn_dir = "links" if self._turn_dir == "rechts" else "rechts"
         await self.mgr.drive(self._turn_dir, self.power, self.turn_secs)
