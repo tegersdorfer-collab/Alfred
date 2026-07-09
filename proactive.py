@@ -120,15 +120,19 @@ class ProactiveTracker:
         except Exception:
             pass
 
+    @staticmethod
+    def _is_night(now: datetime) -> bool:
+        """Ruhezeit 22:30–06:30 (kein proaktives Schreiben)."""
+        night_start = now.replace(hour=22, minute=30, second=0, microsecond=0)
+        night_end   = now.replace(hour=6,  minute=30, second=0, microsecond=0)
+        return now >= night_start or now < night_end
+
     def can_send(self) -> bool:
         self._reset_if_new_day()
         self._check_stale_ignore()
 
-        # Nacht-Modus: zwischen 22:30 und 06:30 keine proaktiven Nachrichten
         now = datetime.now()
-        night_start = now.replace(hour=22, minute=30, second=0, microsecond=0)
-        night_end   = now.replace(hour=6,  minute=30, second=0, microsecond=0)
-        if now >= night_start or now < night_end:
+        if self._is_night(now):
             return False
 
         # Mindestabstand zum letzten proaktiven Message
@@ -141,12 +145,7 @@ class ProactiveTracker:
 
     def can_send_data_event(self) -> bool:
         """Datenereignis-Bypass: Intervall ignorieren, nur Nacht-Modus beachten."""
-        now = datetime.now()
-        night_start = now.replace(hour=22, minute=30, second=0, microsecond=0)
-        night_end   = now.replace(hour=6,  minute=30, second=0, microsecond=0)
-        if now >= night_start or now < night_end:
-            return False
-        return True
+        return not self._is_night(datetime.now())
 
     def record_sent(self) -> None:
         self._reset_if_new_day()

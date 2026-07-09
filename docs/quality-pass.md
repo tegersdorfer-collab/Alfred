@@ -63,7 +63,10 @@
       Subdomain-Matching (_host_matches) umgestellt, www./vm.-Varianten dedupliziert.
       +11 Tests (Plattform, yt-dlp-Routing, extract_urls, format_for_llm, HTML-Extraktor).
       llm/local.py: _build_messages +5 Tests, stiller unload_others-Except loggt. search.py sauber.
-- [ ] 13. main.py (177) + proactive.py (338) + thermal.py (181) + core/ui_state.py (355)
+- [x] 13. proactive.py — Nacht-Modus-Logik (22:30-06:30) war in can_send/can_send_data_event
+      dupliziert → reine _is_night(now) extrahiert (dedupliziert+testbar) +7 Tests. thermal.py —
+      Division-durch-Null in compute_sleep wenn max_temp==target → geguarded +7 Tests.
+      main.py/ui_state.py gesichtet: sauber.
 - [ ] 14. Global-Sweep: stumme excepts sichten (loggen oder begründen), prints → logging
 - [x] 15. start.sh PID-Bug gefixt (killt beide PID-Dateien, schreibt nur noch mantis_pid.txt)
 
@@ -79,4 +82,5 @@
 - 0b6ed0a Modul 9: health-Mapping extrahiert+getestet, calendar-Log
 - 1360957 Modul 10: telegram task_skip-Bug + set_status-Härtung
 - a443f46 Modul 11: Router-Helfer getestet + tasks-Router-Log
-- Modul 12: url_handler Subdomain-Bug + LLM-Provider-Tests
+- 4cc1947 Modul 12: url_handler Subdomain-Bug + LLM-Provider-Tests
+- Modul 13: proactive Nacht-Dedup + thermal Div-by-Zero

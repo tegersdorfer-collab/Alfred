@@ -56,7 +56,9 @@ class ProportionalStrategy(ThermalStrategy):
 
         overshoot = current_temp - target
         range_size = max_temp - target
-        ratio = min(overshoot / range_size, 1.0)
+        # max_temp <= target (Fehlkonfiguration) → über Ziel = sofort maximal bremsen,
+        # ohne Division durch Null.
+        ratio = 1.0 if range_size <= 0 else min(overshoot / range_size, 1.0)
 
         return self.min_sleep + ratio * (self.max_sleep - self.min_sleep)
 
