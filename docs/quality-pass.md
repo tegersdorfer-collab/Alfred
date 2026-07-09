@@ -104,3 +104,7 @@
 - [x] domains/calendar.py — _to_local (tz-aware→lokal-naiv, naiv→UTC-Annahme, date→Ganztags)
       +4 Tests. Häufige naive/aware-Fehlerquelle jetzt abgesichert.
 - [x] core/ui_state.py — bereits durch 4 Test-Dateien abgedeckt, keine Lücke.
+- [x] domains/alphaprogression.py — Link-Extraktion + HTML-Workout-Parser (Regex, fragil)
+      +8 Tests (mit/ohne Ländercode, Titel/Übungen/Sätze, Singular 'Satz', None-Fälle).
+- [x] core/backup.py + tools/reminders.py gesichtet: sauber (subprocess/FS bzw. dünner
+      DB-Wrapper, gutes Error-Handling, keine reine Logik zum Testen).
