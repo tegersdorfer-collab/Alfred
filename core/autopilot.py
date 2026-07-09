@@ -15,10 +15,10 @@ import json
 import logging
 from datetime import date, datetime, timedelta
 
-from core import db, fast
+from core import db
 from core.db import log_event
 from core.status import BUS
-from domains import habits, fitness, nutrition, goals, journal, weather
+from domains import habits, fitness, nutrition, goals, weather
 
 log = logging.getLogger(__name__)
 
@@ -578,8 +578,11 @@ class Autopilot:
         if not w:
             return None
 
-        temp  = w.get("temp_c") or w.get("temperature")
-        desc  = (w.get("description") or w.get("condition") or "").lower()
+        if w.get("error"):
+            return None
+        now = w.get("now") or {}
+        temp  = now.get("temp")
+        desc  = (now.get("desc") or "").lower()
         rain  = any(k in desc for k in ["rain", "regen", "shower", "drizzle", "storm"])
         hot   = temp and float(temp) > 30
         cold  = temp and float(temp) < 5
@@ -617,14 +620,14 @@ class Autopilot:
         try:
             done = await asyncio.to_thread(db.query,
                 """SELECT title FROM tasks WHERE status='done'
-                   AND updated_at >= NOW() - INTERVAL '7 days'
-                   ORDER BY updated_at DESC LIMIT 8"""
+                   AND completed_at >= NOW() - INTERVAL '7 days'
+                   ORDER BY completed_at DESC LIMIT 8"""
             )
             if done:
                 lines.append("✅ **Erledigte Tasks:**")
                 lines.extend(f"  · {t['title']}" for t in done)
-        except Exception:
-            pass
+        except Exception as e:
+            log.warning(f"Newsletter/Tasks: {e}")
 
         # Health-Highlights
         try:
@@ -634,21 +637,22 @@ class Autopilot:
                 avg_hrv   = sum(h.hrv for h in health if h.hrv) / max(1, sum(1 for h in health if h.hrv))
                 avg_steps = sum(h.steps for h in health if h.steps) / max(1, sum(1 for h in health if h.steps))
                 lines.append(f"\n💪 **Health-Schnitt:** Schlaf {avg_sleep:.1f}h | HRV {avg_hrv:.0f} | Schritte {avg_steps:.0f}")
-        except Exception:
-            pass
+        except Exception as e:
+            log.warning(f"Newsletter/Health: {e}")
 
         # Habit-Streaks
         try:
             habits = await asyncio.to_thread(db.query,
                 """SELECT h.name, COUNT(l.id) as count FROM habits h
-                   LEFT JOIN habit_logs l ON l.habit_id=h.id AND l.done_on >= CURRENT_DATE-7
+                   LEFT JOIN habit_logs l ON l.habit_id=h.id
+                        AND l.date >= CURRENT_DATE-7 AND l.done=TRUE
                    WHERE h.active=TRUE GROUP BY h.name ORDER BY count DESC LIMIT 5"""
             )
             if habits:
                 lines.append("\n🔁 **Habits (letzte 7 Tage):**")
                 lines.extend(f"  · {h['name']}: {h['count']}/7" for h in habits)
-        except Exception:
-            pass
+        except Exception as e:
+            log.warning(f"Newsletter/Habits: {e}")
 
         # Neue Brain-Notizen
         try:
@@ -659,8 +663,8 @@ class Autopilot:
             if new_notes:
                 lines.append("\n🧠 **Neue Notizen:**")
                 lines.extend(f"  · {n.title}" for n in new_notes)
-        except Exception:
-            pass
+        except Exception as e:
+            log.warning(f"Newsletter/Brain: {e}")
 
         msg = "\n".join(lines)
         await self._send(msg, kind="newsletter")
@@ -734,8 +738,8 @@ class Autopilot:
             if overdue:
                 items = "; ".join(f"{t['title']} ({t['due']})" for t in overdue[:3])
                 msgs.append(f"⚡ Bald fällig: {items}")
-        except Exception:
-            pass
+        except Exception as e:
+            log.warning(f"Smart-Notify/Tasks: {e}")
 
         # Habits 3+ Tage nicht gemacht
         try:
@@ -744,15 +748,15 @@ class Autopilot:
                    WHERE active = TRUE
                    AND NOT EXISTS (
                        SELECT 1 FROM habit_logs l
-                       WHERE l.habit_id = h.id AND l.done_on >= CURRENT_DATE - 3
+                       WHERE l.habit_id = h.id AND l.date >= CURRENT_DATE - 3
                    )
                    LIMIT 3"""
             )
             if stale_habits:
                 names = ", ".join(h["name"] for h in stale_habits)
                 msgs.append(f"🔁 Seit 3+ Tagen kein Eintrag bei: {names} — nachgetragen oder pausiert?")
-        except Exception:
-            pass
+        except Exception as e:
+            log.warning(f"Smart-Notify/Habits: {e}")
 
         for msg in msgs:
             await self._send(msg, kind="smart_notify")
@@ -836,7 +840,7 @@ class Autopilot:
         try:
             done_tasks = await asyncio.to_thread(
                 db.query,
-                "SELECT title FROM tasks WHERE status='done' AND updated_at::date=CURRENT_DATE LIMIT 10",
+                "SELECT title FROM tasks WHERE status='done' AND completed_at::date=CURRENT_DATE LIMIT 10",
             )
             if done_tasks:
                 lines.append(f"Heute erledigte Tasks: {', '.join(t['title'] for t in done_tasks)}")
@@ -845,8 +849,7 @@ class Autopilot:
 
         # Letzte Memories (Muster-Input)
         try:
-            from memory import lzg as _lzg
-            recent_mems = await asyncio.to_thread(lambda: _lzg.LZG().get_all(limit=15))
+            recent_mems = await asyncio.to_thread(self.lzg.get_all, limit=15)
             if recent_mems:
                 lines.append("Letzte Erkenntnisse: " + "; ".join(m.content[:60] for m in recent_mems[:5]))
         except Exception:
@@ -871,17 +874,17 @@ class Autopilot:
         )
         reflection = reflection.strip()
 
-        # In brain_notes als Daily-Eintrag speichern
+        # In brain_notes als Daily-Eintrag speichern (ensure_today_daily → BrainNote-Dataclass)
         try:
             from domains import second_brain as _brain
             today_note = await asyncio.to_thread(_brain.ensure_today_daily)
             await asyncio.to_thread(
                 _brain.update_note,
-                today_note["id"],
-                content=today_note["content"] + f"\n\n### 🤖 KI-Reflexion\n{reflection}",
+                today_note.id,
+                content=today_note.content + f"\n\n### 🤖 KI-Reflexion\n{reflection}",
             )
         except Exception as e:
-            log.debug(f"brain_notes-Speicherung: {e}")
+            log.warning(f"KI-Reflexion konnte nicht ins Brain gespeichert werden: {e}")
 
         log.info("🔍 Tägliche KI-Reflexion gespeichert")
         # Kein Telegram-Push — Reflexion ist intern, sichtbar im Brain-Dashboard
