@@ -2,12 +2,13 @@
 # Mantis starten
 cd "$(dirname "$0")"
 
-# Alte Instanz beenden
-if [ -f /tmp/mantis.pid ]; then
-    OLD_PID=$(cat /tmp/mantis.pid)
-    kill -9 "$OLD_PID" 2>/dev/null
-    rm -f /tmp/mantis.pid
-fi
+# Alte Instanz beenden (mantis.pid = alter Dateiname, einmalig mit aufräumen)
+for PIDFILE in /tmp/mantis_pid.txt /tmp/mantis.pid; do
+    if [ -f "$PIDFILE" ]; then
+        kill -9 "$(cat "$PIDFILE")" 2>/dev/null
+        rm -f "$PIDFILE"
+    fi
+done
 
 # Kurz warten damit Telegram die Session freigibt
 sleep 2

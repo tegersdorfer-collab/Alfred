@@ -6,7 +6,9 @@ Zentrale Datenbank-Schicht für Mantis.
 - Idempotenter Migrations-Runner
 """
 import asyncio
+import json
 import logging
+import threading
 from contextlib import contextmanager
 
 import psycopg2
@@ -19,15 +21,22 @@ import config
 log = logging.getLogger(__name__)
 
 _pool: psycopg2.pool.ThreadedConnectionPool | None = None
+_pool_lock = threading.Lock()
+
+# Verbindungs-Fehler, bei denen die Connection tot ist (PG-Neustart, Netz weg).
+# Solche Connections dürfen NICHT zurück in den Pool (würden ihn vergiften),
+# und der Aufruf wird einmal mit frischer Connection wiederholt.
+_CONN_ERRORS = (psycopg2.OperationalError, psycopg2.InterfaceError)
 
 
 def init_pool(minconn: int = 1, maxconn: int = 20) -> None:
     global _pool
-    if _pool is not None:
-        return
-    _pool = psycopg2.pool.ThreadedConnectionPool(
-        minconn, maxconn, dsn=config.DATABASE_URL
-    )
+    with _pool_lock:
+        if _pool is not None:
+            return
+        _pool = psycopg2.pool.ThreadedConnectionPool(
+            minconn, maxconn, dsn=config.DATABASE_URL
+        )
     log.info(f"DB-Pool initialisiert ({minconn}-{maxconn} Connections)")
 
 
@@ -40,10 +49,15 @@ def close_pool() -> None:
 
 @contextmanager
 def cursor(dict_rows: bool = True, vector: bool = False):
-    """Borgt eine Connection aus dem Pool, gibt einen Cursor, committet automatisch."""
+    """Borgt eine Connection aus dem Pool, gibt einen Cursor, committet automatisch.
+
+    Tote Connections (PG-Neustart, Netz weg) werden verworfen statt zurückgelegt —
+    sonst vergiftet eine einzige tote Connection den Pool dauerhaft.
+    """
     if _pool is None:
         init_pool()
     conn = _pool.getconn()
+    broken = False
     try:
         if vector:
             register_vector(conn)
@@ -54,11 +68,23 @@ def cursor(dict_rows: bool = True, vector: bool = False):
             conn.commit()
         finally:
             cur.close()
+    except _CONN_ERRORS:
+        broken = True
+        raise
     except Exception:
         conn.rollback()
         raise
     finally:
-        _pool.putconn(conn)
+        _pool.putconn(conn, close=broken)
+
+
+def _with_retry(fn):
+    """Einen DB-Aufruf bei toter Connection genau einmal mit frischer wiederholen."""
+    try:
+        return fn()
+    except _CONN_ERRORS as e:
+        log.warning(f"DB-Verbindung tot ({e}), versuche einmal neu ...")
+        return fn()
 
 
 # ── Sync-Helfer ──────────────────────────────────────────────────────────────
@@ -67,32 +93,40 @@ def cursor(dict_rows: bool = True, vector: bool = False):
 # als kaputten Platzhalter interpretieren → IndexError.
 
 def query(sql: str, params: tuple = ()) -> list[dict]:
-    with cursor() as cur:
-        cur.execute(sql, params or None)
-        return [dict(r) for r in cur.fetchall()]
+    def run():
+        with cursor() as cur:
+            cur.execute(sql, params or None)
+            return [dict(r) for r in cur.fetchall()]
+    return _with_retry(run)
 
 
 def query_one(sql: str, params: tuple = ()) -> dict | None:
-    with cursor() as cur:
-        cur.execute(sql, params or None)
-        row = cur.fetchone()
-        return dict(row) if row else None
+    def run():
+        with cursor() as cur:
+            cur.execute(sql, params or None)
+            row = cur.fetchone()
+            return dict(row) if row else None
+    return _with_retry(run)
 
 
 def execute(sql: str, params: tuple = ()) -> int:
-    with cursor() as cur:
-        cur.execute(sql, params or None)
-        return cur.rowcount
+    def run():
+        with cursor() as cur:
+            cur.execute(sql, params or None)
+            return cur.rowcount
+    return _with_retry(run)
 
 
 def insert_returning(sql: str, params: tuple = ()):
-    with cursor() as cur:
-        cur.execute(sql, params or None)
-        row = cur.fetchone()
-        if row is None:
-            return None
-        # RealDictCursor → erstes Value
-        return list(row.values())[0]
+    def run():
+        with cursor() as cur:
+            cur.execute(sql, params or None)
+            row = cur.fetchone()
+            if row is None:
+                return None
+            # RealDictCursor → erstes Value
+            return list(row.values())[0]
+    return _with_retry(run)
 
 
 # ── Async-Helfer (DB-Calls in Thread, damit Event-Loop frei bleibt) ──────────
@@ -557,7 +591,6 @@ def get_setting(key: str, default=None):
 
 
 def set_setting(key: str, value) -> None:
-    import json
     execute(
         """
         INSERT INTO settings (key, value, updated_at) VALUES (%s, %s, NOW())
@@ -569,7 +602,6 @@ def set_setting(key: str, value) -> None:
 
 def log_event(type_: str, summary: str, detail: dict | None = None) -> None:
     """Schreibt einen Eintrag ins Event-Log (fürs Dashboard 'Mantis Mind')."""
-    import json
     try:
         execute(
             "INSERT INTO events_log (type, summary, detail) VALUES (%s, %s, %s)",
