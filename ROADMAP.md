@@ -5,6 +5,110 @@
 
 ---
 
+## 🧭 Was als Nächstes? — Ideen-Sammlung & Priorisierung (2026-07-09)
+
+Erstellt nach dem großen Qualitäts-Pass (20 Module, 8 echte Bugs, Tests 380→593).
+Zuerst die volle Ideen-Sammlung nach Thema, danach die Priorisierung nach **Effekt**
+(größter positiver Hebel zuerst).
+
+### A. Zuverlässigkeit & Betrieb *(der Quality-Pass hat diese Lücken aufgedeckt)*
+- Branch `robot/x5-autonomy` → `main` mergen (**29 Commits** hängen fest, main 3 Tage alt)
+- **CI**: die 593 Tests bei jedem Commit automatisch laufen lassen (GitHub Actions / pre-push-Hook)
+- **Backup-Restore verifizieren** — Backups existieren, aber Restore ist ungetestet = falsche Sicherheit
+- **Externer Trigger-/Not-Stopp-HTTP-Endpunkt** — löst Robot-Not-Stopp + Automationen (wiederkehrender Schmerz)
+- **Bluetooth-Patch-Automatik** — Robot-BLE bricht still bei jedem Python-Update (Info.plist-Patch weg)
+- **Type-Checking (mypy/pyright) + Linting (ruff) in CI** — fängt genau die Bug-Klasse aus dem Pass (falsche DB-Spalten, dict-vs-dataclass)
+- **Fehler-Observability** ausbauen — die stillen `except:pass`-Degradationen sichtbar/alertbar machen
+- Watchdog/Auto-Restart härten (launchd KeepAlive verifizieren, Heartbeat)
+- Secrets-Hygiene (.env-Audit, gcal-Token-Rotation, nichts im Git)
+- Abhängigkeiten pinnen + Update-Strategie
+
+### B. Voice-Pipeline *(tägliche UX, Latenz)*
+- **Streaming LLM→TTS** durchgängig verketten — größter Latenz-Hebel (noch offen)
+- Wake-Word (openWakeWord) — hands-free
+- Silero VAD statt RMS-Schwelle
+- TTS-Stimmen-Dropdown im Settings-Panel
+- Chat-Agent-Modell überdenken (Ollama-primär vs. Claude — 166s-Erkenntnis)
+
+### C. Gedächtnis & Intelligenz
+- **Memory-Konfliktauflösung** — ADD-only akkumuliert widersprüchliche Fakten (Umzug → alter+neuer Wohnort koexistieren)
+- Recall-Qualitäts-Eval-Harness (Retrieval-Präzision messen, Schwellen tunen)
+- KG-Memory-Verlinkung sauber neu bauen (entferntes `link_memory` + echte Tabelle → `kg_linked` schützt wieder)
+- Forgetting-Kurve-Tuning + Visualisierung (was wird vergessen?)
+- Proaktiv-Timing lernen (wann ist Timo empfänglich?)
+
+### D. Hardware
+- X5 **Weck-Routine** (eingelernter Pfad → hinfahren, Alarm, auf "aus" zurück)
+- X5 grobe Karte + Sperrzonen (Dead-Reckoning)
+- X5 smarteres Explorieren statt Random-Wander
+- Flipper: weitere IR-Geräte (TV, Klima) → nur `remotes.json`
+- Flipper: Sub-GHz (433 MHz Steckdosen/Garage), NFC/RFID
+- **Geräte-Abstraktion + Szenen** ("Guten Morgen" = Lampe an + Briefing + Robot)
+
+### E. Autopilot & Proaktivität
+- Die 5 wiederbelebten Autopilot-Features live kalibrieren (waren tot, jetzt aktiv)
+- Szenen-/Routine-Engine (Morgen/Abend, Domains + Hardware kombiniert)
+- Insight-Generierung schärfen (Dedup, Qualität)
+
+### F. UI & Clients
+- Windows-Tauri-Build (blockiert: Maschine/CI)
+- Live-Tauri-Build + Relaunch verifizieren (Ghost-Protocol-v2 offen)
+- Standort-/Karten-Widget
+- Mobile-Apps-Politur (BodyOS/BrainOS/FlowOS)
+- Dashboard-HTTPS (blockiert: Tailscale-Cert)
+
+### G. Domänen & Integrationen
+- Finanz-/Ausgaben-Domäne
+- WhatsApp (blockiert: Meta Business API)
+- Kalender-Konflikt-Auflösung ausbauen
+- Google-Takeout-Location-Timeline (braucht Timos Datei)
+
+### H. Modell & Kosten
+- Lokale Modell-Latenz weiter senken
+- Prompt-Caching (Claude) für Kosten
+- Eigenes Fine-Tuned MLX-Modell (blockiert: Compute)
+
+### I. Developer Experience
+- Tests für die Glue-Module (skills, prompt_builder, reflection, consolidator)
+- `pytest-cov` einführen → Lücken systematisch finden
+- Architektur-/Onboarding-Doku
+
+---
+
+### 🏆 Priorisierung nach Effekt
+
+**Tier 1 — Jetzt (höchster Hebel, meist geringes Risiko)**
+1. **Branch → main mergen** — 29 Commits Wert (inkl. aller Bugfixes) stranden auf einem Feature-Branch; null Aufwand, hoher Verlust-Regret. Muss zuerst.
+2. **CI: Tests automatisch** — 593 Tests nützen nichts, wenn sie nicht bei jedem Commit laufen; multipliziert die gesamte Test-Arbeit, verhindert Regressionen.
+3. **Backup-Restore verifizieren** — Datenverlust ist der Worst Case für ein Gedächtnis-System; ungetesteter Restore = Scheinsicherheit.
+4. **Externer Trigger-/Not-Stopp-Endpunkt** — schaltet gleich mehrere offene Punkte frei (Robot-Not-Stopp, Automationen); heute nur per Neustart lösbar.
+5. **Bluetooth-Patch-Automatik** — sonst bricht die ganze Robot-Integration still bei jedem Python-Update.
+
+**Tier 2 — Bald (hoher UX-/Reliability-Effekt)**
+6. **Streaming LLM→TTS** — größter spürbarer Latenz-Hebel im täglichen Sprachbetrieb.
+7. **Type-Checking + Linting in CI** — hätte mehrere der 8 gefundenen Bugs vorab gefangen (falsche Spalten, dict/dataclass).
+8. **Fehler-Observability** — die stillen Degradationen sichtbar machen, bevor sie (wie die 5 toten Features) monatelang unbemerkt bleiben.
+9. **Wake-Word + Silero VAD** — macht Voice erst wirklich hands-free/alltagstauglich.
+10. **Memory-Konfliktauflösung** — verhindert, dass das Gedächtnis über Zeit widersprüchlich wird (Kern des Produkts).
+
+**Tier 3 — Später (konkrete Features, klarer Nutzen)**
+11. X5 Weck-Routine — der emotional greifbarste HW-Use-Case.
+12. Szenen-/Routine-Engine — verbindet HW + Domains zu echtem "Autopilot".
+13. Flipper: weitere IR-Geräte — billig (nur remotes.json), sofort nützlich.
+14. X5 Karte + Sperrzonen — Voraussetzung für sichere Autonomie.
+15. start.sh-PID-Bug sauber (klein, schon halb adressiert).
+16. TTS-Stimmen-Dropdown, Recall-Eval-Harness, KG-Memory-Verlinkung, Insight-Schärfung.
+
+**Tier 4 — Nice-to-have / extern blockiert**
+- Windows-Build (Maschine/CI), Dashboard-HTTPS (Cert), WhatsApp (Meta), Fine-Tuned MLX (Compute),
+  Standort-Widget, Finanz-Domäne, Location-Timeline.
+
+> **Leitgedanke der Rangfolge**: erst *nichts verlieren* (Merge, Backup-Restore), dann *nicht still
+> kaputtgehen* (CI, Typen, Observability, BT-Patch), dann *täglich besser* (Voice-Latenz, Memory-Qualität),
+> dann *neue Fähigkeiten* (HW-Szenen). Blockierte Punkte warten auf externe Voraussetzungen.
+
+---
+
 ## Fertig ✅
 
 ### Agent-Kern
@@ -369,7 +473,7 @@ Code: `tools/flipper/`, `core/skills/flipper.py` · Gedächtnis: `[[mantis-flipp
 **Offen / Ideen:**
 - [ ] Weitere IR-Fernbedienungen anlernen (TV, Klimaanlage) → nur `remotes.json` ergänzen.
 - [ ] Sub-GHz (433 MHz Funksteckdosen/Garagentor), NFC/RFID als weitere Aktoren prüfen.
-- [ ] Flipper-Arbeit committen (aktuell uncommitted).
+- [x] Flipper-Arbeit committen (erledigt: Commit 56c4c57).
 
 ---
 
