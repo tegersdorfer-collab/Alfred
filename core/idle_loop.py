@@ -137,6 +137,7 @@ class IdleLoop:
             (self.consolidator.consolidate_silent(), "Memory-Consolidator"),
             (self._run_forgetting(), "ForgettingCurve"),
             (asyncio.to_thread(backup.maybe_run_daily), "DB-Backup"),
+            (asyncio.to_thread(backup.maybe_verify_weekly), "Backup-Restore-Check"),
         ]:
             try:
                 await coro
