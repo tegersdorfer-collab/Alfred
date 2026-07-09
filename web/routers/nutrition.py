@@ -188,7 +188,7 @@ def build_router(orch=None) -> APIRouter:
         current_weight = w_row["weight"] if w_row else WEIGHT_KG
 
         # BMR mit aktuellem Gewicht
-        bmr = 10 * current_weight + 6.25 * HEIGHT_CM - 5 * AGE + 5
+        bmr = nutrition.bmr_mifflin(current_weight, HEIGHT_CM, AGE)
         tdee_base = bmr * ACTIVITY_FACTOR
 
         # Aktivitäts-Bonus heutiger Tag vs. 7-Tage-Schnitt
@@ -217,27 +217,14 @@ def build_router(orch=None) -> APIRouter:
             weights = [float(r["weight"]) for r in w_rows]
             x0 = dates[0]
             xs = [(d - x0).days for d in dates]
-            n = len(xs)
-            mx = sum(xs) / n
-            my = sum(weights) / n
-            denom = sum((xi - mx) ** 2 for xi in xs)
-            if denom > 0:
-                slope_per_day = sum((xs[i] - mx) * (weights[i] - my) for i in range(n)) / denom
-                actual_kg_per_week = round(slope_per_day * 7, 3)
+            actual_kg_per_week = nutrition.linear_slope_per_week(xs, weights)
+            if actual_kg_per_week is not None:
                 span_days = (dates[-1] - dates[0]).days
-
                 if span_days >= 14:
-                    diff = actual_kg_per_week - TARGET_KG_PER_WEEK
-                    if diff < -0.05:       # zu langsam → mehr essen
-                        trend_status = "too_slow"
-                        new_adj = min(trend_adjustment + ADJUST_STEP, MAX_ADJUSTMENT)
-                    elif diff > 0.1:       # zu schnell → weniger essen
-                        trend_status = "too_fast"
-                        new_adj = max(trend_adjustment - ADJUST_STEP, -MAX_ADJUSTMENT)
-                    else:
-                        trend_status = "on_track"
-                        new_adj = trend_adjustment
-
+                    trend_status, new_adj = nutrition.bulk_adjustment(
+                        actual_kg_per_week, TARGET_KG_PER_WEEK,
+                        trend_adjustment, ADJUST_STEP, MAX_ADJUSTMENT,
+                    )
                     # Nur speichern wenn sich etwas geändert hat
                     if new_adj != trend_adjustment:
                         db.set_setting("bulk_kcal_adjustment", str(new_adj))
@@ -249,9 +236,8 @@ def build_router(orch=None) -> APIRouter:
         kcal_goal = round(tdee + BULK_SURPLUS + trend_adjustment)
 
         # Makros: 2.2g P/kg, 1.0g F/kg, Rest Carbs
-        protein_g = round(current_weight * 2.2)
-        fat_g = round(current_weight * 1.0)
-        carbs_g = round((kcal_goal - protein_g * 4 - fat_g * 9) / 4)
+        _macros = nutrition.macros_for(kcal_goal, current_weight)
+        protein_g, fat_g, carbs_g = _macros["protein"], _macros["fat"], _macros["carbs"]
 
         return {
             "kcal": kcal_goal,

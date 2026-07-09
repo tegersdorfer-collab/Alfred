@@ -108,3 +108,9 @@
       +8 Tests (mit/ohne Ländercode, Titel/Übungen/Sätze, Singular 'Satz', None-Fälle).
 - [x] core/backup.py + tools/reminders.py gesichtet: sauber (subprocess/FS bzw. dünner
       DB-Wrapper, gutes Error-Handling, keine reine Logik zum Testen).
+- [x] memory/kzg.py — Kurzzeitgedächtnis (Checkpoint-Markierung, Hard-Fallback-Trimmen,
+      Token-budgetierte recent_messages, Summary-Injektion) war komplett ungetestet → +10 Tests.
+- [x] domains/nutrition.py + web/routers/nutrition.py — adaptive Bulk-Ziel-Mathematik (BMR,
+      Gewichtstrend-Regression, kcal-Anpassung, Makros) steckte inline im HTTP-Endpoint;
+      in reine Funktionen (bmr_mifflin/linear_slope_per_week/bulk_adjustment/macros_for)
+      ausgelagert +13 Tests. Business-Logik jetzt aus der HTTP-Schicht raus.

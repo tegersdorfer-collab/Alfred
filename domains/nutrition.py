@@ -6,6 +6,55 @@ from datetime import date
 from core import db
 
 
+# ── Reine Rechenlogik für adaptive Bulk-Ziele (kein DB — testbar) ─────────────
+
+def bmr_mifflin(weight_kg: float, height_cm: float, age: int, male: bool = True) -> float:
+    """Grundumsatz nach Mifflin-St-Jeor (männlich: +5, weiblich: -161)."""
+    base = 10 * weight_kg + 6.25 * height_cm - 5 * age
+    return base + (5 if male else -161)
+
+
+def linear_slope_per_week(xs_days: list[int], weights: list[float]) -> float | None:
+    """Least-Squares-Steigung als kg/Woche aus Tages-Offsets + Gewichten.
+
+    None wenn < 2 Punkte oder keine x-Varianz (alle am selben Tag) — dann ist
+    keine Trendaussage möglich.
+    """
+    n = len(xs_days)
+    if n < 2:
+        return None
+    mx = sum(xs_days) / n
+    my = sum(weights) / n
+    denom = sum((xi - mx) ** 2 for xi in xs_days)
+    if denom <= 0:
+        return None
+    slope_per_day = sum((xs_days[i] - mx) * (weights[i] - my) for i in range(n)) / denom
+    return round(slope_per_day * 7, 3)
+
+
+def bulk_adjustment(actual_kg_per_week: float, target_kg_per_week: float,
+                    current_adj: int, step: int, max_adj: int) -> tuple[str, int]:
+    """Entscheidet die kumulierte kcal-Anpassung aus Ist- vs. Ziel-Zunahme.
+
+    Gibt (status, neue_anpassung) zurück: too_slow → mehr essen (+step),
+    too_fast → weniger (−step), on_track → unverändert. Gedeckelt auf ±max_adj.
+    """
+    diff = actual_kg_per_week - target_kg_per_week
+    if diff < -0.05:
+        return "too_slow", min(current_adj + step, max_adj)
+    if diff > 0.1:
+        return "too_fast", max(current_adj - step, -max_adj)
+    return "on_track", current_adj
+
+
+def macros_for(kcal_goal: int, weight_kg: float) -> dict:
+    """Makro-Verteilung: 2.2 g Protein/kg, 1.0 g Fett/kg, Rest Kohlenhydrate (min 50 g)."""
+    protein_g = round(weight_kg * 2.2)
+    fat_g = round(weight_kg * 1.0)
+    carbs_g = round((kcal_goal - protein_g * 4 - fat_g * 9) / 4)
+    return {"protein": protein_g, "fat": fat_g, "carbs": max(carbs_g, 50)}
+
+
 def log_meal(description: str, meal_type: str = "snack",
              calories: int | None = None, protein_g: float | None = None,
              carbs_g: float | None = None, fat_g: float | None = None,
