@@ -66,7 +66,8 @@ def _fetch_ics(days_ahead: int = 60) -> list[dict]:
                         "location": str(comp.get("location", "")) or None,
                         "calendar": "iCloud", "source": "ics",
                     })
-                except Exception:
+                except Exception as e:
+                    log.debug(f"ICS-Event übersprungen (Parse-Fehler): {e}")
                     continue
     return out
 

@@ -46,7 +46,10 @@
       Query (get_all/get_by_category/search_notes umgestellt). task_executor.py — plan_task
       gab LLM-Output ungeprüft zurück; JSON-Array hätte Autopilot gecrasht → isinstance-Guard.
       +5 Brain-Tests (Batch-Nachweis) +8 Task-Executor-Tests (classify, Plan-Fallbacks).
-- [ ] 9. domains/ Rest (calendar, gcal_writer, goals, health, pattern_detector, insight_engine)
+- [x] 9. domains/ Rest — health.py: reines Feld-Mapping (Einheiten/SpO2/Schlaf/Key-Fallbacks)
+      aus process_health_data in testbares map_health_fields() extrahiert +13 Tests.
+      calendar.py: stiller ICS-Event-Parse-Except loggt jetzt (Debug). goals/gcal_writer/
+      pattern_detector/insight_engine gesichtet: sauber.
 - [ ] 10. communication/telegram.py (474)
 - [ ] 11. web/routers/ Rest (nutrition 282, system 241, tasks 188, …)
 - [ ] 12. tools/ (url_handler 267, search 203) + llm/ (local 190, backends/claude 185)
@@ -62,4 +65,5 @@
 - bafe560 Modul 5: memory/ toter link_memory raus + Pure-Helfer-Tests
 - 0dca849 Modul 6: Skill-Validator + skill_md getestet (+38 Tests)
 - 7922f6a Modul 7: fitness.py Progression-Bug + AlphaProgression-Tests
-- Modul 8: second_brain N+1 + task_executor Robustheit
+- c97cc3a Modul 8: second_brain N+1 + task_executor Robustheit
+- Modul 9: health-Mapping extrahiert+getestet, calendar-Log

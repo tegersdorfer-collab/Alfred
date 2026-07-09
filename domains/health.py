@@ -19,25 +19,13 @@ _R1 = lambda v: round(v * 10) / 10
 _last_updated: str | None = None  # Änderungserkennung via lastUpdated-Feld
 
 
-def process_health_data(data: dict) -> int:
+def map_health_fields(data: dict) -> dict:
+    """Reines Feld-Mapping: HealthKit/App-JSON → DB-Spalten (keine DB-Zugriffe).
+
+    Kümmert sich um Einheiten-Umrechnung (min→h, SpO₂ 0-1 vs 0-100), Rundung und
+    die diversen Schlüssel-Fallbacks (Swift- vs. Legacy-Feldnamen). Nur Felder mit
+    Wert landen im Ergebnis.
     """
-    Verarbeitet ein Health-JSON-Dict und schreibt es in die DB.
-    Wird sowohl vom Pull (import_health) als auch vom Push-Endpoint genutzt.
-    Gibt 1 bei erfolgreichem Schreiben zurück, 0 sonst.
-    """
-    global _last_updated
-
-    last_updated = data.get("lastUpdated", "")
-    if last_updated and last_updated == _last_updated:
-        log.debug("🩺 Health: keine neuen Daten (lastUpdated unverändert)")
-        return 0
-    _last_updated = last_updated
-
-    day = data.get("date")
-    if not day:
-        log.warning("Health-JSON enthält kein 'date'-Feld")
-        return 0
-
     fields: dict = {}
 
     def s(col, val):
@@ -84,6 +72,30 @@ def process_health_data(data: dict) -> int:
     total  = sleep.get("totalMinutes")
     if in_bed is not None and total is not None:
         s("sleep_awake", _R2((in_bed - total) / 60))
+
+    return fields
+
+
+def process_health_data(data: dict) -> int:
+    """
+    Verarbeitet ein Health-JSON-Dict und schreibt es in die DB.
+    Wird sowohl vom Pull (import_health) als auch vom Push-Endpoint genutzt.
+    Gibt 1 bei erfolgreichem Schreiben zurück, 0 sonst.
+    """
+    global _last_updated
+
+    last_updated = data.get("lastUpdated", "")
+    if last_updated and last_updated == _last_updated:
+        log.debug("🩺 Health: keine neuen Daten (lastUpdated unverändert)")
+        return 0
+    _last_updated = last_updated
+
+    day = data.get("date")
+    if not day:
+        log.warning("Health-JSON enthält kein 'date'-Feld")
+        return 0
+
+    fields = map_health_fields(data)
 
     # Workouts aus HealthKit importieren (Swift liefert 'workouts'-Array)
     workouts_raw = data.get("workouts") or []
