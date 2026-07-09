@@ -29,7 +29,10 @@
       Brain (BrainNote-Dataclass als Dict indexiert), Weather-Coaching (falsche API-Keys
       temp_c/description → now.temp/now.desc), frische LZG()-Instanz → self.lzg.
       Stumme Excepts in Newsletter/Smart-Notify loggen jetzt. Tote Imports raus.
-- [ ] 5. memory/ (extractor 342, lzg 337, knowledge 336)
+- [x] 5. memory/ — knowledge.py: toten link_memory() entfernt (0 Aufrufer, nutzte Tabelle
+      kg_memory_entities die nicht in den Migrationen steht → Crash bei Neuinstall; da nie
+      aufgerufen war kg_linked ohnehin immer FALSE, kein Verhaltensänderung), field-Import raus.
+      extractor/lzg gesichtet: sauber. +11 Tests (Regex-Extraktion, Jaccard, Temporal-Heuristik).
 - [ ] 6. core/skill_factory.py (242) + core/skill_md.py (197) + core/eval_suite.py (195)
 - [ ] 7. domains/fitness.py (555) + web/routers/fitness.py (316)
 - [ ] 8. domains/second_brain.py (444) + task_executor.py (425)
@@ -45,4 +48,5 @@
 - 32ae6d9 Modul 1: core/db.py (Pool-Resilienz) + start.sh
 - 46723f1 Modul 2: core/agent.py Math-Guard-Fix + Loop-Tests
 - c256f45 Modul 3: lzg_embed-Freeze-Fix + Message-Handler-Dedup
-- Modul 4: autopilot.py — 5 tote Features wiederbelebt
+- cd62cad Modul 4: autopilot.py — 5 tote Features wiederbelebt
+- Modul 5: memory/ toter link_memory raus + Pure-Helfer-Tests

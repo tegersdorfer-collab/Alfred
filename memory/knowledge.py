@@ -18,7 +18,7 @@ Prädikate (Beispiele):
     arbeitet_an, besitzt, plant, hat_ziel, ist_mitglied_von
 """
 import logging
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from datetime import datetime
 from typing import Optional
 
@@ -200,22 +200,6 @@ class KnowledgeGraph:
         if not lines:
             return ""
         return "## Bekannte Personen & Orte\n" + "\n".join(lines)
-
-    # ── Memory-Verknüpfung ─────────────────────────────────────────────────────
-
-    def link_memory(self, memory_id: int, entity_id: int) -> None:
-        """Verknüpft eine Memory mit einer Entität (schützt sie vor Vergessen)."""
-        _db.execute(
-            """
-            INSERT INTO kg_memory_entities (memory_id, entity_id)
-            VALUES (%s, %s) ON CONFLICT DO NOTHING
-            """,
-            (memory_id, entity_id),
-        )
-        _db.execute(
-            "UPDATE memories SET kg_linked = TRUE WHERE id = %s",
-            (memory_id,),
-        )
 
     def get_all_entities(self, type_: str | None = None) -> list[Entity]:
         if type_:
