@@ -58,8 +58,8 @@ class OllamaProvider(LLMProvider):
                         keep_alive=0,
                     )
                     log.info(f"🗑️  Entlade {name} für {self._model}")
-        except Exception:
-            pass
+        except Exception as e:
+            log.debug(f"unload_others fehlgeschlagen (RAM evtl. nicht freigegeben): {e}")
 
     async def chat(
         self,

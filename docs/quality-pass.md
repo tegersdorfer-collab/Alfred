@@ -58,7 +58,11 @@
       quer über alle Endpoints genutzt aber ungetestet → +8 Tests. system.py verifiziert:
       status() liest korrekte PID-Datei (main.py schreibt mantis.pid), overview/analytics-
       Excepts sind bewusste Degradation. tasks.py: stiller Klassifikations-Except loggt jetzt.
-- [ ] 12. tools/ (url_handler 267, search 203) + llm/ (local 190, backends/claude 185)
+- [x] 12. tools/url_handler.py — BUG: _is_ytdlp_url nutzte Substring-Match (h in host), also
+      hätte 'youtube.com.evil.example' o. 'myyoutube.com' fälschlich gematcht → auf echtes
+      Subdomain-Matching (_host_matches) umgestellt, www./vm.-Varianten dedupliziert.
+      +11 Tests (Plattform, yt-dlp-Routing, extract_urls, format_for_llm, HTML-Extraktor).
+      llm/local.py: _build_messages +5 Tests, stiller unload_others-Except loggt. search.py sauber.
 - [ ] 13. main.py (177) + proactive.py (338) + thermal.py (181) + core/ui_state.py (355)
 - [ ] 14. Global-Sweep: stumme excepts sichten (loggen oder begründen), prints → logging
 - [x] 15. start.sh PID-Bug gefixt (killt beide PID-Dateien, schreibt nur noch mantis_pid.txt)
@@ -74,4 +78,5 @@
 - c97cc3a Modul 8: second_brain N+1 + task_executor Robustheit
 - 0b6ed0a Modul 9: health-Mapping extrahiert+getestet, calendar-Log
 - 1360957 Modul 10: telegram task_skip-Bug + set_status-Härtung
-- Modul 11: Router-Helfer getestet + tasks-Router-Log
+- a443f46 Modul 11: Router-Helfer getestet + tasks-Router-Log
+- Modul 12: url_handler Subdomain-Bug + LLM-Provider-Tests

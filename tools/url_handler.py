@@ -55,20 +55,13 @@ class _HTMLTextExtractor(HTMLParser):
     def get_text(self) -> str:
         return " ".join(self._parts)
 
-# Plattformen die yt-dlp unterstützt (Auswahl für schnelle Erkennung)
-_YTDLP_HOSTS = {
-    "youtube.com", "youtu.be", "www.youtube.com",
-    "tiktok.com", "www.tiktok.com", "vm.tiktok.com",
-    "instagram.com", "www.instagram.com",
-    "twitter.com", "x.com", "www.twitter.com",
-    "twitch.tv", "www.twitch.tv", "clips.twitch.tv",
-    "vimeo.com", "www.vimeo.com",
-    "soundcloud.com", "www.soundcloud.com",
-    "reddit.com", "www.reddit.com", "v.redd.it",
-    "dailymotion.com", "www.dailymotion.com",
-    "rumble.com", "www.rumble.com",
-    "bilibili.com", "www.bilibili.com",
-}
+# Registrierbare Domains, die yt-dlp unterstützt (www./vm./clips. etc. deckt das
+# Subdomain-Matching in _host_matches automatisch mit ab).
+_YTDLP_DOMAINS = frozenset({
+    "youtube.com", "youtu.be", "tiktok.com", "instagram.com",
+    "twitter.com", "x.com", "twitch.tv", "vimeo.com", "soundcloud.com",
+    "reddit.com", "redd.it", "dailymotion.com", "rumble.com", "bilibili.com",
+})
 
 
 def _host_matches(host: str, *domains: str) -> bool:
@@ -100,8 +93,10 @@ def _platform(url: str) -> str:
 
 
 def _is_ytdlp_url(url: str) -> bool:
-    host = urlparse(url).hostname or ""
-    return any(h in host for h in _YTDLP_HOSTS)
+    # Echtes (Sub-)Domain-Matching statt Substring — sonst würde z.B.
+    # "youtube.com.evil.example" oder "myyoutube.com" fälschlich matchen.
+    host = (urlparse(url).hostname or "").lower()
+    return _host_matches(host, *_YTDLP_DOMAINS)
 
 
 async def _fetch_ytdlp(url: str) -> dict:
