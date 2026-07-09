@@ -178,7 +178,9 @@ async def plan_task(task: dict, llm: LLMProvider, lzg=None) -> dict:
             temperature=0.4, max_tokens=800,
         )
         parsed = extract_json(resp)
-        if parsed is not None:
+        # Nur ein echtes Objekt akzeptieren — ein JSON-Array o.ä. würde den
+        # Aufrufer (autopilot: plan.get("subtasks")) crashen lassen.
+        if isinstance(parsed, dict):
             return parsed
     except Exception as e:
         log.warning(f"Planning fehlgeschlagen: {e}")

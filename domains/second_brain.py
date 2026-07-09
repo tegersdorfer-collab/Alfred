@@ -172,7 +172,7 @@ def get_by_category(category: str, limit: int = 200) -> list[BrainNote]:
         """,
         (category, limit),
     )
-    return [_row_to_note(r) for r in rows]
+    return _rows_to_notes(rows)
 
 
 def get_inbox() -> list[BrainNote]:
@@ -189,7 +189,7 @@ def get_all(limit: int = 500) -> list[BrainNote]:
         """,
         (limit,),
     )
-    return [_row_to_note(r) for r in rows]
+    return _rows_to_notes(rows)
 
 
 def get_today_daily() -> BrainNote | None:
@@ -227,7 +227,7 @@ def search_notes(query: str, limit: int = 20, embedding_fn=None) -> list[BrainNo
         (f"%{query}%", f"%{query}%", query.lower(), limit),
     )
     seen = {r["id"] for r in keyword_rows}
-    results = [_row_to_note(r) for r in keyword_rows]
+    rows = list(keyword_rows)
 
     if embedding_fn:
         try:
@@ -244,12 +244,13 @@ def search_notes(query: str, limit: int = 20, embedding_fn=None) -> list[BrainNo
                 )
                 for r in cur.fetchall():
                     if r["id"] not in seen:
-                        results.append(_row_to_note(r))
+                        rows.append(r)
                         seen.add(r["id"])
         except Exception as e:
             log.warning(f"Semantische Brain-Suche fehlgeschlagen: {e}")
 
-    return results[:limit]
+    # Links für alle Treffer in einer Query (kein N+1)
+    return _rows_to_notes(rows)[:limit]
 
 
 # ── Graph ─────────────────────────────────────────────────────────────────────
@@ -411,10 +412,7 @@ def _resolve_wiki_links(note_id: int, content: str) -> None:
 
 # ── Serialisierung ────────────────────────────────────────────────────────────
 
-def _row_to_note(r: dict) -> BrainNote:
-    links_rows = _db.query(
-        "SELECT to_id FROM brain_links WHERE from_id=%s", (r["id"],)
-    )
+def _build_note(r: dict, links: list[int]) -> BrainNote:
     return BrainNote(
         id=r["id"],
         title=r["title"],
@@ -425,8 +423,28 @@ def _row_to_note(r: dict) -> BrainNote:
         pinned=r.get("pinned", False),
         created_at=r["created_at"],
         updated_at=r["updated_at"],
-        links=[lr["to_id"] for lr in links_rows],
+        links=links,
     )
+
+
+def _row_to_note(r: dict) -> BrainNote:
+    """Einzelne Zeile → Note (eigene Link-Query). Für Einzel-Lookups."""
+    link_rows = _db.query("SELECT to_id FROM brain_links WHERE from_id=%s", (r["id"],))
+    return _build_note(r, [lr["to_id"] for lr in link_rows])
+
+
+def _rows_to_notes(rows: list[dict]) -> list[BrainNote]:
+    """Mehrere Zeilen → Notes mit EINER Link-Query statt einer pro Zeile (kein N+1)."""
+    if not rows:
+        return []
+    ids = [r["id"] for r in rows]
+    link_rows = _db.query(
+        "SELECT from_id, to_id FROM brain_links WHERE from_id = ANY(%s)", (ids,)
+    )
+    links_by: dict[int, list[int]] = {}
+    for lr in link_rows:
+        links_by.setdefault(lr["from_id"], []).append(lr["to_id"])
+    return [_build_note(r, links_by.get(r["id"], [])) for r in rows]
 
 
 def note_to_dict(n: BrainNote) -> dict:

@@ -41,7 +41,11 @@
       stand in der lower_body-Liste → hätte +5kg statt +2.5kg empfohlen; gefixt + dt. Keywords
       ergänzt. +13 Tests (AlphaProgression-Logik mit gemocktem db, merge_profile, normalize_set).
       web/routers/fitness.py gesichtet: Excepts alle berechtigt, sauber.
-- [ ] 8. domains/second_brain.py (444) + task_executor.py (425)
+- [x] 8. second_brain.py — N+1 behoben: _row_to_note lud Wiki-Links pro Notiz einzeln
+      (get_all(500) = 500 Extra-Queries); neu _rows_to_notes() lädt alle Links in EINER
+      Query (get_all/get_by_category/search_notes umgestellt). task_executor.py — plan_task
+      gab LLM-Output ungeprüft zurück; JSON-Array hätte Autopilot gecrasht → isinstance-Guard.
+      +5 Brain-Tests (Batch-Nachweis) +8 Task-Executor-Tests (classify, Plan-Fallbacks).
 - [ ] 9. domains/ Rest (calendar, gcal_writer, goals, health, pattern_detector, insight_engine)
 - [ ] 10. communication/telegram.py (474)
 - [ ] 11. web/routers/ Rest (nutrition 282, system 241, tasks 188, …)
@@ -57,4 +61,5 @@
 - cd62cad Modul 4: autopilot.py — 5 tote Features wiederbelebt
 - bafe560 Modul 5: memory/ toter link_memory raus + Pure-Helfer-Tests
 - 0dca849 Modul 6: Skill-Validator + skill_md getestet (+38 Tests)
-- Modul 7: fitness.py Progression-Bug + AlphaProgression-Tests
+- 7922f6a Modul 7: fitness.py Progression-Bug + AlphaProgression-Tests
+- Modul 8: second_brain N+1 + task_executor Robustheit
