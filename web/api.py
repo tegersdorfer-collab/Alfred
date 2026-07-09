@@ -13,8 +13,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 import config
-from core import db, tools as T
-from datetime import datetime
+from core import db
 
 log = logging.getLogger("mantis.api")
 

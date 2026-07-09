@@ -3,12 +3,11 @@ Productivity-Tools — aus core/skills.py extrahiert (verhaltensgleich).
 Registriert sich via @T.register beim Import (durch core/skills/__init__.py).
 """
 import logging
-from datetime import date, datetime
 
 from core import tools as T
-from core.timeparse import parse_datetime, parse_date
+from core.timeparse import parse_datetime
 from core.skill_context import CTX
-from domains import habits, fitness, nutrition, journal, goals, weather, tasks as tasks_d
+from domains import tasks as tasks_d
 
 log = logging.getLogger("core.skills")
 

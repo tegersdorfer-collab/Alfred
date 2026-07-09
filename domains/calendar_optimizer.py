@@ -4,7 +4,6 @@ verschiebt/komprimiert Termine bei Bedarf.
 """
 import logging
 from datetime import datetime, timedelta, date
-from typing import Optional
 
 from llm.base import LLMProvider, Message
 

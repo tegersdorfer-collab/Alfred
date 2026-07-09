@@ -3,7 +3,6 @@ Onboarding – systematisches Erstgespräch mit Timo.
 Läuft einmalig wenn < 5 Memories in der LZG vorhanden sind.
 Stellt gezielte Fragen und speichert Antworten direkt als Memories.
 """
-import asyncio
 import logging
 
 from llm.base import LLMProvider, Message

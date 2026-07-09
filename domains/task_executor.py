@@ -8,7 +8,6 @@ Mantis Deep Task Executor
 """
 import json
 import logging
-from datetime import datetime
 
 from core import db
 from core.jsonutil import extract_json

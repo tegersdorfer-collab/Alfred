@@ -7,8 +7,6 @@ Verwendung:
     print(cfg.OWNER_NAME)
 """
 from __future__ import annotations
-from pathlib import Path
-from typing import Annotated
 from pydantic import Field, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 

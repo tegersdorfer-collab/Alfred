@@ -3,12 +3,9 @@ System-Tools — aus core/skills.py extrahiert (verhaltensgleich).
 Registriert sich via @T.register beim Import (durch core/skills/__init__.py).
 """
 import logging
-from datetime import date, datetime
 
 from core import tools as T
-from core.timeparse import parse_datetime, parse_date
 from core.skill_context import CTX
-from domains import habits, fitness, nutrition, journal, goals, weather, tasks as tasks_d
 
 log = logging.getLogger("core.skills")
 
@@ -135,8 +132,8 @@ async def _api_costs(days: int = 30):
     },
     ["task"], "system")
 async def _claude_code_run(task: str, workdir: str = "/Users/timoegersdorfer/Mantis"):
-    import asyncio, subprocess, time
-    from core import push as _push, db as _db
+    import asyncio, time
+    from core import push as _push
 
     start = time.time()
 

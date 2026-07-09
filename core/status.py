@@ -14,7 +14,7 @@ Das Dashboard subscribt via SSE und zeigt alles live an.
 """
 import asyncio
 import time
-from dataclasses import asdict, dataclass, field
+from dataclasses import dataclass, field
 from typing import Optional
 
 

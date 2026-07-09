@@ -4,7 +4,7 @@ Tageswechsel-Reset und Sende-Zählung. Reine Logik, kein LLM/DB nötig.
 
 import os
 import sys
-from datetime import date, datetime, timedelta
+from datetime import date, datetime
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 

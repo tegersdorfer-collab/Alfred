@@ -12,7 +12,6 @@ Beispiel:
 
 from __future__ import annotations
 
-import asyncio
 from typing import Callable, Optional
 
 from bleak import BleakClient, BleakScanner

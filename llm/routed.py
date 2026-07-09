@@ -10,7 +10,7 @@ Für den Rest von Mantis ist RoutedLLMProvider ein normaler LLMProvider —
 kein Caller muss geändert werden.
 """
 import logging
-from .base import LLMProvider, Message
+from .base import LLMProvider
 from .local import OllamaProvider
 import config
 

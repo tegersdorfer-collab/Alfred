@@ -2,7 +2,6 @@
 Tool-Registry für den agentischen Kern.
 Jedes Tool ist eine async-Funktion mit JSON-Schema. Das LLM ruft sie selbst auf.
 """
-import asyncio
 import inspect
 import json
 import logging
@@ -231,7 +230,6 @@ def select_tools(text: str) -> list[str]:
 
 
 # ── Embedding-basiertes Tool-Routing ──────────────────────────────────────────
-import re as _re
 
 _tool_desc_cache: dict[str, list[float]] | None = None
 _tool_desc_ts: float = 0.0

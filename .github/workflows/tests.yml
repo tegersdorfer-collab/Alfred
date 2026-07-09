@@ -8,6 +8,23 @@ on:
   workflow_dispatch: {}
 
 jobs:
+  lint:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Python 3.14
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.14"
+          cache: pip
+      - name: Ruff
+        run: |
+          python -m pip install --upgrade pip
+          pip install ruff
+          # Regeln/Excludes stehen in ruff.toml (F = echte Bugs, E9 = Syntax).
+          ruff check .
+
   pytest:
     runs-on: ubuntu-latest
     timeout-minutes: 20

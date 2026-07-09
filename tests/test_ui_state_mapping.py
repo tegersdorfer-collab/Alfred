@@ -8,7 +8,6 @@ from types import SimpleNamespace
 from unittest.mock import patch
 
 from core.ui_state import (
-    WIDGET_MAP,
     widget_type_for_tool,
     sleep_widget_payload,
     maybe_update_ui,

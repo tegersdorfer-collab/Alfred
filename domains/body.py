@@ -4,8 +4,7 @@ domains/body.py
 Körpermessungs-Tracking: Umfänge, Körperfett, Gewicht (ergänzend zu health_data).
 Speichert pro Tag einen Eintrag mit den gemessenen Werten.
 """
-from datetime import date, datetime
-from typing import Optional
+from datetime import date
 
 from core import db
 

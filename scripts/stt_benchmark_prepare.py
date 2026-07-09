@@ -6,7 +6,6 @@ realistisch ist (kurze Befehle vs. längere Sätze mit Fachbegriffen).
 """
 import asyncio
 import sys
-import wave
 sys.path.insert(0, ".")
 
 from core import tts

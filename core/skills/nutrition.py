@@ -3,12 +3,9 @@ Nutrition-Tools — aus core/skills.py extrahiert (verhaltensgleich).
 Registriert sich via @T.register beim Import (durch core/skills/__init__.py).
 """
 import logging
-from datetime import date, datetime
 
 from core import tools as T
-from core.timeparse import parse_datetime, parse_date
-from core.skill_context import CTX
-from domains import habits, fitness, nutrition, journal, goals, weather, tasks as tasks_d
+from domains import nutrition
 
 log = logging.getLogger("core.skills")
 
@@ -52,9 +49,8 @@ async def _nutrition_today():
     {"question": {"type": "string", "description": "Die Frage zu Ernährung oder Essen"}},
     ["question"], "nutrition")
 async def _nutrition_advice(question: str):
-    from domains import nutrition, health as health_d
+    from domains import nutrition
     from core import db as _db
-    from datetime import date
 
     totals = nutrition.day_totals()
     meals = nutrition.meals_for()
@@ -71,14 +67,14 @@ async def _nutrition_advice(question: str):
 
     lines = [
         f"Frage: {question}",
-        f"\nHeutiger Ernährungs-Stand:",
+        "\nHeutiger Ernährungs-Stand:",
         f"  Kalorien: {int(totals.get('calories') or 0)} / {goal_cal} kcal (noch {int(remaining_cal)} übrig)",
         f"  Protein: {int(totals.get('protein_g') or 0)} / {goal_prot}g (noch {int(remaining_prot)}g übrig)",
     ]
     if meals:
         lines.append(f"  Mahlzeiten heute: {', '.join(m['description'] for m in meals[:4])}")
     if health_row:
-        lines.append(f"\nHeutige Health-Daten:")
+        lines.append("\nHeutige Health-Daten:")
         if health_row.get("steps"):
             lines.append(f"  Schritte: {health_row['steps']}")
         if health_row.get("hrv"):

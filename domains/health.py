@@ -4,7 +4,6 @@ Datenquelle: Swift-App pusht via POST /api/health/push (HealthKit background del
 Fallback-Poll alle 30 Minuten falls Push nicht kommt (HEALTH_API_URL).
 """
 import logging
-from datetime import datetime
 
 import httpx
 

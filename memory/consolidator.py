@@ -7,7 +7,6 @@ Logik:
   - Paare unter SIMILARITY_THRESHOLD: schwächere (niedrigere Confidence) löschen
   - Keine Inhalte erfinden oder zusammenführen
 """
-import asyncio
 import logging
 
 import numpy as np

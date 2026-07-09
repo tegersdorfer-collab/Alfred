@@ -5,10 +5,8 @@ Initialer Auth-Flow: python scripts/gcal_auth.py einmalig ausführen.
 """
 import json
 import logging
-import os
 from datetime import datetime, timedelta
 from pathlib import Path
-from zoneinfo import ZoneInfo
 
 import config
 

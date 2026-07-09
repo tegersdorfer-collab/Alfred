@@ -2,7 +2,6 @@
 Ollama Provider – lokale LLM-Inference.
 Modell über OLLAMA_MODEL in .env konfigurierbar.
 """
-import asyncio
 import logging
 from collections import OrderedDict
 from typing import AsyncIterator

@@ -12,12 +12,10 @@ Kategorien (wie Obsidian-Ordner):
 
 Wiki-Links [[Titel]] werden automatisch beim Speichern aufgelöst.
 """
-import json
 import logging
 import re
 from dataclasses import dataclass, field
 from datetime import date, datetime
-from typing import Optional
 
 import numpy as np
 

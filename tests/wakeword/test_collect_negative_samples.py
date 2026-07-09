@@ -1,7 +1,6 @@
 import sys, os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", ".."))
 
-from pathlib import Path
 from scripts.wakeword.collect_negative_samples import collect_negative_paths
 
 

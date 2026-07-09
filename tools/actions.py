@@ -6,7 +6,6 @@ Format: [[ACTION:create_task|title=...|priority=...]]
 import logging
 import re
 from dataclasses import dataclass
-from typing import Optional
 
 log = logging.getLogger(__name__)
 

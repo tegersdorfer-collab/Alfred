@@ -3,7 +3,6 @@ import sys, os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 import asyncio
-from unittest.mock import patch, MagicMock
 
 import core.tts as tts
 

@@ -12,7 +12,6 @@ import asyncio
 import json
 import logging
 import os
-from typing import Optional
 
 from . import driver
 

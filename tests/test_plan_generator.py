@@ -3,7 +3,7 @@ import sys, os
 from datetime import date, datetime, timedelta
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
-from domains.plan_generator import normalize_plan, needs_regen, DEFAULT_PLAN, pick_variant
+from domains.plan_generator import normalize_plan, needs_regen, pick_variant
 
 TODAY = date(2026, 6, 26)
 

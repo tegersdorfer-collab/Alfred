@@ -3,12 +3,9 @@ Habits-Tools — aus core/skills.py extrahiert (verhaltensgleich).
 Registriert sich via @T.register beim Import (durch core/skills/__init__.py).
 """
 import logging
-from datetime import date, datetime
 
 from core import tools as T
-from core.timeparse import parse_datetime, parse_date
-from core.skill_context import CTX
-from domains import habits, fitness, nutrition, journal, goals, weather, tasks as tasks_d
+from domains import habits
 
 log = logging.getLogger("core.skills")
 
@@ -38,7 +35,7 @@ async def _create_habit(name: str, emoji: str = "✅", category: str = "day"):
     if category not in ("morning", "day", "evening"):
         category = "day"
     from core import db as _db
-    hid = _db.insert_returning(
+    _db.insert_returning(
         "INSERT INTO habits (name, emoji, category) VALUES (%s, %s, %s) RETURNING id",
         (name, emoji, category)
     )

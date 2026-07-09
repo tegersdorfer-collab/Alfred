@@ -2,7 +2,6 @@
 deaktiviert-Default, Not-Stopp, generischer Tool-Trigger. Kein Roboter/BLE nötig.
 """
 
-import asyncio
 import os
 import sys
 

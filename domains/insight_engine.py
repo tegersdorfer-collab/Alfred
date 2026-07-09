@@ -61,7 +61,6 @@ def _parse_insight_line(resp: str) -> tuple[str, str | None, str] | None:
 
 async def generate_insight_task(llm: LLMProvider, lzg=None) -> bool:
     """Analysiert DB-Daten und erstellt eine sinnvolle Aufgabe."""
-    from domains.task_executor import suggest_one
 
     # Health-Zusammenfassung aus DB
     health_rows = db.query(

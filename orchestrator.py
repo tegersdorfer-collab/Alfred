@@ -46,7 +46,6 @@ from tools.reminders import ReminderStore
 from domains import pattern_detector, alphaprogression
 from domains.task_executor import suggest_one
 from domains.insight_engine import generate_insight_task
-from core import backup
 from core.container import services
 import config
 

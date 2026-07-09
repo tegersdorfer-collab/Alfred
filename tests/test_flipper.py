@@ -10,7 +10,7 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from tools.flipper import driver, manager
+from tools.flipper import driver
 from tools.flipper.manager import FlipperManager, load_remotes
 
 

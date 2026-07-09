@@ -102,7 +102,7 @@ def main():
     git_rollback(rollback_to)
 
     log("Starte Mantis mit alter Version…")
-    proc2 = start_mantis(logfile)
+    start_mantis(logfile)
 
     # Kurze Verifikation nach Rollback
     time.sleep(8)

@@ -83,7 +83,7 @@ class FallbackBackend(AgentBackend):
             pass
         try:
             from core.status import BUS
-            BUS.emit("thinking", f"⚠️ Claude nicht erreichbar — lokales Modell übernimmt",
+            BUS.emit("thinking", "⚠️ Claude nicht erreichbar — lokales Modell übernimmt",
                      detail=self._fallback.model_name)
         except Exception:
             pass

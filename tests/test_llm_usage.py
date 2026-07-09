@@ -2,7 +2,7 @@
 import sys, os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 
 from core.llm_usage import cost_usd, record
 

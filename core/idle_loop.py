@@ -7,7 +7,6 @@ import logging
 from datetime import datetime
 
 from core import db, backup
-from core.status import BUS
 
 log = logging.getLogger(__name__)
 

@@ -87,7 +87,7 @@ async def main():
 
     r1 = run_one("Samstag, 07.06.2026, 10:00 Uhr", "Runde 1 – Cold (kein Cache erwartet)")
     r2 = run_one("Samstag, 07.06.2026, 10:01 Uhr", "Runde 2 – Warm (Cache-Hit erwartet)")
-    r3 = run_one("Samstag, 07.06.2026, 10:02 Uhr", "Runde 3 – Warm (Cache-Hit erwartet)")
+    run_one("Samstag, 07.06.2026, 10:02 Uhr", "Runde 3 – Warm (Cache-Hit erwartet)")
 
     print(f"\n{'═'*55}")
     if r1["prefill_s"] > 0 and r2["prefill_s"] > 0:

@@ -3,12 +3,10 @@ Telegram Bot – primärer Kommunikationskanal.
 Tauschbar gegen andere Kanäle via CommunicationChannel Interface.
 Unterstützt: Text, Sprachnachrichten (→ Transkription via Whisper), Fotos (→ Claude Haiku Vision).
 """
-import asyncio
 import logging
 import tempfile
 from datetime import datetime
 from pathlib import Path
-from io import BytesIO
 
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import (

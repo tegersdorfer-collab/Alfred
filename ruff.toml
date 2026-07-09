@@ -1,0 +1,22 @@
+# Ruff-Konfiguration für Mantis.
+# Fokus auf ECHTE Bugs (pyflakes F + Syntax E9), nicht auf Stil-Flut — das fängt
+# genau die Fehlerklasse aus dem Qualitäts-Pass (undefinierte Namen, tote Imports,
+# Redefinitionen) und hält die CI-Gate schnell und sinnvoll.
+line-length = 120
+
+exclude = [
+    "domains/dynamic_skills",   # zur Laufzeit generierte Skills (eigener AST-Validator)
+    "scripts/wakeword",         # Trainings-Skripte mit optionalen ML-Deps
+    "data",
+    "mlx_models",
+    ".venv",
+    "venv",
+]
+
+[lint]
+select = ["F", "E9"]
+
+[lint.per-file-ignores]
+# __init__.py importiert Submodule oft NUR für ihre Seiteneffekte (Skill-/Tool-
+# Registrierung via @T.register). Diese Imports sind absichtlich "ungenutzt".
+"**/__init__.py" = ["F401"]

@@ -75,7 +75,7 @@ def git_backup(description: str) -> str:
     """Committed aktuellen Zustand als Backup. Gibt Commit-Hash zurück."""
     try:
         subprocess.run(["git", "add", "-A"], cwd=MANTIS_DIR, capture_output=True, check=True)
-        result = subprocess.run(
+        subprocess.run(
             ["git", "commit", "-m", f"auto-backup: {description}", "--no-gpg-sign",
              "--allow-empty"],
             cwd=MANTIS_DIR, capture_output=True, text=True

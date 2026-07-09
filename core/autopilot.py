@@ -675,7 +675,6 @@ class Autopilot:
         Montags: durchsucht gespeicherte Recherche-Queries (brain_notes Kategorie 'resource'
         mit Tag 'research_query'), führt Web-Suche durch, speichert Zusammenfassung.
         """
-        import asyncio
         from domains.second_brain import get_by_category, add_note
 
         queries = [
@@ -686,7 +685,6 @@ class Autopilot:
             log.debug("Weekly-Research: keine Queries gespeichert")
             return
 
-        from core.skills import CTX
         results = []
         for note in queries[:3]:
             query = note.title
