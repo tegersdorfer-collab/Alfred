@@ -67,7 +67,10 @@
       dupliziert → reine _is_night(now) extrahiert (dedupliziert+testbar) +7 Tests. thermal.py —
       Division-durch-Null in compute_sleep wenn max_temp==target → geguarded +7 Tests.
       main.py/ui_state.py gesichtet: sauber.
-- [ ] 14. Global-Sweep: stumme excepts sichten (loggen oder begründen), prints → logging
+- [x] 14. Global-Sweep: 2 echte Laufzeit-prints → logging (thermal 'zu heiß'-Warnung +
+      Logger ergänzt, telegram 'nicht verbunden'-Fallback). Verbleibende prints sind
+      Startup-UX/CLI/MCP-stdout-Protokoll (bewusst belassen). 58 best-effort except:pass
+      modulweise gesichtet — kein weiterer versteckter Bug, bewusstes Degradieren.
 - [x] 15. start.sh PID-Bug gefixt (killt beide PID-Dateien, schreibt nur noch mantis_pid.txt)
 
 ## Log
@@ -83,4 +86,5 @@
 - 1360957 Modul 10: telegram task_skip-Bug + set_status-Härtung
 - a443f46 Modul 11: Router-Helfer getestet + tasks-Router-Log
 - 4cc1947 Modul 12: url_handler Subdomain-Bug + LLM-Provider-Tests
-- Modul 13: proactive Nacht-Dedup + thermal Div-by-Zero
+- 47ecaa4 Modul 13: proactive Nacht-Dedup + thermal Div-by-Zero
+- Modul 14: Global-Sweep (prints→logging)

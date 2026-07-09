@@ -10,12 +10,15 @@ Strategie: Proportional-Controller (P-Controller)
 Austauschbar: Implementiere ThermalStrategy um Algorithmus zu wechseln.
 """
 import asyncio
+import logging
 import subprocess
 import time
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 
 import config
+
+log = logging.getLogger(__name__)
 
 
 @dataclass
@@ -179,5 +182,5 @@ class ThermalMonitor:
             state = self.get_state()
             if not state.paused:
                 return
-            print(f"🌡️ Zu heiß ({state.temp_celsius:.1f}°C) – warte...")
+            log.warning(f"🌡️ Zu heiß ({state.temp_celsius:.1f}°C) – warte...")
             await asyncio.sleep(30)

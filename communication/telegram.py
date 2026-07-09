@@ -56,7 +56,7 @@ class TelegramChannel(CommunicationChannel):
 
     async def send(self, text: str) -> None:
         if not self._app or not self._chat_id:
-            print(f"[Mantis → Telegram nicht verbunden]: {text}")
+            log.warning("Telegram nicht verbunden — Nachricht nicht gesendet: %s", text[:80])
             return
 
         # Lange Nachrichten aufteilen (Telegram-Limit: 4096 Zeichen)
