@@ -15,7 +15,9 @@
 - [x] 1. core/db.py — Pool-Vergiftung durch tote Connections gefixt (putconn close=broken),
       Retry-once bei Verbindungsverlust, thread-sicheres init_pool, json-Import dedupliziert.
       +6 Tests (test_db_resilience.py, Fake-Pool). start.sh-PID-Bug (Punkt 15) mit erledigt.
-- [ ] 2. core/tools.py (262) + core/agent.py (198)
+- [x] 2. core/tools.py (sauber, keine Änderung nötig) + core/agent.py — Math-Guard-Bug
+      gefixt (continue verwarf Retry-Tool-Calls → Extra-LLM-Call), +7 ReAct-Loop-Tests
+      mit FakeBackend (test_agent_loop.py).
 - [ ] 3. core/message_handler.py (258) + orchestrator.py (279) + core/idle_loop.py (270)
 - [ ] 4. core/autopilot.py (887) — größtes Modul
 - [ ] 5. memory/ (extractor 342, lzg 337, knowledge 336)
@@ -31,4 +33,5 @@
 - [x] 15. start.sh PID-Bug gefixt (killt beide PID-Dateien, schreibt nur noch mantis_pid.txt)
 
 ## Log
-- (noch nichts abgeschlossen)
+- 32ae6d9 Modul 1: core/db.py (Pool-Resilienz) + start.sh
+- Modul 2: core/agent.py Math-Guard-Fix + Loop-Tests

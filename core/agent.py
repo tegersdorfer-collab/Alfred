@@ -104,12 +104,13 @@ class Agent:
                         temperature=0.2, max_tokens=300,
                     )
                     msgs = msgs[:-2]
-                    if tool_calls:
-                        continue
-                    return content.strip(), trace
+                    if not tool_calls:
+                        return content.strip(), trace
+                    # tool_calls erhalten → unten direkt ausführen (kein continue:
+                    # das würde sie verwerfen und einen zweiten LLM-Call machen)
 
                 # Kein Tool-Call obwohl erwartet → einmal retry
-                if force_tools and is_first and schemas:
+                elif force_tools and is_first and schemas:
                     log.debug("Kein Tool-Call trotz force_tools – retry")
                     msgs.append({"role": "assistant", "content": content or ""})
                     msgs.append({
