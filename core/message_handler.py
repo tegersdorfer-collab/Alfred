@@ -121,46 +121,22 @@ class MessageHandler:
             return
 
         # Agent-Loop
-        system = await self.prompt_builder.build(msg.text)
         stream_cb, finalize = await self._make_stream()
-        allowed = skills.T.select_tools(msg.text)
-        model = self.agent.model_name
-        force_tools = bool(allowed) and skills.T.is_action(msg.text)
-
-        try:
-            response, trace = await self.agent.run(
-                messages=self.kzg.recent_messages(max_tokens=3000),
-                system=system, stream_cb=stream_cb,
-                allowed_tools=allowed, force_tools=force_tools,
-                temperature=0.75, max_tokens=1500,
-            )
-        except Exception as e:
-            log.error(f"Agent-Fehler: {e}")
-            response, trace = "⚠️ Technisches Problem, versuch es nochmal.", []
-
+        response, trace = await self._agent_turn(msg.text, channel_name="telegram",
+                                                 stream_cb=stream_cb)
         if not response:
             response = "…"
         await finalize(response)
+        self._finish_turn(msg.text, response, trace, channel_name="telegram")
 
-        self.kzg.add("assistant", response)
-        tools_used = [t["tool"] for t in trace]
-        try:
-            await ui_state.maybe_update_ui(tools_used)
-        except Exception:
-            pass
-        self._persist_msg("assistant", response, channel="telegram",
-                          meta={"tools": tools_used, "model": model})
         elapsed = time.time() - t0
-        log.info(f"Antwort in {elapsed:.1f}s ({len(trace)} Tools, {model})")
-        BUS.emit("idle", "Bereit", detail=f"{elapsed:.1f}s · {model}")
-
-        _safe_task(self._post_turn(msg.text, response, tools_used), "post_turn")
+        log.info(f"Antwort in {elapsed:.1f}s ({len(trace)} Tools, {self.agent.model_name})")
+        BUS.emit("idle", "Bereit", detail=f"{elapsed:.1f}s · {self.agent.model_name}")
         resume_idle_cb()
 
     # ── Dashboard ─────────────────────────────────────────────────────────────
 
     async def dashboard_respond(self, text: str, stream_cb=None, agent=None) -> tuple[str, list]:
-        agent = agent or self.agent
         self.on_user_active()
         self.kzg.add("user", text)
         self._persist_msg("user", text, channel="dashboard")
@@ -168,32 +144,42 @@ class MessageHandler:
         if await self._handle_alpha_progression(text, "dashboard"):
             return "", []
 
+        response, trace = await self._agent_turn(text, channel_name="dashboard",
+                                                 stream_cb=stream_cb, agent=agent)
+        self._finish_turn(text, response, trace, channel_name="dashboard", agent=agent)
+        return response, trace
+
+    # ── Gemeinsamer Agent-Turn (Telegram + Dashboard) ─────────────────────────
+
+    async def _agent_turn(self, text: str, channel_name: str,
+                          stream_cb=None, agent=None) -> tuple[str, list]:
+        """Prompt bauen, Tools wählen, Agent laufen lassen — mit Fehler-Fallback."""
+        agent = agent or self.agent
         system = await self.prompt_builder.build(text)
         allowed = skills.T.select_tools(text)
-        model = agent.model_name
         force_tools = bool(allowed) and skills.T.is_action(text)
-
         try:
-            response, trace = await agent.run(
+            return await agent.run(
                 messages=self.kzg.recent_messages(max_tokens=3000),
                 system=system, stream_cb=stream_cb,
                 allowed_tools=allowed, force_tools=force_tools,
                 temperature=0.75, max_tokens=1500,
             )
         except Exception as e:
-            log.error(f"Dashboard-Agent-Fehler: {e}")
-            response, trace = "⚠️ Technisches Problem.", []
+            log.error(f"Agent-Fehler ({channel_name}): {e}")
+            db.log_error(f"agent_turn/{channel_name}", e)
+            return "⚠️ Technisches Problem, versuch es nochmal.", []
 
+    def _finish_turn(self, user_text: str, response: str, trace: list,
+                     channel_name: str, agent=None) -> None:
+        """Antwort in KZG/DB persistieren, UI aktualisieren, Post-Turn-Learning starten."""
+        agent = agent or self.agent
         self.kzg.add("assistant", response)
         tools_used = [t["tool"] for t in trace]
-        try:
-            await ui_state.maybe_update_ui(tools_used)
-        except Exception:
-            pass
-        self._persist_msg("assistant", response, channel="dashboard",
-                          meta={"tools": tools_used, "model": model})
-        _safe_task(self._post_turn(text, response, tools_used), "post_turn")
-        return response, trace
+        _safe_task(ui_state.maybe_update_ui(tools_used), "ui_update")
+        self._persist_msg("assistant", response, channel=channel_name,
+                          meta={"tools": tools_used, "model": agent.model_name})
+        _safe_task(self._post_turn(user_text, response, tools_used), "post_turn")
 
     # ── Post-Turn Learning ────────────────────────────────────────────────────
 
@@ -247,12 +233,12 @@ class MessageHandler:
                      meta: dict | None = None) -> None:
         try:
             self.lzg.save_kzg_turn(role, content)
-        except Exception:
-            pass
+        except Exception as e:
+            log.warning(f"KZG-Turn nicht gespeichert: {e}")
         try:
             db.execute(
                 "INSERT INTO chat_messages (role, content, channel, meta) VALUES (%s,%s,%s,%s)",
                 (role, content, channel, json.dumps(meta or {})),
             )
-        except Exception:
-            pass
+        except Exception as e:
+            log.warning(f"Chat-Nachricht nicht persistiert: {e}")

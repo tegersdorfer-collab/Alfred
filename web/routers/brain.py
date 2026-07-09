@@ -43,10 +43,11 @@ def build_router(orch=None) -> APIRouter:
     @router.post("/api/brain/notes")
     async def brain_create(req: Request):
         d = await req.json()
-        emb_fn = None
-        if orch:
-            emb_fn = lambda t: orch.lzg_embed(t)
-        note_id = _brain.add_note(
+        emb_fn = orch.lzg_embed if orch else None
+        # to_thread: add_note blockiert (DB + Embedding) und lzg_embed darf
+        # nicht auf dem Event-Loop-Thread laufen (würde den Loop einfrieren).
+        note_id = await asyncio.to_thread(
+            _brain.add_note,
             title=d.get("title", "Neue Notiz"),
             content=d.get("content", ""),
             category=d.get("category", "inbox"),
@@ -67,10 +68,9 @@ def build_router(orch=None) -> APIRouter:
     @router.put("/api/brain/notes/{note_id}")
     async def brain_update(note_id: int, req: Request):
         d = await req.json()
-        emb_fn = None
-        if orch and "content" in d:
-            emb_fn = lambda t: orch.lzg_embed(t)
-        ok = _brain.update_note(
+        emb_fn = orch.lzg_embed if (orch and "content" in d) else None
+        ok = await asyncio.to_thread(
+            _brain.update_note,
             note_id,
             title=d.get("title"),
             content=d.get("content"),
@@ -106,9 +106,8 @@ def build_router(orch=None) -> APIRouter:
 
     @router.get("/api/brain/search")
     def brain_search(q: str, limit: int = 20):
-        emb_fn = None
-        if orch:
-            emb_fn = lambda t: orch.lzg_embed(t)
+        # Sync-Endpoint → läuft im FastAPI-Threadpool, lzg_embed ist hier sicher.
+        emb_fn = orch.lzg_embed if orch else None
         results = _brain.search_notes(q, limit=limit, embedding_fn=emb_fn)
         return [_brain.note_to_dict(n) for n in results]
 

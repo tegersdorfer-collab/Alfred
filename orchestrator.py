@@ -97,6 +97,9 @@ class Orchestrator:
         self._proactive_engine  = ProactiveEngine(llm=bg_llm, lzg=lzg, claude=None, kg=self.kg)
 
         self._last_user_ts = 0.0
+        # Wird in start() gesetzt — Referenz auf den Haupt-Event-Loop, damit
+        # lzg_embed aus Worker-Threads sicher hinein-schedulen kann.
+        self._main_loop: asyncio.AbstractEventLoop | None = None
 
         self.autopilot = Autopilot(
             llm=bg_llm, lzg=lzg, dashboard=self._dashboard, reminders=self._reminders,
@@ -158,20 +161,30 @@ class Orchestrator:
         return await self.msg_handler.dashboard_respond(text, stream_cb, agent=self.voice_agent)
 
     def lzg_embed(self, text: str) -> list[float]:
-        """Synchroner Embedding-Wrapper für API-Endpoints (läuft in asyncio.to_thread)."""
-        import concurrent.futures
-        try:
-            loop = asyncio.get_event_loop()
-            if loop.is_running():
-                future = asyncio.run_coroutine_threadsafe(
-                    self.embed_llm.embed(text), loop
-                )
-                return future.result(timeout=10)
-            # Loop existiert aber läuft nicht (z.B. Sync-Testkontext)
+        """Synchroner Embedding-Wrapper für API-Endpoints.
+
+        NUR aus Worker-Threads aufrufen (Threadpool-Endpoint oder asyncio.to_thread).
+        Auf dem Event-Loop-Thread selbst würde das Blockieren auf dem Future den
+        Loop einfrieren — dieser Fall wird abgefangen und liefert [] statt Freeze.
+        """
+        loop = self._main_loop
+        if loop is None or not loop.is_running():
             log.warning("lzg_embed: kein laufender Event-Loop — Embedding übersprungen")
+            return []
+        try:
+            asyncio.get_running_loop()
+        except RuntimeError:
+            pass  # gut: wir sind in einem Worker-Thread
+        else:
+            log.warning("lzg_embed auf dem Event-Loop-Thread aufgerufen — übersprungen "
+                        "(würde den Loop blockieren; Aufrufer muss asyncio.to_thread nutzen)")
+            return []
+        try:
+            future = asyncio.run_coroutine_threadsafe(self.embed_llm.embed(text), loop)
+            return future.result(timeout=10)
         except Exception as e:
             log.warning(f"lzg_embed fehlgeschlagen: {e}")
-        return []
+            return []
 
     # ── Lifecycle ─────────────────────────────────────────────────────────────
 
@@ -180,6 +193,7 @@ class Orchestrator:
 
     async def start(self) -> None:
         log.info("Orchestrator startet...")
+        self._main_loop = asyncio.get_running_loop()
         self._bg_tasks = []
         self._register_services()
         await self._init_db()

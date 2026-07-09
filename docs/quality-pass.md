@@ -18,7 +18,11 @@
 - [x] 2. core/tools.py (sauber, keine Änderung nötig) + core/agent.py — Math-Guard-Bug
       gefixt (continue verwarf Retry-Tool-Calls → Extra-LLM-Call), +7 ReAct-Loop-Tests
       mit FakeBackend (test_agent_loop.py).
-- [ ] 3. core/message_handler.py (258) + orchestrator.py (279) + core/idle_loop.py (270)
+- [x] 3. message_handler — Telegram/Dashboard-Duplikation auf gemeinsamen _agent_turn/
+      _finish_turn-Kern gezogen, stumme Persist-Excepts loggen jetzt. orchestrator —
+      lzg_embed-Bug gefixt (fror Event-Loop 10s ein bzw. lieferte im Threadpool immer []),
+      Haupt-Loop-Referenz in start(). brain-Router: add/update_note via to_thread.
+      idle_loop gesichtet: ok. +3 Tests (test_lzg_embed.py).
 - [ ] 4. core/autopilot.py (887) — größtes Modul
 - [ ] 5. memory/ (extractor 342, lzg 337, knowledge 336)
 - [ ] 6. core/skill_factory.py (242) + core/skill_md.py (197) + core/eval_suite.py (195)
@@ -34,4 +38,5 @@
 
 ## Log
 - 32ae6d9 Modul 1: core/db.py (Pool-Resilienz) + start.sh
-- Modul 2: core/agent.py Math-Guard-Fix + Loop-Tests
+- 46723f1 Modul 2: core/agent.py Math-Guard-Fix + Loop-Tests
+- Modul 3: lzg_embed-Freeze-Fix + Message-Handler-Dedup
