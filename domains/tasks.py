@@ -2,9 +2,17 @@
 Reiches Task-System (mantis-nativ).
 Arten: task | project | checklist. Unteraufgaben via parent_id. Fortschritt %. Archiv.
 """
+import logging
 from datetime import datetime
 
 from core import db
+
+log = logging.getLogger(__name__)
+
+# Gültige, in der DB gespeicherte Status. "open"/"all" sind NUR Filter-Aliase
+# in list_tasks — sie dürfen niemals als Status geschrieben werden (sonst fällt
+# der Task aus jedem Filter heraus und wird unsichtbar).
+VALID_STATUSES = frozenset({"todo", "in_progress", "done", "archived"})
 
 
 def create_task(title: str, kind: str = "task", priority: str = "medium",
@@ -57,6 +65,15 @@ def complete_task(task_id: int) -> None:
 
 
 def set_status(task_id: int, status: str) -> None:
+    if status not in VALID_STATUSES:
+        # Häufigster Fehler: "open" (Filter-Alias) wird als Status übergeben.
+        coerced = "todo" if status == "open" else None
+        if coerced is None:
+            log.warning("set_status: ungültiger Status %r ignoriert (Task %s)", status, task_id)
+            return
+        log.warning("set_status: %r ist kein Status → als %r behandelt (Task %s)",
+                    status, coerced, task_id)
+        status = coerced
     if status == "done":
         complete_task(task_id)
     else:

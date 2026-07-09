@@ -50,7 +50,10 @@
       aus process_health_data in testbares map_health_fields() extrahiert +13 Tests.
       calendar.py: stiller ICS-Event-Parse-Except loggt jetzt (Debug). goals/gcal_writer/
       pattern_detector/insight_engine gesichtet: sauber.
-- [ ] 10. communication/telegram.py (474)
+- [x] 10. communication/telegram.py — BUG: 'Task zurückstellen'-Button setzte status='open'
+      (kein gültiger Status, nur Filter-Alias) → Task fiel aus allen Listen, wurde unsichtbar.
+      Auf 'todo' gefixt + set_status in domains/tasks.py gehärtet (VALID_STATUSES, coerct
+      'open'→'todo', ignoriert Müll statt zu schreiben). +5 Tests.
 - [ ] 11. web/routers/ Rest (nutrition 282, system 241, tasks 188, …)
 - [ ] 12. tools/ (url_handler 267, search 203) + llm/ (local 190, backends/claude 185)
 - [ ] 13. main.py (177) + proactive.py (338) + thermal.py (181) + core/ui_state.py (355)
@@ -66,4 +69,5 @@
 - 0dca849 Modul 6: Skill-Validator + skill_md getestet (+38 Tests)
 - 7922f6a Modul 7: fitness.py Progression-Bug + AlphaProgression-Tests
 - c97cc3a Modul 8: second_brain N+1 + task_executor Robustheit
-- Modul 9: health-Mapping extrahiert+getestet, calendar-Log
+- 0b6ed0a Modul 9: health-Mapping extrahiert+getestet, calendar-Log
+- Modul 10: telegram task_skip-Bug + set_status-Härtung

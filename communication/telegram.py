@@ -380,7 +380,9 @@ class TelegramChannel(CommunicationChannel):
 
             elif action == "task_skip":
                 from domains import tasks as t_d
-                t_d.set_status(int(payload), "open")
+                # "todo" = zurück in die offene Liste; "open" ist KEIN gültiger
+                # Status (nur ein Filter-Alias) und würde den Task unsichtbar machen.
+                t_d.set_status(int(payload), "todo")
                 await query.edit_message_text(f"⏭ Task #{payload} zurückgestellt.")
 
             elif action == "habit_done":
