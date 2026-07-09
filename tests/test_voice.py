@@ -6,6 +6,10 @@ import asyncio
 import pytest
 from unittest.mock import patch, AsyncMock, MagicMock
 
+# Diese Tests patchen pywhispercpp.model.Model — das Paket muss dafür importierbar
+# sein. Fehlt es (z.B. schlanke CI ohne schwere ML-Wheels), wird die Datei geskippt.
+pytest.importorskip("pywhispercpp")
+
 import core.voice as voice
 
 

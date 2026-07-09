@@ -5,6 +5,9 @@ anthropic>=0.40.0
 # Telegram
 python-telegram-bot>=21.0
 
+# Kalender (ICS-Parsing in domains/calendar.py)
+icalendar>=5.0
+
 # Database
 psycopg2-binary>=2.9
 pgvector>=0.3.0
