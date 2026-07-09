@@ -124,6 +124,36 @@ def get_calendar_id() -> str:
     return getattr(config, "GOOGLE_CALENDAR_ID", "primary")
 
 
+def _build_event_body(title: str, start: datetime, end: datetime | None,
+                      location: str | None, description: str | None,
+                      all_day: bool, tz: str) -> dict:
+    """Baut das Google-Calendar-Event-JSON. Ganztags → 'date', sonst 'dateTime'+TZ.
+
+    Rein (keine API), damit die Format-Regeln testbar sind:
+    - Ganztags ohne Ende → Ende = Start + 1 Tag (Google-Konvention, exklusives Enddatum)
+    - Getaktet ohne Ende → Ende = Start + 1 Stunde
+    """
+    if all_day:
+        body = {
+            "summary": title,
+            "start": {"date": start.strftime("%Y-%m-%d")},
+            "end":   {"date": (end or start + timedelta(days=1)).strftime("%Y-%m-%d")},
+        }
+    else:
+        if end is None:
+            end = start + timedelta(hours=1)
+        body = {
+            "summary": title,
+            "start": {"dateTime": start.isoformat(), "timeZone": tz},
+            "end":   {"dateTime": end.isoformat(),   "timeZone": tz},
+        }
+    if location:
+        body["location"] = location
+    if description:
+        body["description"] = description
+    return body
+
+
 def create_event(
     title: str,
     start: datetime,
@@ -142,28 +172,7 @@ def create_event(
         log.warning(f"Google Calendar nicht verfügbar: {e}")
         return None
 
-    if end is None and not all_day:
-        end = start + timedelta(hours=1)
-
-    tz = _TZ
-
-    if all_day:
-        body = {
-            "summary": title,
-            "start": {"date": start.strftime("%Y-%m-%d")},
-            "end":   {"date": (end or start + timedelta(days=1)).strftime("%Y-%m-%d")},
-        }
-    else:
-        body = {
-            "summary": title,
-            "start": {"dateTime": start.isoformat(), "timeZone": tz},
-            "end":   {"dateTime": end.isoformat(),   "timeZone": tz},
-        }
-
-    if location:
-        body["location"] = location
-    if description:
-        body["description"] = description
+    body = _build_event_body(title, start, end, location, description, all_day, _TZ)
 
     try:
         result = svc.events().insert(

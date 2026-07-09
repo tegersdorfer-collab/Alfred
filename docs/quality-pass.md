@@ -88,3 +88,13 @@
 - 4cc1947 Modul 12: url_handler Subdomain-Bug + LLM-Provider-Tests
 - 47ecaa4 Modul 13: proactive Nacht-Dedup + thermal Div-by-Zero
 - Modul 14: Global-Sweep (prints→logging)
+
+## Zweiter, tieferer Pass (2026-07-09)
+
+- [x] pattern_detector.py — Analyse-Logik (Workout/Schlaf/Schritte/Habit/HR) war komplett
+      ungetestet; +9 Tests (Schwellen-Gate, Wochenend-Vergleiche, Neu-Habit-Proratierung,
+      HR-Trend). Code selbst sauber.
+- [x] insight_engine.py — LLM-Antwort-Parsing (TITEL|GRUND|ASSIGNEE) aus der großen
+      async-Funktion in reines _parse_insight_line() extrahiert +8 Tests.
+- [x] gcal_writer.py — Event-Body-Aufbau (Ganztags-'date' vs. 'dateTime'+TZ, Default-Enden)
+      in reines _build_event_body() extrahiert +6 Tests. API-Teil sauber.

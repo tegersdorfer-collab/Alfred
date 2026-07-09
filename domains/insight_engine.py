@@ -40,6 +40,25 @@ Antworte im Format:
 TITEL | KURZE BEGRÜNDUNG (Datenmuster) | MANTIS_ODER_USER"""
 
 
+def _parse_insight_line(resp: str) -> tuple[str, str | None, str] | None:
+    """Parst die LLM-Antwort 'TITEL | BEGRÜNDUNG | MANTIS/USER'.
+
+    Gibt (title, notes, assignee) zurück oder None, wenn leer/ohne Titel.
+    Fehlt der Assignee-Teil oder enthält er 'MANTIS' → 'mantis', sonst 'user'.
+    """
+    stripped = (resp or "").strip()
+    if not stripped:
+        return None
+    line = stripped.splitlines()[0].strip()
+    parts = [p.strip() for p in line.split("|")]
+    if not parts or not parts[0]:
+        return None
+    title = parts[0]
+    notes = parts[1] if len(parts) > 1 else None
+    assignee = "mantis" if len(parts) < 3 or "MANTIS" in parts[2].upper() else "user"
+    return title, notes, assignee
+
+
 async def generate_insight_task(llm: LLMProvider, lzg=None) -> bool:
     """Analysiert DB-Daten und erstellt eine sinnvolle Aufgabe."""
     from domains.task_executor import suggest_one
@@ -148,16 +167,10 @@ async def generate_insight_task(llm: LLMProvider, lzg=None) -> bool:
             temperature=0.7,
             max_tokens=150,
         )
-        stripped = resp.strip()
-        if not stripped:
+        parsed = _parse_insight_line(resp)
+        if parsed is None:
             return False
-        line = stripped.splitlines()[0].strip()
-        parts = [p.strip() for p in line.split("|")]
-        if not parts or not parts[0]:
-            return False
-        title = parts[0]
-        notes = parts[1] if len(parts) > 1 else None
-        assignee = "mantis" if len(parts) < 3 or "MANTIS" in parts[2].upper() else "user"
+        title, notes, assignee = parsed
     except Exception as e:
         log.warning(f"Insight-Generierung fehlgeschlagen: {e}")
         return False
