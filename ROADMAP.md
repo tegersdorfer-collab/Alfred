@@ -452,7 +452,8 @@ Branch: `robot/x5-autonomy` (noch nicht gemergt) · Gedächtnis: `[[mantis-x5-ro
 - [ ] **Grobe Karte + Sperrzonen**: Dead-Reckoning-Occupancy-Grid (kein Odometer → driftet),
       Timo kann Bereiche manuell sperren.
 - [ ] **Smarteres Explorieren** statt reinem Random-Wander.
-- [ ] **Not-Stopp-Endpunkt** ohne Mantis-Neustart (aktuell: Neustart droppt BLE → Motoren
+- [x] **Not-Stopp-Endpunkt** ohne Mantis-Neustart — erledigt: POST /api/trigger/estop (Tier-1 #4).
+      (Aktuell: Neustart droppt BLE → Motoren
       bremsen in <1s von selbst, aber unsauber).
 - [ ] `start.sh` PID-Bug (liest `/tmp/mantis.pid`, schreibt `/tmp/mantis_pid.txt`) fixen.
 - [ ] Branch `robot/x5-autonomy` mergen.

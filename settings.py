@@ -62,6 +62,10 @@ class MantisSettings(BaseSettings):
     TELEGRAM_CHAT_ID: str = ""
     TELEGRAM_ALLOWED_IDS_RAW: str = Field("", alias="TELEGRAM_ALLOWED_IDS")
 
+    # Shared-Secret für externe Trigger (Not-Stopp, Automationen) über /api/trigger/*.
+    # Leer = Trigger-API deaktiviert (sicherer Default).
+    TRIGGER_TOKEN: str = ""
+
     # ── Besitzer ─────────────────────────────────────────────────────────────
     OWNER_NAME: str = ""
     OWNER_EMAIL: str = ""
