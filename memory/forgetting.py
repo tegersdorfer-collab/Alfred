@@ -28,6 +28,21 @@ DELETE_THRESHOLD = 0.10   # Retention unter 10% → vergessen
 CHAT_TTL_DAYS    = 3      # Einfache Chat-Nachrichten nach 3 Tagen löschen
 
 
+def compute_retention(importance: float, recall_count: int, days: float) -> float:
+    """Ebbinghaus-Retention exp(-t/S).
+
+    S (Stabilität) = importance * (1 + 0.25 * recall_count), aber mindestens 1.0,
+    damit normale Memories nicht schon nach einem Tag unter die Löschschwelle fallen.
+    """
+    stability = max(importance * (1 + 0.25 * recall_count), 1.0)
+    return math.exp(-days / stability)
+
+
+def should_forget(importance: float, recall_count: int, days: float) -> bool:
+    """True, wenn die Retention unter die Löschschwelle gefallen ist."""
+    return compute_retention(importance, recall_count, days) < DELETE_THRESHOLD
+
+
 class ForgettingCurve:
 
     async def run(self) -> dict:
@@ -91,12 +106,7 @@ class ForgettingCurve:
             importance   = float(r["importance"]   or 0.5)
             recall_count = int(r["recall_count"]   or 0)
 
-            # Stabilität steigt mit jeder Wiederholung
-            stability = importance * (1 + 0.25 * recall_count)
-            # Mindest-Stabilität: normale Memories halten mindestens ~7 Tage (S=1)
-            stability = max(stability, 1.0)
-            retention = math.exp(-days / stability)
-
+            retention = compute_retention(importance, recall_count, days)
             if retention < DELETE_THRESHOLD:
                 to_delete.append((r["id"], r["content"][:60], round(retention, 3)))
 

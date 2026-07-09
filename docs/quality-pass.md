@@ -98,3 +98,9 @@
       async-Funktion in reines _parse_insight_line() extrahiert +8 Tests.
 - [x] gcal_writer.py — Event-Body-Aufbau (Ganztags-'date' vs. 'dateTime'+TZ, Default-Enden)
       in reines _build_event_body() extrahiert +6 Tests. API-Teil sauber.
+- [x] memory/forgetting.py — Ebbinghaus-Retention-Formel (exp(-t/S)) aus _decay_memories in
+      reine compute_retention()/should_forget() extrahiert +8 Tests (Zeit-Decay, Min-Stabilität,
+      recall_count-Effekt, Löschschwelle-Grenze).
+- [x] domains/calendar.py — _to_local (tz-aware→lokal-naiv, naiv→UTC-Annahme, date→Ganztags)
+      +4 Tests. Häufige naive/aware-Fehlerquelle jetzt abgesichert.
+- [x] core/ui_state.py — bereits durch 4 Test-Dateien abgedeckt, keine Lücke.
