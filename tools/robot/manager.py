@@ -33,6 +33,11 @@ class RobotManager:
         async with self._lock:
             if self.connected:
                 return self._robot  # type: ignore[return-value]
+            # Absturz-Schutz: fehlt auf macOS die Bluetooth-Berechtigung, würde der
+            # BLE-Zugriff den GANZEN Prozess killen (SIGABRT). Lieber sauber ablehnen.
+            from .platform_check import bluetooth_entitlement_ok, entitlement_hint
+            if not bluetooth_entitlement_ok():
+                raise RuntimeError(entitlement_hint())
             log.info("Verbinde mit X5 (%s) ...", P.DEVICE_NAME)
             self._robot = await driver.connect()
             log.info("X5 verbunden.")
