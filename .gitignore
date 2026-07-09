@@ -35,3 +35,9 @@ DerivedData/
 build/
 *.xcscmblueprint
 .worktrees/
+
+# Modell-Gewichte (groß, gehören nicht ins Repo)
+*.npz
+mlx_models/
+# Roboter-Laufzeit-State
+.robot_last

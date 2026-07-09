@@ -163,6 +163,8 @@ _CATEGORY_KEYWORDS = {
                      "bildschirminhalt"],
     "robot":        ["roboter", "droide", "droid", "x5", "greifer", "greif",
                      "autonom", "patrouill", "fahr los", "fahr vor", "fahr zurück"],
+    "flipper":      ["lampe", "licht", "schreibtischlampe", "flipper", "infrarot",
+                     "ir ", "fernbedienung", "mach das licht", "schalt das licht"],
 }
 
 # Generelle Aktionsverben → es soll etwas GETAN werden

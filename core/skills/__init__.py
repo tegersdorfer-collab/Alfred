@@ -27,6 +27,7 @@ from . import (
     filesystem,
     vision,
     robot,
+    flipper,
 )
 
 # REGISTRY in die ursprüngliche Reihenfolge bringen (select_tools byte-identisch).

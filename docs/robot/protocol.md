@@ -47,7 +47,25 @@ Genau **9 Bytes**, kein Header/Terminator. **3 Motoren × 3 Bytes**:
 - **cmd**: `0x00`=rückwärts, `0x01`=vorwärts, `0x02`=Bremse (aus `.cctor`: BACKWARD=0, FORWARD=1, BRAKE=2)
 - **pow**: `force × 255`, also `0x00`–`0xff` (0–100 % Leistung)
 - **time**: `Sekunden × 100`, geclamped auf 2.55 s → `0x00`–`0xff`; `0x00` = vermutlich Dauerlauf (bis zum nächsten Befehl)
-- Motor-Index → physische Zuordnung (2× Antrieb + Greifer) wird empirisch bestimmt.
+- **Motor-Zuordnung (empirisch bestätigt):**
+  | Index | Motor | `cmd 0x01` | `cmd 0x00` |
+  |---|---|---|---|
+  | 0 | linkes Rad | rückwärts | vorwärts |
+  | 1 | rechtes Rad | vorwärts | rückwärts |
+  | 2 | Greifer | auf | zu |
+
+  Antriebsmotoren spiegelverkehrt → gegenläufige Codes ergeben Geradeausfahrt.
+
+- **Bewegungs-Rezepte** (`pow`/`time` beliebig, hier `0x60`/`0x64`=~38 %/1 s):
+  | Aktion | 9 Bytes (hex) |
+  |---|---|
+  | Vorwärts | `00 60 64  01 60 64  02 00 00` |
+  | Rückwärts | `01 60 64  00 60 64  02 00 00` |
+  | Drehen links (CCW) | `01 60 64  01 60 64  02 00 00` |
+  | Drehen rechts (CW) | `00 60 64  00 60 64  02 00 00` |
+  | Greifer auf | `02 00 00  02 00 00  01 60 64` |
+  | Greifer zu | `02 00 00  02 00 00  00 60 64` |
+  | Alles Stopp | `02 00 00  02 00 00  02 00 00` |
 
 ### Richtungs-/Greifer-Enums (App-intern)
 - `STATE_MOVE`: STOP=0, UP=1, UP_RIGHT=2, UP_LEFT=3, RIGHT=4, LEFT=5, DOWN_RIGHT=6, DOWN_LEFT=7, DOWN=8

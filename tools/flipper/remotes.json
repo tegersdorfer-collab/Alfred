@@ -1,0 +1,17 @@
+{
+  "schreibtischlampe": {
+    "label": "Schreibtischlampe",
+    "note": "Angelernt 2026-07-09 per Flipper 'ir rx'. NECext-Fernbedienung, Adresse EF00.",
+    "signals": {
+      "an":        {"protocol": "NECext", "address": "EF00", "command": "FC03"},
+      "aus":       {"protocol": "NECext", "address": "EF00", "command": "FD02"},
+      "heller":    {"protocol": "NECext", "address": "EF00", "command": "FF00"},
+      "dunkler":   {"protocol": "NECext", "address": "EF00", "command": "FE01"},
+      "weiss":     {"protocol": "NECext", "address": "EF00", "command": "F807"},
+      "warmweiss": {"protocol": "NECext", "address": "EF00", "command": "F40B"},
+      "rot":       {"protocol": "NECext", "address": "EF00", "command": "FB04"},
+      "gruen":     {"protocol": "NECext", "address": "EF00", "command": "FA05"},
+      "blau":      {"protocol": "NECext", "address": "EF00", "command": "F906"}
+    }
+  }
+}

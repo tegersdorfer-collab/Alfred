@@ -319,6 +319,60 @@ Plan: `docs/superpowers/plans/2026-07-05-voice-tts-weather-radar.md`
 
 ---
 
+## X5-Roboter — physischer Körper (2026-07-09, pausiert)
+
+Spec: `docs/superpowers/specs/2026-07-07-x5-robot-autonomy-design.md`
+Protokoll: `docs/robot/protocol.md` · Code: `tools/robot/`, `core/skills/robot.py`
+Branch: `robot/x5-autonomy` (noch nicht gemergt) · Gedächtnis: `[[mantis-x5-robot]]`
+
+**Fertig:**
+- [x] BLE-Protokoll des Clementoni RoboMaker X5 (`EVRobot2`) komplett per Reverse-
+      Engineering entschlüsselt (Il2CppDumper + capstone, nicht Sniffing) — Motoren,
+      Sensoren (ir0=vorne/ir1=hinten/Greifer-Druck), Sound. Ohne Clementoni-App.
+- [x] Treiber + Tools: `protocol.py` (rein, 12 Tests), async `driver.py`, dauerhafter
+      `manager.py` (Auto-Reconnect), 3 Mantis-Tools (`robot_control`/`robot_sensors`/
+      `robot_autonomy`). 41 Tests grün.
+- [x] Autonomer Fahrmodus mit geschlossener Ausweich-Regelung (dreht bis Front frei,
+      `max_turn_bursts`, rear-bewusster Rückzug) — behob das "dreht nur minimal, schaut
+      Wand weiter an"-Problem.
+- [x] Tool-Routing-Fix (`robot`-Kategorie in `core/tools.py::_CATEGORY_KEYWORDS` fehlte).
+- [x] macOS-Bluetooth-Crash gefixt: `NSBluetoothAlwaysUsageDescription` in Python.app-
+      Info.plist ergänzt + ad-hoc neu signiert (Backup `~/mantis-python314-Info.plist.
+      pre-bluetooth.bak`). **Achtung: bei Python-Update weg → erneut patchen.**
+
+**Offen (später weiter):**
+- [ ] **Live-Verifikation des Bluetooth-Fixes** — Roboter-Befehl aus der App auslösen,
+      macOS-BT-Dialog erlauben, bestätigen dass X5 fährt und Mantis nicht crasht.
+- [ ] **Weck-Routine**: eingelernter Pfad → morgens zu Timo fahren, Alarm-Ton im Loop,
+      auf "aus" Ton stoppen + zurückfahren.
+- [ ] **Grobe Karte + Sperrzonen**: Dead-Reckoning-Occupancy-Grid (kein Odometer → driftet),
+      Timo kann Bereiche manuell sperren.
+- [ ] **Smarteres Explorieren** statt reinem Random-Wander.
+- [ ] **Not-Stopp-Endpunkt** ohne Mantis-Neustart (aktuell: Neustart droppt BLE → Motoren
+      bremsen in <1s von selbst, aber unsauber).
+- [ ] `start.sh` PID-Bug (liest `/tmp/mantis.pid`, schreibt `/tmp/mantis_pid.txt`) fixen.
+- [ ] Branch `robot/x5-autonomy` mergen.
+
+---
+
+## Flipper Zero — IR/Smart-Home-Aktoren (2026-07-09)
+
+Code: `tools/flipper/`, `core/skills/flipper.py` · Gedächtnis: `[[mantis-flipper]]`
+
+**Fertig:**
+- [x] **Schreibtischlampe per IR an/aus** — Flipper-Fernbedienungssignale per `ir rx`
+      angelernt (NECext EF00: AN=FC03, AUS=FD02), Mantis sendet sie über die Flipper-
+      USB-Serial-CLI (`ir tx`). Tool `lampe` (an/aus) + generisches `flipper_ir`.
+      Geräte-Registry `remotes.json` (neue Geräte ohne Code-Change). 5 Tests grün,
+      End-to-End live verifiziert. Kein Bluetooth → kein TCC-Problem wie beim X5.
+
+**Offen / Ideen:**
+- [ ] Weitere IR-Fernbedienungen anlernen (TV, Klimaanlage) → nur `remotes.json` ergänzen.
+- [ ] Sub-GHz (433 MHz Funksteckdosen/Garagentor), NFC/RFID als weitere Aktoren prüfen.
+- [ ] Flipper-Arbeit committen (aktuell uncommitted).
+
+---
+
 ## Offen — externe Abhängigkeiten
 
 Diese Items brauchen externe Infrastruktur oder Hardware die nicht im Code lösbar ist:
