@@ -455,8 +455,11 @@ def suggest_next_weight(exercise_name: str, sets_target: int = 3, reps_target: i
     full_sets    = sum(1 for s in last_sets if (s["reps"] or 0) >= reps_target)
     ratio        = full_sets / max(len(last_sets), 1)
 
+    # "press down" wäre Trizeps-Pushdown (Oberkörper) — bewusst NICHT hier;
+    # Beinübungen deckt "leg" (inkl. "leg press") bereits ab.
     lower_body   = any(kw in exercise_name.lower() for kw in
-                       ["squat", "deadlift", "leg", "lunge", "press down", "romanian"])
+                       ["squat", "kniebeuge", "deadlift", "kreuzheben", "leg",
+                        "bein", "lunge", "ausfallschritt", "romanian", "rdl", "calf", "wade"])
     increment    = 5.0 if lower_body else 2.5
 
     if ratio >= 0.9:
