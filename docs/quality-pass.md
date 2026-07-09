@@ -54,7 +54,10 @@
       (kein gültiger Status, nur Filter-Alias) → Task fiel aus allen Listen, wurde unsichtbar.
       Auf 'todo' gefixt + set_status in domains/tasks.py gehärtet (VALID_STATUSES, coerct
       'open'→'todo', ignoriert Müll statt zu schreiben). +5 Tests.
-- [ ] 11. web/routers/ Rest (nutrition 282, system 241, tasks 188, …)
+- [x] 11. web/routers/ — geteilte _helpers.py (_jsonable rekursiv, _event_dict, _health_dict)
+      quer über alle Endpoints genutzt aber ungetestet → +8 Tests. system.py verifiziert:
+      status() liest korrekte PID-Datei (main.py schreibt mantis.pid), overview/analytics-
+      Excepts sind bewusste Degradation. tasks.py: stiller Klassifikations-Except loggt jetzt.
 - [ ] 12. tools/ (url_handler 267, search 203) + llm/ (local 190, backends/claude 185)
 - [ ] 13. main.py (177) + proactive.py (338) + thermal.py (181) + core/ui_state.py (355)
 - [ ] 14. Global-Sweep: stumme excepts sichten (loggen oder begründen), prints → logging
@@ -70,4 +73,5 @@
 - 7922f6a Modul 7: fitness.py Progression-Bug + AlphaProgression-Tests
 - c97cc3a Modul 8: second_brain N+1 + task_executor Robustheit
 - 0b6ed0a Modul 9: health-Mapping extrahiert+getestet, calendar-Log
-- Modul 10: telegram task_skip-Bug + set_status-Härtung
+- 1360957 Modul 10: telegram task_skip-Bug + set_status-Härtung
+- Modul 11: Router-Helfer getestet + tasks-Router-Log

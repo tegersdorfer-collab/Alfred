@@ -49,12 +49,13 @@ def build_router(orch=None) -> APIRouter:
         if explicit in ("user", "mantis"):
             db.execute("UPDATE tasks SET assigned_to=%s WHERE id=%s", (explicit, tid))
         elif orch:
+            # Auto-Klassifikation ist optional — Fehler darf die Task-Erstellung
+            # nicht kippen (Task existiert bereits), aber wird geloggt statt geschluckt.
             try:
-
                 assignee = await classify(d["title"], d.get("notes"), orch.chat_llm)
                 db.execute("UPDATE tasks SET assigned_to=%s WHERE id=%s", (assignee, tid))
-            except Exception:
-                pass
+            except Exception as e:
+                log.warning(f"Task-Auto-Klassifikation fehlgeschlagen (Task {tid}): {e}")
         return {"id": tid}
 
     @router.get("/api/tasks/suggestions")
