@@ -1,0 +1,246 @@
+{"model": "gemma4:e2b", "task_id": "r_int1", "category": "routing", "wall_s": 0.787, "prefill_s": 0.529, "gen_tokens": 2, "tokens_per_s": 102.0, "score": 1.0, "expected": "fitness", "got_label": "fitness"}
+{"model": "gemma4:e2b", "task_id": "r_int2", "category": "routing", "wall_s": 0.52, "prefill_s": 0.283, "gen_tokens": 2, "tokens_per_s": 98.8, "score": 1.0, "expected": "nutrition", "got_label": "nutrition"}
+{"model": "gemma4:e2b", "task_id": "r_int3", "category": "routing", "wall_s": 0.537, "prefill_s": 0.282, "gen_tokens": 3, "tokens_per_s": 77.2, "score": 0.0, "expected": "productivity", "got_label": "habits"}
+{"model": "gemma4:e2b", "task_id": "r_int4", "category": "routing", "wall_s": 0.519, "prefill_s": 0.28, "gen_tokens": 2, "tokens_per_s": 101.6, "score": 1.0, "expected": "health", "got_label": "health"}
+{"model": "gemma4:e2b", "task_id": "r_int5", "category": "routing", "wall_s": 0.517, "prefill_s": 0.281, "gen_tokens": 2, "tokens_per_s": 101.4, "score": 1.0, "expected": "knowledge", "got_label": "knowledge"}
+{"model": "gemma4:e2b", "task_id": "r_int6", "category": "routing", "wall_s": 0.538, "prefill_s": 0.28, "gen_tokens": 3, "tokens_per_s": 77.6, "score": 1.0, "expected": "habits", "got_label": "habits"}
+{"model": "gemma4:e2b", "task_id": "r_int7", "category": "routing", "wall_s": 0.52, "prefill_s": 0.282, "gen_tokens": 2, "tokens_per_s": 99.7, "score": 1.0, "expected": "goals", "got_label": "goals"}
+{"model": "gemma4:e2b", "task_id": "r_int8", "category": "routing", "wall_s": 0.519, "prefill_s": 0.281, "gen_tokens": 2, "tokens_per_s": 98.0, "score": 1.0, "expected": "robot", "got_label": "robot"}
+{"model": "gemma4:e2b", "task_id": "r_int9", "category": "routing", "wall_s": 0.519, "prefill_s": 0.281, "gen_tokens": 2, "tokens_per_s": 101.1, "score": 0.0, "expected": "flipper", "got_label": "robot"}
+{"model": "gemma4:e2b", "task_id": "r_int10", "category": "routing", "wall_s": 0.52, "prefill_s": 0.28, "gen_tokens": 2, "tokens_per_s": 99.0, "score": 1.0, "expected": "chat", "got_label": "chat"}
+{"model": "gemma4:e2b", "task_id": "r_adr1", "category": "routing", "wall_s": 0.473, "prefill_s": 0.228, "gen_tokens": 2, "tokens_per_s": 99.8, "score": 1.0, "expected": "JA", "got_label": "ja"}
+{"model": "gemma4:e2b", "task_id": "r_adr2", "category": "routing", "wall_s": 0.485, "prefill_s": 0.227, "gen_tokens": 3, "tokens_per_s": 77.2, "score": 1.0, "expected": "NEIN", "got_label": "nein"}
+{"model": "gemma4:e2b", "task_id": "r_adr3", "category": "routing", "wall_s": 0.467, "prefill_s": 0.228, "gen_tokens": 2, "tokens_per_s": 99.8, "score": 1.0, "expected": "JA", "got_label": "ja"}
+{"model": "gemma4:e2b", "task_id": "r_adr4", "category": "routing", "wall_s": 0.488, "prefill_s": 0.228, "gen_tokens": 3, "tokens_per_s": 76.5, "score": 1.0, "expected": "NEIN", "got_label": "nein"}
+{"model": "gemma4:e2b", "task_id": "r_gate1", "category": "routing", "wall_s": 0.484, "prefill_s": 0.226, "gen_tokens": 3, "tokens_per_s": 77.5, "score": 1.0, "expected": "AKTION", "got_label": "aktion"}
+{"model": "gemma4:e2b", "task_id": "r_gate2", "category": "routing", "wall_s": 0.503, "prefill_s": 0.227, "gen_tokens": 4, "tokens_per_s": 68.7, "score": 1.0, "expected": "GESPRAECH", "got_label": "gespraech"}
+{"model": "qwen3.5:9b", "task_id": "r_int1", "category": "routing", "wall_s": 1.256, "prefill_s": 0.999, "gen_tokens": 2, "tokens_per_s": 32.4, "score": 1.0, "expected": "fitness", "got_label": "fitness"}
+{"model": "qwen3.5:9b", "task_id": "r_int2", "category": "routing", "wall_s": 1.215, "prefill_s": 0.992, "gen_tokens": 2, "tokens_per_s": 33.0, "score": 1.0, "expected": "nutrition", "got_label": "nutrition"}
+{"model": "qwen3.5:9b", "task_id": "r_int3", "category": "routing", "wall_s": 1.212, "prefill_s": 0.992, "gen_tokens": 2, "tokens_per_s": 32.2, "score": 0.0, "expected": "productivity", "got_label": "goals"}
+{"model": "qwen3.5:9b", "task_id": "r_int4", "category": "routing", "wall_s": 1.22, "prefill_s": 0.991, "gen_tokens": 2, "tokens_per_s": 33.3, "score": 1.0, "expected": "health", "got_label": "health"}
+{"model": "qwen3.5:9b", "task_id": "r_int5", "category": "routing", "wall_s": 1.301, "prefill_s": 1.063, "gen_tokens": 2, "tokens_per_s": 32.4, "score": 1.0, "expected": "knowledge", "got_label": "knowledge"}
+{"model": "qwen3.5:9b", "task_id": "r_int6", "category": "routing", "wall_s": 1.291, "prefill_s": 0.994, "gen_tokens": 3, "tokens_per_s": 24.7, "score": 1.0, "expected": "habits", "got_label": "habits"}
+{"model": "qwen3.5:9b", "task_id": "r_int7", "category": "routing", "wall_s": 1.25, "prefill_s": 1.0, "gen_tokens": 2, "tokens_per_s": 31.5, "score": 1.0, "expected": "goals", "got_label": "goals"}
+{"model": "qwen3.5:9b", "task_id": "r_int8", "category": "routing", "wall_s": 1.246, "prefill_s": 0.999, "gen_tokens": 2, "tokens_per_s": 33.1, "score": 1.0, "expected": "robot", "got_label": "robot"}
+{"model": "qwen3.5:9b", "task_id": "r_int9", "category": "routing", "wall_s": 1.227, "prefill_s": 1.003, "gen_tokens": 2, "tokens_per_s": 33.1, "score": 0.0, "expected": "flipper", "got_label": "robot"}
+{"model": "qwen3.5:9b", "task_id": "r_int10", "category": "routing", "wall_s": 1.255, "prefill_s": 1.002, "gen_tokens": 2, "tokens_per_s": 31.9, "score": 1.0, "expected": "chat", "got_label": "chat"}
+{"model": "qwen3.5:9b", "task_id": "r_adr1", "category": "routing", "wall_s": 1.061, "prefill_s": 0.8, "gen_tokens": 2, "tokens_per_s": 33.3, "score": 1.0, "expected": "JA", "got_label": "ja"}
+{"model": "qwen3.5:9b", "task_id": "r_adr2", "category": "routing", "wall_s": 1.104, "prefill_s": 0.808, "gen_tokens": 3, "tokens_per_s": 24.1, "score": 1.0, "expected": "NEIN", "got_label": "nein"}
+{"model": "qwen3.5:9b", "task_id": "r_adr3", "category": "routing", "wall_s": 1.05, "prefill_s": 0.811, "gen_tokens": 2, "tokens_per_s": 33.2, "score": 1.0, "expected": "JA", "got_label": "ja"}
+{"model": "qwen3.5:9b", "task_id": "r_adr4", "category": "routing", "wall_s": 1.115, "prefill_s": 0.81, "gen_tokens": 3, "tokens_per_s": 24.8, "score": 1.0, "expected": "NEIN", "got_label": "nein"}
+{"model": "qwen3.5:9b", "task_id": "r_gate1", "category": "routing", "wall_s": 1.111, "prefill_s": 0.801, "gen_tokens": 3, "tokens_per_s": 24.9, "score": 1.0, "expected": "AKTION", "got_label": "aktion"}
+{"model": "qwen3.5:9b", "task_id": "r_gate2", "category": "routing", "wall_s": 1.244, "prefill_s": 0.804, "gen_tokens": 5, "tokens_per_s": 18.8, "score": 1.0, "expected": "GESPRAECH", "got_label": "gespraech"}
+{"model": "ornith:9b", "task_id": "r_int1", "category": "routing", "wall_s": 1.857, "prefill_s": 1.651, "gen_tokens": 2, "tokens_per_s": 29.8, "score": 1.0, "expected": "fitness", "got_label": "fitness"}
+{"model": "ornith:9b", "task_id": "r_int2", "category": "routing", "wall_s": 2.102, "prefill_s": 1.888, "gen_tokens": 2, "tokens_per_s": 26.6, "score": 1.0, "expected": "nutrition", "got_label": "nutrition"}
+{"model": "ornith:9b", "task_id": "r_int3", "category": "routing", "wall_s": 2.371, "prefill_s": 2.081, "gen_tokens": 3, "tokens_per_s": 19.9, "score": 0.0, "expected": "productivity", "got_label": "habits"}
+{"model": "ornith:9b", "task_id": "r_int4", "category": "routing", "wall_s": 2.304, "prefill_s": 2.093, "gen_tokens": 2, "tokens_per_s": 27.3, "score": 1.0, "expected": "health", "got_label": "health"}
+{"model": "ornith:9b", "task_id": "r_int5", "category": "routing", "wall_s": 2.252, "prefill_s": 2.044, "gen_tokens": 2, "tokens_per_s": 27.5, "score": 1.0, "expected": "knowledge", "got_label": "knowledge"}
+{"model": "ornith:9b", "task_id": "r_int6", "category": "routing", "wall_s": 2.303, "prefill_s": 2.021, "gen_tokens": 3, "tokens_per_s": 20.7, "score": 1.0, "expected": "habits", "got_label": "habits"}
+{"model": "ornith:9b", "task_id": "r_int7", "category": "routing", "wall_s": 2.212, "prefill_s": 2.0, "gen_tokens": 2, "tokens_per_s": 26.5, "score": 1.0, "expected": "goals", "got_label": "goals"}
+{"model": "ornith:9b", "task_id": "r_int8", "category": "routing", "wall_s": 2.327, "prefill_s": 2.115, "gen_tokens": 2, "tokens_per_s": 26.8, "score": 1.0, "expected": "robot", "got_label": "robot"}
+{"model": "ornith:9b", "task_id": "r_int9", "category": "routing", "wall_s": 2.227, "prefill_s": 2.016, "gen_tokens": 2, "tokens_per_s": 27.9, "score": 0.0, "expected": "flipper", "got_label": "health"}
+{"model": "ornith:9b", "task_id": "r_int10", "category": "routing", "wall_s": 2.275, "prefill_s": 2.066, "gen_tokens": 2, "tokens_per_s": 27.4, "score": 1.0, "expected": "chat", "got_label": "chat"}
+{"model": "ornith:9b", "task_id": "r_adr1", "category": "routing", "wall_s": 1.872, "prefill_s": 1.655, "gen_tokens": 2, "tokens_per_s": 27.9, "score": 1.0, "expected": "JA", "got_label": "ja"}
+{"model": "ornith:9b", "task_id": "r_adr2", "category": "routing", "wall_s": 2.083, "prefill_s": 1.801, "gen_tokens": 3, "tokens_per_s": 20.8, "score": 1.0, "expected": "NEIN", "got_label": "nein"}
+{"model": "ornith:9b", "task_id": "r_adr3", "category": "routing", "wall_s": 1.967, "prefill_s": 1.756, "gen_tokens": 2, "tokens_per_s": 27.1, "score": 1.0, "expected": "JA", "got_label": "ja"}
+{"model": "ornith:9b", "task_id": "r_adr4", "category": "routing", "wall_s": 1.9, "prefill_s": 1.615, "gen_tokens": 3, "tokens_per_s": 20.2, "score": 1.0, "expected": "NEIN", "got_label": "nein"}
+{"model": "ornith:9b", "task_id": "r_gate1", "category": "routing", "wall_s": 1.723, "prefill_s": 1.427, "gen_tokens": 3, "tokens_per_s": 19.7, "score": 1.0, "expected": "AKTION", "got_label": "aktion"}
+{"model": "ornith:9b", "task_id": "r_gate2", "category": "routing", "wall_s": 2.279, "prefill_s": 1.834, "gen_tokens": 5, "tokens_per_s": 16.3, "score": 0.0, "expected": "GESPRAECH", "got_label": "gespäch"}
+{"model": "qwen2.5:0.5b", "task_id": "r_int1", "category": "routing", "wall_s": 0.203, "prefill_s": 0.082, "gen_tokens": 4, "tokens_per_s": 173.8, "score": 0.0, "expected": "fitness", "got_label": "habilitation"}
+{"model": "qwen2.5:0.5b", "task_id": "r_int2", "category": "routing", "wall_s": 0.163, "prefill_s": 0.063, "gen_tokens": 3, "tokens_per_s": 220.9, "score": 1.0, "expected": "nutrition", "got_label": "nutrition"}
+{"model": "qwen2.5:0.5b", "task_id": "r_int3", "category": "routing", "wall_s": 0.116, "prefill_s": 0.022, "gen_tokens": 2, "tokens_per_s": 243.7, "score": 0.0, "expected": "productivity", "got_label": "health"}
+{"model": "qwen2.5:0.5b", "task_id": "r_int4", "category": "routing", "wall_s": 0.137, "prefill_s": 0.023, "gen_tokens": 5, "tokens_per_s": 178.6, "score": 0.0, "expected": "health", "got_label": "habendaten"}
+{"model": "qwen2.5:0.5b", "task_id": "r_int5", "category": "routing", "wall_s": 0.117, "prefill_s": 0.023, "gen_tokens": 2, "tokens_per_s": 256.6, "score": 1.0, "expected": "knowledge", "got_label": "knowledge"}
+{"model": "qwen2.5:0.5b", "task_id": "r_int6", "category": "routing", "wall_s": 0.132, "prefill_s": 0.027, "gen_tokens": 4, "tokens_per_s": 189.7, "score": 0.0, "expected": "habits", "got_label": "hierbei"}
+{"model": "qwen2.5:0.5b", "task_id": "r_int7", "category": "routing", "wall_s": 0.145, "prefill_s": 0.024, "gen_tokens": 6, "tokens_per_s": 175.5, "score": 0.0, "expected": "goals", "got_label": "habgierigkeit"}
+{"model": "qwen2.5:0.5b", "task_id": "r_int8", "category": "routing", "wall_s": 0.123, "prefill_s": 0.031, "gen_tokens": 2, "tokens_per_s": 257.0, "score": 0.0, "expected": "robot", "got_label": "knowledge"}
+{"model": "qwen2.5:0.5b", "task_id": "r_int9", "category": "routing", "wall_s": 0.141, "prefill_s": 0.023, "gen_tokens": 6, "tokens_per_s": 180.3, "score": 0.0, "expected": "flipper", "got_label": "habgierigkeit"}
+{"model": "qwen2.5:0.5b", "task_id": "r_int10", "category": "routing", "wall_s": 0.153, "prefill_s": 0.031, "gen_tokens": 6, "tokens_per_s": 174.6, "score": 0.0, "expected": "chat", "got_label": "habgierigkeit"}
+{"model": "qwen2.5:0.5b", "task_id": "r_adr1", "category": "routing", "wall_s": 0.144, "prefill_s": 0.045, "gen_tokens": 3, "tokens_per_s": 215.9, "score": 0.0, "expected": "JA", "got_label": "nein"}
+{"model": "qwen2.5:0.5b", "task_id": "r_adr2", "category": "routing", "wall_s": 0.127, "prefill_s": 0.027, "gen_tokens": 3, "tokens_per_s": 223.1, "score": 1.0, "expected": "NEIN", "got_label": "nein"}
+{"model": "qwen2.5:0.5b", "task_id": "r_adr3", "category": "routing", "wall_s": 0.121, "prefill_s": 0.029, "gen_tokens": 2, "tokens_per_s": 287.6, "score": 1.0, "expected": "JA", "got_label": "ja"}
+{"model": "qwen2.5:0.5b", "task_id": "r_adr4", "category": "routing", "wall_s": 0.118, "prefill_s": 0.026, "gen_tokens": 2, "tokens_per_s": 275.3, "score": 0.0, "expected": "NEIN", "got_label": "ja"}
+{"model": "qwen2.5:0.5b", "task_id": "r_gate1", "category": "routing", "wall_s": 0.154, "prefill_s": 0.044, "gen_tokens": 5, "tokens_per_s": 189.2, "score": 0.0, "expected": "AKTION", "got_label": "gesprach"}
+{"model": "qwen2.5:0.5b", "task_id": "r_gate2", "category": "routing", "wall_s": 0.131, "prefill_s": 0.019, "gen_tokens": 5, "tokens_per_s": 184.9, "score": 0.0, "expected": "GESPRAECH", "got_label": "gesprach"}
+{"model": "llama3.2:1b", "task_id": "r_int1", "category": "routing", "wall_s": 0.275, "prefill_s": 0.119, "gen_tokens": 2, "tokens_per_s": 135.2, "score": 1.0, "expected": "fitness", "got_label": "fitness"}
+{"model": "llama3.2:1b", "task_id": "r_int2", "category": "routing", "wall_s": 0.179, "prefill_s": 0.033, "gen_tokens": 3, "tokens_per_s": 100.6, "score": 1.0, "expected": "nutrition", "got_label": "nutrition"}
+{"model": "llama3.2:1b", "task_id": "r_int3", "category": "routing", "wall_s": 0.313, "prefill_s": 0.074, "gen_tokens": 10, "tokens_per_s": 74.5, "score": 0.0, "expected": "productivity", "got_label": "nahrungsmittel-registrierung"}
+{"model": "llama3.2:1b", "task_id": "r_int4", "category": "routing", "wall_s": 0.154, "prefill_s": 0.035, "gen_tokens": 2, "tokens_per_s": 133.4, "score": 0.0, "expected": "health", "got_label": "fitness"}
+{"model": "llama3.2:1b", "task_id": "r_int5", "category": "routing", "wall_s": 0.152, "prefill_s": 0.033, "gen_tokens": 2, "tokens_per_s": 133.8, "score": 0.0, "expected": "knowledge", "got_label": "fitness"}
+{"model": "llama3.2:1b", "task_id": "r_int6", "category": "routing", "wall_s": 0.199, "prefill_s": 0.035, "gen_tokens": 5, "tokens_per_s": 83.1, "score": 0.0, "expected": "habits", "got_label": "meditation"}
+{"model": "llama3.2:1b", "task_id": "r_int7", "category": "routing", "wall_s": 0.388, "prefill_s": 0.032, "gen_tokens": 18, "tokens_per_s": 71.3, "score": 0.0, "expected": "goals", "got_label": "hab"}
+{"model": "llama3.2:1b", "task_id": "r_int8", "category": "routing", "wall_s": 0.156, "prefill_s": 0.036, "gen_tokens": 2, "tokens_per_s": 124.3, "score": 1.0, "expected": "robot", "got_label": "robot"}
+{"model": "llama3.2:1b", "task_id": "r_int9", "category": "routing", "wall_s": 0.154, "prefill_s": 0.035, "gen_tokens": 2, "tokens_per_s": 133.4, "score": 0.0, "expected": "flipper", "got_label": "fitness"}
+{"model": "llama3.2:1b", "task_id": "r_int10", "category": "routing", "wall_s": 0.153, "prefill_s": 0.034, "gen_tokens": 2, "tokens_per_s": 134.2, "score": 1.0, "expected": "chat", "got_label": "chat"}
+{"model": "llama3.2:1b", "task_id": "r_adr1", "category": "routing", "wall_s": 0.231, "prefill_s": 0.082, "gen_tokens": 4, "tokens_per_s": 87.2, "score": 0.0, "expected": "JA", "got_label": "nein"}
+{"model": "llama3.2:1b", "task_id": "r_adr2", "category": "routing", "wall_s": 0.168, "prefill_s": 0.035, "gen_tokens": 3, "tokens_per_s": 100.1, "score": 1.0, "expected": "NEIN", "got_label": "nein"}
+{"model": "llama3.2:1b", "task_id": "r_adr3", "category": "routing", "wall_s": 0.184, "prefill_s": 0.035, "gen_tokens": 4, "tokens_per_s": 89.4, "score": 0.0, "expected": "JA", "got_label": "nein"}
+{"model": "llama3.2:1b", "task_id": "r_adr4", "category": "routing", "wall_s": 0.17, "prefill_s": 0.035, "gen_tokens": 3, "tokens_per_s": 97.2, "score": 1.0, "expected": "NEIN", "got_label": "nein"}
+{"model": "llama3.2:1b", "task_id": "r_gate1", "category": "routing", "wall_s": 0.645, "prefill_s": 0.08, "gen_tokens": 32, "tokens_per_s": 69.5, "score": 0.0, "expected": "AKTION", "got_label": "es"}
+{"model": "llama3.2:1b", "task_id": "r_gate2", "category": "routing", "wall_s": 0.214, "prefill_s": 0.032, "gen_tokens": 6, "tokens_per_s": 78.6, "score": 1.0, "expected": "GESPRAECH", "got_label": "gespraech"}
+{"model": "qwen3:1.7b", "task_id": "r_int1", "category": "routing", "wall_s": 0.367, "prefill_s": 0.245, "gen_tokens": 2, "tokens_per_s": 66.4, "score": 1.0, "expected": "fitness", "got_label": "fitness"}
+{"model": "qwen3:1.7b", "task_id": "r_int2", "category": "routing", "wall_s": 0.279, "prefill_s": 0.179, "gen_tokens": 2, "tokens_per_s": 133.7, "score": 0.0, "expected": "nutrition", "got_label": "health"}
+{"model": "qwen3:1.7b", "task_id": "r_int3", "category": "routing", "wall_s": 0.147, "prefill_s": 0.048, "gen_tokens": 2, "tokens_per_s": 136.7, "score": 0.0, "expected": "productivity", "got_label": "health"}
+{"model": "qwen3:1.7b", "task_id": "r_int4", "category": "routing", "wall_s": 0.148, "prefill_s": 0.048, "gen_tokens": 2, "tokens_per_s": 135.4, "score": 1.0, "expected": "health", "got_label": "health"}
+{"model": "qwen3:1.7b", "task_id": "r_int5", "category": "routing", "wall_s": 0.147, "prefill_s": 0.048, "gen_tokens": 2, "tokens_per_s": 138.9, "score": 0.0, "expected": "knowledge", "got_label": "flight"}
+{"model": "qwen3:1.7b", "task_id": "r_int6", "category": "routing", "wall_s": 0.147, "prefill_s": 0.048, "gen_tokens": 2, "tokens_per_s": 140.0, "score": 0.0, "expected": "habits", "got_label": "fitness"}
+{"model": "qwen3:1.7b", "task_id": "r_int7", "category": "routing", "wall_s": 0.183, "prefill_s": 0.084, "gen_tokens": 2, "tokens_per_s": 136.1, "score": 1.0, "expected": "goals", "got_label": "goals"}
+{"model": "qwen3:1.7b", "task_id": "r_int8", "category": "routing", "wall_s": 0.147, "prefill_s": 0.048, "gen_tokens": 2, "tokens_per_s": 140.5, "score": 1.0, "expected": "robot", "got_label": "robot"}
+{"model": "qwen3:1.7b", "task_id": "r_int9", "category": "routing", "wall_s": 0.161, "prefill_s": 0.048, "gen_tokens": 3, "tokens_per_s": 106.3, "score": 0.0, "expected": "flipper", "got_label": "productivity"}
+{"model": "qwen3:1.7b", "task_id": "r_int10", "category": "routing", "wall_s": 0.146, "prefill_s": 0.047, "gen_tokens": 2, "tokens_per_s": 140.7, "score": 1.0, "expected": "chat", "got_label": "chat"}
+{"model": "qwen3:1.7b", "task_id": "r_adr1", "category": "routing", "wall_s": 0.239, "prefill_s": 0.124, "gen_tokens": 3, "tokens_per_s": 106.4, "score": 0.0, "expected": "JA", "got_label": "nein"}
+{"model": "qwen3:1.7b", "task_id": "r_adr2", "category": "routing", "wall_s": 0.16, "prefill_s": 0.047, "gen_tokens": 3, "tokens_per_s": 106.7, "score": 1.0, "expected": "NEIN", "got_label": "nein"}
+{"model": "qwen3:1.7b", "task_id": "r_adr3", "category": "routing", "wall_s": 0.161, "prefill_s": 0.048, "gen_tokens": 3, "tokens_per_s": 105.5, "score": 0.0, "expected": "JA", "got_label": "nein"}
+{"model": "qwen3:1.7b", "task_id": "r_adr4", "category": "routing", "wall_s": 0.161, "prefill_s": 0.048, "gen_tokens": 3, "tokens_per_s": 106.1, "score": 1.0, "expected": "NEIN", "got_label": "nein"}
+{"model": "qwen3:1.7b", "task_id": "r_gate1", "category": "routing", "wall_s": 0.236, "prefill_s": 0.123, "gen_tokens": 3, "tokens_per_s": 106.5, "score": 1.0, "expected": "AKTION", "got_label": "aktion"}
+{"model": "qwen3:1.7b", "task_id": "r_gate2", "category": "routing", "wall_s": 0.16, "prefill_s": 0.048, "gen_tokens": 3, "tokens_per_s": 105.9, "score": 0.0, "expected": "GESPRAECH", "got_label": "aktion"}
+{"model": "gemma2:2b", "task_id": "r_int1", "category": "routing", "wall_s": 0.577, "prefill_s": 0.409, "gen_tokens": 4, "tokens_per_s": 69.6, "score": 1.0, "expected": "fitness", "got_label": "fitness"}
+{"model": "gemma2:2b", "task_id": "r_int2", "category": "routing", "wall_s": 0.433, "prefill_s": 0.262, "gen_tokens": 4, "tokens_per_s": 65.9, "score": 1.0, "expected": "nutrition", "got_label": "nutrition"}
+{"model": "gemma2:2b", "task_id": "r_int3", "category": "routing", "wall_s": 0.43, "prefill_s": 0.263, "gen_tokens": 4, "tokens_per_s": 69.0, "score": 0.0, "expected": "productivity", "got_label": "habits"}
+{"model": "gemma2:2b", "task_id": "r_int4", "category": "routing", "wall_s": 0.518, "prefill_s": 0.352, "gen_tokens": 4, "tokens_per_s": 69.2, "score": 1.0, "expected": "health", "got_label": "health"}
+{"model": "gemma2:2b", "task_id": "r_int5", "category": "routing", "wall_s": 0.432, "prefill_s": 0.262, "gen_tokens": 4, "tokens_per_s": 67.6, "score": 1.0, "expected": "knowledge", "got_label": "knowledge"}
+{"model": "gemma2:2b", "task_id": "r_int6", "category": "routing", "wall_s": 0.382, "prefill_s": 0.214, "gen_tokens": 4, "tokens_per_s": 69.3, "score": 0.0, "expected": "habits", "got_label": "health"}
+{"model": "gemma2:2b", "task_id": "r_int7", "category": "routing", "wall_s": 0.431, "prefill_s": 0.262, "gen_tokens": 4, "tokens_per_s": 69.2, "score": 1.0, "expected": "goals", "got_label": "goals"}
+{"model": "gemma2:2b", "task_id": "r_int8", "category": "routing", "wall_s": 0.382, "prefill_s": 0.213, "gen_tokens": 4, "tokens_per_s": 69.0, "score": 1.0, "expected": "robot", "got_label": "robot"}
+{"model": "gemma2:2b", "task_id": "r_int9", "category": "routing", "wall_s": 0.382, "prefill_s": 0.214, "gen_tokens": 4, "tokens_per_s": 68.8, "score": 0.0, "expected": "flipper", "got_label": "habits"}
+{"model": "gemma2:2b", "task_id": "r_int10", "category": "routing", "wall_s": 0.381, "prefill_s": 0.213, "gen_tokens": 4, "tokens_per_s": 69.1, "score": 1.0, "expected": "chat", "got_label": "chat"}
+{"model": "gemma2:2b", "task_id": "r_adr1", "category": "routing", "wall_s": 0.38, "prefill_s": 0.212, "gen_tokens": 4, "tokens_per_s": 68.8, "score": 1.0, "expected": "JA", "got_label": "ja"}
+{"model": "gemma2:2b", "task_id": "r_adr2", "category": "routing", "wall_s": 0.383, "prefill_s": 0.212, "gen_tokens": 4, "tokens_per_s": 69.0, "score": 0.0, "expected": "NEIN", "got_label": "ja"}
+{"model": "gemma2:2b", "task_id": "r_adr3", "category": "routing", "wall_s": 0.38, "prefill_s": 0.212, "gen_tokens": 4, "tokens_per_s": 69.1, "score": 1.0, "expected": "JA", "got_label": "ja"}
+{"model": "gemma2:2b", "task_id": "r_adr4", "category": "routing", "wall_s": 0.381, "prefill_s": 0.212, "gen_tokens": 4, "tokens_per_s": 67.8, "score": 0.0, "expected": "NEIN", "got_label": "ja"}
+{"model": "gemma2:2b", "task_id": "r_gate1", "category": "routing", "wall_s": 0.348, "prefill_s": 0.16, "gen_tokens": 5, "tokens_per_s": 64.8, "score": 1.0, "expected": "AKTION", "got_label": "aktion"}
+{"model": "gemma2:2b", "task_id": "r_gate2", "category": "routing", "wall_s": 0.438, "prefill_s": 0.212, "gen_tokens": 7, "tokens_per_s": 60.1, "score": 0.0, "expected": "GESPRAECH", "got_label": "gespräch"}
+{"model": "qwen3.5:9b", "task_id": "c1", "category": "chat", "wall_s": 5.662, "prefill_s": 0.612, "gen_tokens": 80, "tokens_per_s": 16.5, "score": 0.7, "judge_raw": 7}
+{"model": "deepseek-r1:14b", "task_id": "c1", "category": "chat", "wall_s": 26.098, "prefill_s": 0.741, "gen_tokens": 168, "tokens_per_s": 6.7, "score": 0.3, "judge_raw": 3}
+{"model": "claude:haiku", "task_id": "c1", "category": "chat", "wall_s": 1.961, "prefill_s": null, "gen_tokens": 92, "tokens_per_s": 46.9, "score": 0.9, "judge_raw": 9}
+{"model": "gemma4:e2b", "task_id": "c1", "category": "chat", "wall_s": 1.609, "prefill_s": 0.174, "gen_tokens": 64, "tokens_per_s": 52.7, "score": 0.6, "judge_raw": 6}
+{"model": "ornith:9b", "task_id": "c1", "category": "chat", "wall_s": 4.943, "prefill_s": 1.41, "gen_tokens": 44, "tokens_per_s": 13.0, "score": 0.1, "judge_raw": 1}
+{"model": "ornith:9b", "task_id": "c2", "category": "chat", "wall_s": 27.608, "prefill_s": 1.345, "gen_tokens": 302, "tokens_per_s": 11.6, "score": 0.8, "judge_raw": 8}
+{"model": "deepseek-r1:14b", "task_id": "c2", "category": "chat", "wall_s": 88.107, "prefill_s": 0.909, "gen_tokens": 512, "tokens_per_s": 5.9, "score": 0.3, "judge_raw": 3}
+{"model": "gemma4:e2b", "task_id": "c2", "category": "chat", "wall_s": 10.239, "prefill_s": 0.126, "gen_tokens": 512, "tokens_per_s": 51.7, "score": 0.6, "judge_raw": 6}
+{"model": "claude:haiku", "task_id": "c2", "category": "chat", "wall_s": 4.226, "prefill_s": null, "gen_tokens": 267, "tokens_per_s": 63.2, "score": 0.9, "judge_raw": 9}
+{"model": "qwen3.5:9b", "task_id": "c2", "category": "chat", "wall_s": 23.592, "prefill_s": 0.432, "gen_tokens": 377, "tokens_per_s": 16.4, "score": 0.7, "judge_raw": 7}
+{"model": "claude:haiku", "task_id": "c3", "category": "chat", "wall_s": 4.467, "prefill_s": null, "gen_tokens": 381, "tokens_per_s": 85.3, "score": 0.9, "judge_raw": 9}
+{"model": "ornith:9b", "task_id": "c3", "category": "chat", "wall_s": 20.921, "prefill_s": 1.412, "gen_tokens": 223, "tokens_per_s": 11.5, "score": 0.8, "judge_raw": 8}
+{"model": "qwen3.5:9b", "task_id": "c3", "category": "chat", "wall_s": 16.986, "prefill_s": 0.417, "gen_tokens": 273, "tokens_per_s": 16.7, "score": 0.7, "judge_raw": 7}
+{"model": "deepseek-r1:14b", "task_id": "c3", "category": "chat", "wall_s": 77.973, "prefill_s": 0.786, "gen_tokens": 475, "tokens_per_s": 6.2, "score": 0.1, "judge_raw": 1}
+{"model": "gemma4:e2b", "task_id": "c3", "category": "chat", "wall_s": 8.163, "prefill_s": 0.128, "gen_tokens": 410, "tokens_per_s": 52.5, "score": 0.6, "judge_raw": 6}
+{"model": "claude:haiku", "task_id": "c4", "category": "chat", "wall_s": 2.068, "prefill_s": null, "gen_tokens": 124, "tokens_per_s": 60.0, "score": 0.8, "judge_raw": 8}
+{"model": "deepseek-r1:14b", "task_id": "c4", "category": "chat", "wall_s": 84.522, "prefill_s": 0.69, "gen_tokens": 512, "tokens_per_s": 6.1, "score": 0.4, "judge_raw": 4}
+{"model": "qwen3.5:9b", "task_id": "c4", "category": "chat", "wall_s": 5.47, "prefill_s": 0.653, "gen_tokens": 77, "tokens_per_s": 16.9, "score": 0.6, "judge_raw": 6}
+{"model": "ornith:9b", "task_id": "c4", "category": "chat", "wall_s": 8.544, "prefill_s": 1.318, "gen_tokens": 83, "tokens_per_s": 11.7, "score": 0.5, "judge_raw": 5}
+{"model": "gemma4:e2b", "task_id": "c4", "category": "chat", "wall_s": 1.552, "prefill_s": 0.126, "gen_tokens": 64, "tokens_per_s": 53.1, "score": 0.9, "judge_raw": 9}
+{"model": "ornith:9b", "task_id": "c5", "category": "chat", "wall_s": 24.31, "prefill_s": 1.414, "gen_tokens": 259, "tokens_per_s": 11.4, "score": 0.9, "judge_raw": 9}
+{"model": "claude:haiku", "task_id": "c5", "category": "chat", "wall_s": 4.556, "prefill_s": null, "gen_tokens": 398, "tokens_per_s": 87.4, "score": 0.8, "judge_raw": 8}
+{"model": "deepseek-r1:14b", "task_id": "c5", "category": "chat", "wall_s": 74.042, "prefill_s": 0.752, "gen_tokens": 512, "tokens_per_s": 7.0, "score": 0.1, "judge_raw": 1}
+{"model": "gemma4:e2b", "task_id": "c5", "category": "chat", "wall_s": 10.142, "prefill_s": 0.124, "gen_tokens": 512, "tokens_per_s": 52.3, "score": 0.6, "judge_raw": 6}
+{"model": "qwen3.5:9b", "task_id": "c5", "category": "chat", "wall_s": 34.171, "prefill_s": 0.455, "gen_tokens": 512, "tokens_per_s": 15.3, "score": 0.8, "judge_raw": 8}
+{"model": "deepseek-r1:14b", "task_id": "c6", "category": "chat", "wall_s": 35.665, "prefill_s": 0.691, "gen_tokens": 244, "tokens_per_s": 7.0, "score": 0.4, "judge_raw": 4}
+{"model": "gemma4:e2b", "task_id": "c6", "category": "chat", "wall_s": 1.148, "prefill_s": 0.123, "gen_tokens": 43, "tokens_per_s": 53.7, "score": 0.3, "judge_raw": 3}
+{"model": "ornith:9b", "task_id": "c6", "category": "chat", "wall_s": 4.161, "prefill_s": 1.35, "gen_tokens": 34, "tokens_per_s": 12.8, "score": 0.5, "judge_raw": 5}
+{"model": "claude:haiku", "task_id": "c6", "category": "chat", "wall_s": 2.126, "prefill_s": null, "gen_tokens": 111, "tokens_per_s": 52.2, "score": 0.8, "judge_raw": 8}
+{"model": "qwen3.5:9b", "task_id": "c6", "category": "chat", "wall_s": 5.385, "prefill_s": 0.494, "gen_tokens": 68, "tokens_per_s": 14.5, "score": 0.2, "judge_raw": 2}
+{"model": "qwen3.5:9b", "task_id": "c7", "category": "chat", "wall_s": 40.51, "prefill_s": 0.542, "gen_tokens": 512, "tokens_per_s": 12.9, "score": 0.6, "judge_raw": 6}
+{"model": "ornith:9b", "task_id": "c7", "category": "chat", "wall_s": 8.136, "prefill_s": 1.586, "gen_tokens": 74, "tokens_per_s": 11.5, "score": 0.8, "judge_raw": 8}
+{"model": "gemma4:e2b", "task_id": "c7", "category": "chat", "wall_s": 4.912, "prefill_s": 0.124, "gen_tokens": 240, "tokens_per_s": 52.5, "score": 0.5, "judge_raw": 5}
+{"model": "claude:haiku", "task_id": "c7", "category": "chat", "wall_s": 3.874, "prefill_s": null, "gen_tokens": 263, "tokens_per_s": 67.9, "score": 0.9, "judge_raw": 9}
+{"model": "deepseek-r1:14b", "task_id": "c7", "category": "chat", "wall_s": 75.729, "prefill_s": 0.678, "gen_tokens": 512, "tokens_per_s": 6.8, "score": 0.1, "judge_raw": 1}
+{"model": "gemma4:e2b", "task_id": "c8", "category": "chat", "wall_s": 0.82, "prefill_s": 0.124, "gen_tokens": 26, "tokens_per_s": 54.3, "score": 0.6, "judge_raw": 6}
+{"model": "deepseek-r1:14b", "task_id": "c8", "category": "chat", "wall_s": 17.81, "prefill_s": 0.661, "gen_tokens": 115, "tokens_per_s": 6.8, "score": 0.8, "judge_raw": 8}
+{"model": "ornith:9b", "task_id": "c8", "category": "chat", "wall_s": 4.792, "prefill_s": 1.345, "gen_tokens": 40, "tokens_per_s": 12.1, "score": 0.5, "judge_raw": 5}
+{"model": "claude:haiku", "task_id": "c8", "category": "chat", "wall_s": 1.667, "prefill_s": null, "gen_tokens": 71, "tokens_per_s": 42.6, "score": 0.7, "judge_raw": 7}
+{"model": "qwen3.5:9b", "task_id": "c8", "category": "chat", "wall_s": 3.67, "prefill_s": 0.661, "gen_tokens": 38, "tokens_per_s": 13.5, "score": 0.7, "judge_raw": 7}
+{"model": "ornith:9b", "task_id": "c9", "category": "chat", "wall_s": 8.545, "prefill_s": 1.384, "gen_tokens": 81, "tokens_per_s": 11.6, "score": 0.8, "judge_raw": 8}
+{"model": "qwen3.5:9b", "task_id": "c9", "category": "chat", "wall_s": 16.404, "prefill_s": 0.63, "gen_tokens": 194, "tokens_per_s": 12.5, "score": 0.6, "judge_raw": 6}
+{"model": "claude:haiku", "task_id": "c9", "category": "chat", "wall_s": 2.615, "prefill_s": null, "gen_tokens": 183, "tokens_per_s": 70.0, "score": 0.9, "judge_raw": 9}
+{"model": "deepseek-r1:14b", "task_id": "c9", "category": "chat", "wall_s": 77.789, "prefill_s": 0.725, "gen_tokens": 512, "tokens_per_s": 6.7, "score": 0.3, "judge_raw": 3}
+{"model": "gemma4:e2b", "task_id": "c9", "category": "chat", "wall_s": 3.777, "prefill_s": 0.124, "gen_tokens": 179, "tokens_per_s": 52.2, "score": 0.7, "judge_raw": 7}
+{"model": "qwen3.5:9b", "task_id": "c10", "category": "chat", "wall_s": 13.341, "prefill_s": 1.008, "gen_tokens": 151, "tokens_per_s": 12.4, "score": 0.6, "judge_raw": 6}
+{"model": "ornith:9b", "task_id": "c10", "category": "chat", "wall_s": 9.654, "prefill_s": 1.481, "gen_tokens": 93, "tokens_per_s": 11.6, "score": 0.8, "judge_raw": 8}
+{"model": "deepseek-r1:14b", "task_id": "c10", "category": "chat", "wall_s": 78.245, "prefill_s": 0.71, "gen_tokens": 512, "tokens_per_s": 6.6, "score": 0.1, "judge_raw": 1}
+{"model": "gemma4:e2b", "task_id": "c10", "category": "chat", "wall_s": 3.744, "prefill_s": 0.126, "gen_tokens": 178, "tokens_per_s": 52.4, "score": 0.7, "judge_raw": 7}
+{"model": "claude:haiku", "task_id": "c10", "category": "chat", "wall_s": 2.934, "prefill_s": null, "gen_tokens": 166, "tokens_per_s": 56.6, "score": 0.9, "judge_raw": 9}
+{"model": "qwen3.5:9b", "task_id": "c11", "category": "chat", "wall_s": 9.007, "prefill_s": 0.594, "gen_tokens": 103, "tokens_per_s": 12.5, "score": 0.8, "judge_raw": 8}
+{"model": "ornith:9b", "task_id": "c11", "category": "chat", "wall_s": 9.243, "prefill_s": 1.326, "gen_tokens": 91, "tokens_per_s": 11.7, "score": 0.7, "judge_raw": 7}
+{"model": "deepseek-r1:14b", "task_id": "c11", "category": "chat", "wall_s": 80.28, "prefill_s": 0.681, "gen_tokens": 512, "tokens_per_s": 6.4, "score": 0.4, "judge_raw": 4}
+{"model": "gemma4:e2b", "task_id": "c11", "category": "chat", "wall_s": 2.58, "prefill_s": 0.123, "gen_tokens": 120, "tokens_per_s": 53.6, "score": 0.6, "judge_raw": 6}
+{"model": "claude:haiku", "task_id": "c11", "category": "chat", "wall_s": 4.092, "prefill_s": null, "gen_tokens": 269, "tokens_per_s": 65.7, "score": 0.9, "judge_raw": 9}
+{"model": "gemma4:e2b", "task_id": "c12", "category": "chat", "wall_s": 1.622, "prefill_s": 0.124, "gen_tokens": 68, "tokens_per_s": 53.1, "score": 0.6, "judge_raw": 6}
+{"model": "ornith:9b", "task_id": "c12", "category": "chat", "wall_s": 13.832, "prefill_s": 1.449, "gen_tokens": 140, "tokens_per_s": 11.4, "score": 0.4, "judge_raw": 4}
+{"model": "claude:haiku", "task_id": "c12", "category": "chat", "wall_s": 2.169, "prefill_s": null, "gen_tokens": 167, "tokens_per_s": 77.0, "score": 0.9, "judge_raw": 9}
+{"model": "deepseek-r1:14b", "task_id": "c12", "category": "chat", "wall_s": 64.367, "prefill_s": 0.717, "gen_tokens": 389, "tokens_per_s": 6.1, "score": 0.8, "judge_raw": 8}
+{"model": "qwen3.5:9b", "task_id": "c12", "category": "chat", "wall_s": 5.433, "prefill_s": 0.614, "gen_tokens": 60, "tokens_per_s": 12.9, "score": 0.5, "judge_raw": 5}
+{"model": "ornith:9b", "task_id": "re1", "category": "reasoning", "wall_s": 11.541, "prefill_s": 1.834, "gen_tokens": 98, "tokens_per_s": 10.3, "score": 1.0, "judge_raw": 10}
+{"model": "gemma4:e2b", "task_id": "re1", "category": "reasoning", "wall_s": 2.292, "prefill_s": 0.176, "gen_tokens": 100, "tokens_per_s": 52.8, "score": 0.9, "judge_raw": 9}
+{"model": "deepseek-r1:14b", "task_id": "re1", "category": "reasoning", "wall_s": 89.988, "prefill_s": 2.039, "gen_tokens": 493, "tokens_per_s": 5.6, "score": 0.8, "judge_raw": 8}
+{"model": "qwen3.5:9b", "task_id": "re1", "category": "reasoning", "wall_s": 8.315, "prefill_s": 1.033, "gen_tokens": 88, "tokens_per_s": 12.4, "score": 0.8, "judge_raw": 8}
+{"model": "gemma4:e2b", "task_id": "re2", "category": "reasoning", "wall_s": 7.087, "prefill_s": 0.175, "gen_tokens": 350, "tokens_per_s": 52.3, "score": 0.8, "judge_raw": 8}
+{"model": "qwen3.5:9b", "task_id": "re2", "category": "reasoning", "wall_s": 27.435, "prefill_s": 0.979, "gen_tokens": 307, "tokens_per_s": 11.7, "score": 0.9, "judge_raw": 9}
+{"model": "deepseek-r1:14b", "task_id": "re2", "category": "reasoning", "wall_s": 93.431, "prefill_s": 1.32, "gen_tokens": 512, "tokens_per_s": 5.6, "score": 0.2, "judge_raw": 2}
+{"model": "ornith:9b", "task_id": "re2", "category": "reasoning", "wall_s": 19.371, "prefill_s": 1.836, "gen_tokens": 182, "tokens_per_s": 10.5, "score": 0.9, "judge_raw": 9}
+{"model": "ornith:9b", "task_id": "re3", "category": "reasoning", "wall_s": 4.17, "prefill_s": 1.908, "gen_tokens": 27, "tokens_per_s": 12.9, "score": 1.0, "judge_raw": 10}
+{"model": "qwen3.5:9b", "task_id": "re3", "category": "reasoning", "wall_s": 3.613, "prefill_s": 0.98, "gen_tokens": 32, "tokens_per_s": 13.1, "score": 0.9, "judge_raw": 9}
+{"model": "gemma4:e2b", "task_id": "re3", "category": "reasoning", "wall_s": 0.975, "prefill_s": 0.173, "gen_tokens": 31, "tokens_per_s": 54.1, "score": 0.8, "judge_raw": 8}
+{"model": "deepseek-r1:14b", "task_id": "re3", "category": "reasoning", "wall_s": 59.339, "prefill_s": 1.333, "gen_tokens": 312, "tokens_per_s": 5.4, "score": 1.0, "judge_raw": 10}
+{"model": "ornith:9b", "task_id": "re4", "category": "reasoning", "wall_s": 6.594, "prefill_s": 1.908, "gen_tokens": 49, "tokens_per_s": 10.8, "score": 0.7, "judge_raw": 7}
+{"model": "deepseek-r1:14b", "task_id": "re4", "category": "reasoning", "wall_s": 80.727, "prefill_s": 1.644, "gen_tokens": 512, "tokens_per_s": 6.5, "score": 0.5, "judge_raw": 5}
+{"model": "gemma4:e2b", "task_id": "re4", "category": "reasoning", "wall_s": 0.529, "prefill_s": 0.176, "gen_tokens": 6, "tokens_per_s": 62.7, "score": 0.1, "judge_raw": 1}
+{"model": "qwen3.5:9b", "task_id": "re4", "category": "reasoning", "wall_s": 1.635, "prefill_s": 1.003, "gen_tokens": 6, "tokens_per_s": 13.4, "score": 1.0, "judge_raw": 10}
+{"model": "gemma4:e2b", "task_id": "re5", "category": "reasoning", "wall_s": 2.201, "prefill_s": 0.173, "gen_tokens": 95, "tokens_per_s": 53.0, "score": 0.6, "judge_raw": 6}
+{"model": "deepseek-r1:14b", "task_id": "re5", "category": "reasoning", "wall_s": 45.024, "prefill_s": 1.379, "gen_tokens": 290, "tokens_per_s": 6.7, "score": 0.9, "judge_raw": 9}
+{"model": "ornith:9b", "task_id": "re5", "category": "reasoning", "wall_s": 7.866, "prefill_s": 2.004, "gen_tokens": 62, "tokens_per_s": 10.9, "score": 0.7, "judge_raw": 7}
+{"model": "qwen3.5:9b", "task_id": "re5", "category": "reasoning", "wall_s": 6.232, "prefill_s": 0.994, "gen_tokens": 60, "tokens_per_s": 11.9, "score": 0.5, "judge_raw": 5}
+{"model": "qwen3.5:9b", "task_id": "re6", "category": "reasoning", "wall_s": 2.473, "prefill_s": 0.975, "gen_tokens": 18, "tokens_per_s": 13.7, "score": 1.0, "judge_raw": 10}
+{"model": "gemma4:e2b", "task_id": "re6", "category": "reasoning", "wall_s": 0.855, "prefill_s": 0.174, "gen_tokens": 25, "tokens_per_s": 54.5, "score": 0.7, "judge_raw": 7}
+{"model": "ornith:9b", "task_id": "re6", "category": "reasoning", "wall_s": 3.491, "prefill_s": 1.983, "gen_tokens": 18, "tokens_per_s": 13.2, "score": 1.0, "judge_raw": 10}
+{"model": "deepseek-r1:14b", "task_id": "re6", "category": "reasoning", "wall_s": 73.324, "prefill_s": 1.292, "gen_tokens": 458, "tokens_per_s": 6.4, "score": 0.7, "judge_raw": 7}
+{"model": "deepseek-r1:14b", "task_id": "re7", "category": "reasoning", "wall_s": 79.606, "prefill_s": 2.044, "gen_tokens": 512, "tokens_per_s": 6.6, "score": 0.1, "judge_raw": 1}
+{"model": "qwen3.5:9b", "task_id": "re7", "category": "reasoning", "wall_s": 4.984, "prefill_s": 0.91, "gen_tokens": 46, "tokens_per_s": 11.9, "score": 1.0, "judge_raw": 10}
+{"model": "ornith:9b", "task_id": "re7", "category": "reasoning", "wall_s": 7.839, "prefill_s": 1.755, "gen_tokens": 64, "tokens_per_s": 10.8, "score": 0.6, "judge_raw": 6}
+{"model": "gemma4:e2b", "task_id": "re7", "category": "reasoning", "wall_s": 0.916, "prefill_s": 0.173, "gen_tokens": 28, "tokens_per_s": 54.1, "score": 0.1, "judge_raw": 1}
+{"model": "deepseek-r1:14b", "task_id": "re8", "category": "reasoning", "wall_s": 66.342, "prefill_s": 1.421, "gen_tokens": 418, "tokens_per_s": 6.5, "score": 0.6, "judge_raw": 6}
+{"model": "gemma4:e2b", "task_id": "re8", "category": "reasoning", "wall_s": 1.216, "prefill_s": 0.175, "gen_tokens": 44, "tokens_per_s": 53.8, "score": 1.0, "judge_raw": 10}
+{"model": "qwen3.5:9b", "task_id": "re8", "category": "reasoning", "wall_s": 6.217, "prefill_s": 1.016, "gen_tokens": 62, "tokens_per_s": 12.3, "score": 0.7, "judge_raw": 7}
+{"model": "ornith:9b", "task_id": "re8", "category": "reasoning", "wall_s": 7.662, "prefill_s": 1.883, "gen_tokens": 61, "tokens_per_s": 10.8, "score": 0.8, "judge_raw": 8}
+{"model": "qwen3.5:9b", "task_id": "re9", "category": "reasoning", "wall_s": 12.344, "prefill_s": 1.007, "gen_tokens": 133, "tokens_per_s": 11.9, "score": 0.4, "judge_raw": 4}
+{"model": "deepseek-r1:14b", "task_id": "re9", "category": "reasoning", "wall_s": 62.4, "prefill_s": 1.37, "gen_tokens": 414, "tokens_per_s": 6.8, "score": 0.9, "judge_raw": 9}
+{"model": "ornith:9b", "task_id": "re9", "category": "reasoning", "wall_s": 12.972, "prefill_s": 2.009, "gen_tokens": 111, "tokens_per_s": 10.3, "score": 0.3, "judge_raw": 3}
+{"model": "gemma4:e2b", "task_id": "re9", "category": "reasoning", "wall_s": 4.52, "prefill_s": 0.174, "gen_tokens": 216, "tokens_per_s": 52.6, "score": 1.0, "judge_raw": 10}
+{"model": "ornith:9b", "task_id": "re10", "category": "reasoning", "wall_s": 5.596, "prefill_s": 1.991, "gen_tokens": 37, "tokens_per_s": 10.7, "score": 0.7, "judge_raw": 7}
+{"model": "deepseek-r1:14b", "task_id": "re10", "category": "reasoning", "wall_s": 51.944, "prefill_s": 1.344, "gen_tokens": 343, "tokens_per_s": 6.8, "score": 0.8, "judge_raw": 8}
+{"model": "qwen3.5:9b", "task_id": "re10", "category": "reasoning", "wall_s": 1.36, "prefill_s": 0.928, "gen_tokens": 4, "tokens_per_s": 16.6, "score": 1.0, "judge_raw": 10}
+{"model": "gemma4:e2b", "task_id": "re10", "category": "reasoning", "wall_s": 0.487, "prefill_s": 0.175, "gen_tokens": 5, "tokens_per_s": 61.8, "score": 0.1, "judge_raw": 1}
+{"model": "qwen3.5:9b", "task_id": "re11", "category": "reasoning", "wall_s": 4.824, "prefill_s": 0.891, "gen_tokens": 49, "tokens_per_s": 13.1, "score": 1.0, "judge_raw": 10}
+{"model": "deepseek-r1:14b", "task_id": "re11", "category": "reasoning", "wall_s": 67.14, "prefill_s": 1.333, "gen_tokens": 450, "tokens_per_s": 6.9, "score": 1.0, "judge_raw": 10}
+{"model": "gemma4:e2b", "task_id": "re11", "category": "reasoning", "wall_s": 1.364, "prefill_s": 0.176, "gen_tokens": 50, "tokens_per_s": 52.9, "score": 1.0, "judge_raw": 10}
+{"model": "ornith:9b", "task_id": "re11", "category": "reasoning", "wall_s": 6.895, "prefill_s": 2.065, "gen_tokens": 49, "tokens_per_s": 10.5, "score": 1.0, "judge_raw": 10}
+{"model": "ornith:9b", "task_id": "co1", "category": "coding", "wall_s": 5.269, "prefill_s": 1.655, "gen_tokens": 44, "tokens_per_s": 12.7, "score": 1.0, "judge_raw": 10}
+{"model": "deepseek-r1:14b", "task_id": "co1", "category": "coding", "wall_s": 86.118, "prefill_s": 1.398, "gen_tokens": 512, "tokens_per_s": 6.1, "score": 0.1, "judge_raw": 1}
+{"model": "qwen3.5:9b", "task_id": "co1", "category": "coding", "wall_s": 43.277, "prefill_s": 0.95, "gen_tokens": 512, "tokens_per_s": 12.1, "score": 0.8, "judge_raw": 8}
+{"model": "qwen3.5:9b", "task_id": "co2", "category": "coding", "wall_s": 8.19, "prefill_s": 0.92, "gen_tokens": 94, "tokens_per_s": 13.3, "score": 1.0, "judge_raw": 10}
+{"model": "ornith:9b", "task_id": "co2", "category": "coding", "wall_s": 6.238, "prefill_s": 1.687, "gen_tokens": 53, "tokens_per_s": 12.0, "score": 1.0, "judge_raw": 10}
+{"model": "deepseek-r1:14b", "task_id": "co2", "category": "coding", "wall_s": 88.797, "prefill_s": 2.578, "gen_tokens": 512, "tokens_per_s": 6.0, "score": 0.3, "judge_raw": 3}
+{"model": "qwen3.5:9b", "task_id": "co3", "category": "coding", "wall_s": 23.83, "prefill_s": 1.031, "gen_tokens": 285, "tokens_per_s": 12.6, "score": 1.0, "judge_raw": 10}
+{"model": "ornith:9b", "task_id": "co3", "category": "coding", "wall_s": 7.965, "prefill_s": 1.744, "gen_tokens": 66, "tokens_per_s": 10.9, "score": 0.9, "judge_raw": 9}
+{"model": "deepseek-r1:14b", "task_id": "co3", "category": "coding", "wall_s": 82.492, "prefill_s": 1.486, "gen_tokens": 505, "tokens_per_s": 6.3, "score": 0.5, "judge_raw": 5}
+{"model": "qwen3.5:9b", "task_id": "co4", "category": "coding", "wall_s": 41.846, "prefill_s": 0.645, "gen_tokens": 512, "tokens_per_s": 12.5, "score": 0.6, "judge_raw": 6}
+{"model": "deepseek-r1:14b", "task_id": "co4", "category": "coding", "wall_s": 91.891, "prefill_s": 1.066, "gen_tokens": 512, "tokens_per_s": 5.7, "score": 0.1, "judge_raw": 1}
+{"model": "ornith:9b", "task_id": "co4", "category": "coding", "wall_s": 11.149, "prefill_s": 1.338, "gen_tokens": 113, "tokens_per_s": 11.7, "score": 1.0, "judge_raw": 10}
+{"model": "qwen3.5:9b", "task_id": "co5", "category": "coding", "wall_s": 6.96, "prefill_s": 1.088, "gen_tokens": 73, "tokens_per_s": 12.9, "score": 1.0, "judge_raw": 10}
+{"model": "deepseek-r1:14b", "task_id": "co5", "category": "coding", "wall_s": 82.568, "prefill_s": 1.407, "gen_tokens": 512, "tokens_per_s": 6.3, "score": 0.1, "judge_raw": 1}
+{"model": "ornith:9b", "task_id": "co5", "category": "coding", "wall_s": 6.208, "prefill_s": 1.701, "gen_tokens": 49, "tokens_per_s": 11.2, "score": 0.9, "judge_raw": 9}
+{"model": "ornith:9b", "task_id": "co6", "category": "coding", "wall_s": 19.969, "prefill_s": 1.833, "gen_tokens": 157, "tokens_per_s": 8.7, "score": 0.3, "judge_raw": 3}
+{"model": "qwen3.5:9b", "task_id": "co6", "category": "coding", "wall_s": 25.491, "prefill_s": 0.936, "gen_tokens": 307, "tokens_per_s": 12.6, "score": 0.1, "judge_raw": 1}
+{"model": "deepseek-r1:14b", "task_id": "co6", "category": "coding", "wall_s": 82.658, "prefill_s": 0.756, "gen_tokens": 512, "tokens_per_s": 6.3, "score": 0.1, "judge_raw": 1}
+{"model": "ornith:9b", "task_id": "co7", "category": "coding", "wall_s": 22.343, "prefill_s": 1.584, "gen_tokens": 192, "tokens_per_s": 9.4, "score": 0.6, "judge_raw": 6}
+{"model": "qwen3.5:9b", "task_id": "co7", "category": "coding", "wall_s": 42.033, "prefill_s": 0.999, "gen_tokens": 512, "tokens_per_s": 12.5, "score": 0.3, "judge_raw": 3}
+{"model": "deepseek-r1:14b", "task_id": "co7", "category": "coding", "wall_s": 90.192, "prefill_s": 0.782, "gen_tokens": 512, "tokens_per_s": 5.7, "score": 0.1, "judge_raw": 1}
+{"model": "ornith:9b", "task_id": "co8", "category": "coding", "wall_s": 3.822, "prefill_s": 1.818, "gen_tokens": 17, "tokens_per_s": 11.2, "score": 1.0, "judge_raw": 10}
+{"model": "deepseek-r1:14b", "task_id": "co8", "category": "coding", "wall_s": 60.554, "prefill_s": 0.652, "gen_tokens": 333, "tokens_per_s": 5.6, "score": 0.9, "judge_raw": 9}
+{"model": "qwen3.5:9b", "task_id": "co8", "category": "coding", "wall_s": 14.299, "prefill_s": 0.935, "gen_tokens": 167, "tokens_per_s": 12.7, "score": 1.0, "judge_raw": 10}
+{"model": "qwen3.5:9b", "task_id": "co9", "category": "coding", "wall_s": 42.394, "prefill_s": 0.889, "gen_tokens": 512, "tokens_per_s": 12.4, "score": 0.9, "judge_raw": 9}
+{"model": "deepseek-r1:14b", "task_id": "co9", "category": "coding", "wall_s": 90.726, "prefill_s": 1.388, "gen_tokens": 512, "tokens_per_s": 5.8, "score": 0.1, "judge_raw": 1}
+{"model": "ornith:9b", "task_id": "co9", "category": "coding", "wall_s": 17.091, "prefill_s": 2.236, "gen_tokens": 147, "tokens_per_s": 10.0, "score": 1.0, "judge_raw": 10}
+{"model": "ornith:9b", "task_id": "co10", "category": "coding", "wall_s": 29.063, "prefill_s": 1.725, "gen_tokens": 296, "tokens_per_s": 10.9, "score": 1.0, "judge_raw": 10}
+{"model": "deepseek-r1:14b", "task_id": "co10", "category": "coding", "wall_s": 83.226, "prefill_s": 1.325, "gen_tokens": 446, "tokens_per_s": 5.5, "score": 0.9, "judge_raw": 9}
+{"model": "qwen3.5:9b", "task_id": "co10", "category": "coding", "wall_s": 43.154, "prefill_s": 1.015, "gen_tokens": 512, "tokens_per_s": 12.2, "score": 0.8, "judge_raw": 8}
