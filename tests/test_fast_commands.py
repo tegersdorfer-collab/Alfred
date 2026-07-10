@@ -84,3 +84,58 @@ def test_unrelated_conversation():
 
 def test_empty():
     assert match("") is None
+
+
+# ── Positive: Musik (Spotify) ─────────────────────────────────────────────────
+
+def test_music_play():
+    assert _m("musik an") == ("spotify", {"action": "play"})
+    assert _m("musik weiter") == ("spotify", {"action": "play"})
+    assert _m("spiel musik") == ("spotify", {"action": "play"})
+    assert _m("mach die musik wieder an") == ("spotify", {"action": "play"})
+
+
+def test_music_pause():
+    assert _m("musik pause") == ("spotify", {"action": "pause"})
+    assert _m("stopp die musik") == ("spotify", {"action": "pause"})
+    assert _m("mach die musik aus") == ("spotify", {"action": "pause"})
+
+
+def test_music_next_prev():
+    assert _m("nächstes lied") == ("spotify", {"action": "next"})
+    assert _m("nächster song") == ("spotify", {"action": "next"})
+    assert _m("musik zurück") == ("spotify", {"action": "previous"})
+
+
+def test_music_single_word_commands():
+    assert _m("pause") == ("spotify", {"action": "pause"})
+    assert _m("skip") == ("spotify", {"action": "next"})
+    assert _m("next") == ("spotify", {"action": "next"})
+
+
+# ── Negativ: Musik kapert keine Konversation ─────────────────────────────────
+
+def test_pause_in_sentence_not_music():
+    assert match("ich mach mal pause") is None
+    assert match("lass uns eine pause machen") is None
+
+
+def test_weiter_in_conversation_not_music():
+    assert match("weiter gehts mit dem projekt") is None
+    assert match("erzähl weiter") is None
+
+
+def test_music_question_never_matches():
+    assert match("läuft gerade musik?") is None
+    assert match("welches lied ist das?") is None
+
+
+def test_music_statement_not_command():
+    assert match("die musik ist aus") is None
+    assert match("ich höre gerade musik und mach dann weiter") is None
+
+
+def test_music_with_query_goes_to_agent():
+    # „von" signalisiert eine Such-Anfrage → Agent (braucht Web-API-Suche)
+    assert match("mach die musik von queen an") is None
+    assert match("spiel bohemian rhapsody von queen") is None
