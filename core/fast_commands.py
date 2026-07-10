@@ -33,6 +33,10 @@ _BRIGHT = {"heller": "heller", "dunkler": "dunkler"}
 _CMD_VERBS = {"mach", "macht", "mache", "schalt", "schalte", "schaltet",
               "dreh", "drehe", "stell", "stelle", "setz", "setze"}
 
+_FAN = {"ventilator", "lüfter", "luefter", "fan"}
+_FAN_UP = {"stärker", "staerker", "schneller", "höher", "hoch"}
+_FAN_DOWN = {"schwächer", "schwaecher", "langsamer", "niedriger", "runter"}
+
 _ROBOT = {"roboter", "robot", "droide", "droid", "x5"}
 _STOP = {"stopp", "stop", "stoppen", "halt", "anhalten"}
 _HARD_STOP = {"notaus", "notstopp", "nothalt", "notstop"}
@@ -103,6 +107,18 @@ def match(text: str) -> FastCommand | None:
             return FastCommand("spotify", {"action": "pause"}, "musik-pause")
         if w & {"skip", "next"}:
             return FastCommand("spotify", {"action": "next"}, "musik-next")
+
+    # ── Ventilator ────────────────────────────────────────────────────────────
+    if w & _FAN:
+        if w & _CMD_VERBS or len(w) <= 3:
+            if w & _FAN_UP:
+                return FastCommand("ventilator", {"action": "staerker"}, "ventilator-staerker")
+            if w & _FAN_DOWN:
+                return FastCommand("ventilator", {"action": "schwaecher"}, "ventilator-schwaecher")
+            if w & _OFF:
+                return FastCommand("ventilator", {"action": "aus"}, "ventilator-aus")
+            if w & _ON:
+                return FastCommand("ventilator", {"action": "an"}, "ventilator-an")
 
     # ── Lampe / Licht ─────────────────────────────────────────────────────────
     if w & _LAMP:

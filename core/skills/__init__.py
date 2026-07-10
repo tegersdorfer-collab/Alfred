@@ -28,6 +28,7 @@ from . import (
     vision,
     robot,
     flipper,
+    ventilator,
     spotify,
     uiauto,
     geo,
