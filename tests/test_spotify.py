@@ -228,3 +228,70 @@ def test_spotify_tool_is_registered():
     from core import tools as T
     assert "spotify" in T.REGISTRY
     assert T.REGISTRY["spotify"].category == "spotify"
+
+
+# ── Spicetify-Bridge bevorzugt (mit Fallback) ─────────────────────────────────
+
+from tools.spotify.bridge import BRIDGE, BridgeError
+
+
+def _bridge_connected(monkey):
+    """Markiert die Bridge als verbunden und mockt ihre Methoden über monkey-dict."""
+    BRIDGE._ws = object()
+    BRIDGE.search = monkey.get("search")
+    BRIDGE.now_playing = monkey.get("now_playing")
+    BRIDGE.play = monkey.get("play")
+
+
+def _bridge_reset():
+    BRIDGE._ws = None
+
+
+def test_spiel_prefers_bridge():
+    played = []
+
+    async def fake_search(q, typ=None):
+        return {"uri": "spotify:track:b1", "name": "Kids — MGMT"}
+
+    async def fake_play(uri):
+        played.append(uri)
+    _bridge_connected({"search": fake_search, "play": fake_play})
+    try:
+        from core.skills.spotify import _spotify
+        out = asyncio.run(_spotify("spiel", query="kids"))
+    finally:
+        _bridge_reset()
+    assert out == "▶️ Kids — MGMT"
+    assert played == ["spotify:track:b1"]
+
+
+def test_status_prefers_bridge():
+    async def fake_np():
+        return {"title": "Kids", "artist": "MGMT", "album": "Oracular", "playing": True}
+    _bridge_connected({"now_playing": fake_np})
+    try:
+        from core.skills.spotify import _spotify
+        out = asyncio.run(_spotify("status"))
+    finally:
+        _bridge_reset()
+    assert out == "🎵 Kids — MGMT · Oracular"
+
+
+def test_spiel_falls_back_when_bridge_errors():
+    async def bad_search(q, typ=None):
+        raise BridgeError("kaputt")
+    _bridge_connected({"search": bad_search})
+    _reset_webapi()
+    calls: list = []
+    _patch_osa(calls)
+    _patch_http({"tracks": {"items": [{"uri": "spotify:track:w1", "name": "W",
+                                       "artists": [{"name": "X"}]}]}})
+    old = (cfg.SPOTIFY_CLIENT_ID, cfg.SPOTIFY_CLIENT_SECRET)
+    try:
+        cfg.SPOTIFY_CLIENT_ID, cfg.SPOTIFY_CLIENT_SECRET = "id", "secret"
+        from core.skills.spotify import _spotify
+        out = asyncio.run(_spotify("spiel", query="w"))
+    finally:
+        cfg.SPOTIFY_CLIENT_ID, cfg.SPOTIFY_CLIENT_SECRET = old
+        _bridge_reset()
+    assert out == "▶️ W — X"        # Fallback-Web-API-Weg hat gegriffen

@@ -43,6 +43,7 @@ _MUSIC_PREV = {"vorheriges", "vorheriger", "vorherige", "zurück", "previous"}
 _MUSIC_PAUSE = {"pause", "pausiere", "pausieren", "stopp", "stop", "aus", "ausmachen"}
 _MUSIC_PLAY = {"an", "play", "weiter", "abspielen", "spiel", "spiele", "anmachen"}
 _MUSIC_STATUS = {"läuft", "spielt"}  # Wiedergabe-Status
+_UIAUTO_VERBS = {"bediene", "bedien", "steuere", "steuer"}
 # Alle reinen Steuerwörter zusammen — dient der Abgrenzung „spiel [X]" (Suche)
 # von „spiel weiter"/„spiel musik" (Steuerung).
 _MUSIC_CONTROL = _MUSIC | _MUSIC_NEXT | _MUSIC_PREV | _MUSIC_PAUSE | _MUSIC_PLAY
@@ -72,6 +73,13 @@ def match(text: str) -> FastCommand | None:
     # ── Roboter-Not-Stopp (Sicherheit) ───────────────────────────────────────
     if (w & _HARD_STOP) or (w & _ROBOT and w & _STOP):
         return FastCommand("robot_control", {"action": "stopp"}, "robot-stopp")
+
+    # ── UI-Automatik-Entry ────────────────────────────────────────────────────
+    # gemma wählt computer_task unzuverlässig (griff im Test zu create_skill).
+    # Enger Fast-Path: explizites „bediene/steuere … app …" → computer_task mit
+    # der ganzen Äußerung als Ziel (der qwen-Loop parst App + Aufgabe daraus).
+    if (w & _UIAUTO_VERBS) and "app" in w:
+        return FastCommand("computer_task", {"goal": text.strip()}, "computer-task")
 
     # ── Musik (Spotify) ───────────────────────────────────────────────────────
     if w & _MUSIC:

@@ -11,6 +11,7 @@ import logging
 from core import tools as T
 from tools.spotify import applescript as sp
 from tools.spotify import web_api
+from tools.spotify.bridge import BRIDGE, BridgeError
 
 log = logging.getLogger("core.skills")
 
@@ -72,6 +73,18 @@ async def _spotify(action: str, query: str = "", volume: int = -1, typ: str = ""
             await sp.set_volume(v)
             return f"🔊 Lautstärke {v} %"
         if a == "status":
+            # Bevorzugt strukturiert über die Spicetify-Bridge; sonst AppleScript.
+            if BRIDGE.is_connected():
+                try:
+                    np = await BRIDGE.now_playing()
+                    if np is None:
+                        return "🔇 Gerade läuft nichts."
+                    if np.get("title"):
+                        suffix = "" if np.get("playing", True) else " (pausiert)"
+                        return (f"🎵 {np['title']} — {np.get('artist', '')} · "
+                                f"{np.get('album', '')}{suffix}")
+                except BridgeError as e:
+                    log.info("Bridge-Status fehlgeschlagen, Fallback AppleScript: %s", e)
             t = await sp.current_track()
             if t is None:
                 return "🔇 Gerade läuft nichts."
@@ -89,6 +102,17 @@ async def _spotify(action: str, query: str = "", volume: int = -1, typ: str = ""
 async def _spiel(query: str, typ: str = "") -> str:
     if not (query or "").strip():
         return "❌ Was soll ich spielen? Bitte query angeben."
+    # Bevorzugt: Spicetify-Bridge — strukturierte Suche über die Client-Session,
+    # kein Developer-Key nötig. Fallback auf Web-API + AppleScript.
+    if BRIDGE.is_connected():
+        try:
+            hit = await BRIDGE.search(query.strip(), typ=(typ or None))
+            if hit is None:
+                return f"🤷 Nichts gefunden zu ‚{query}'."
+            await BRIDGE.play(hit["uri"])
+            return f"▶️ {hit['name']}"
+        except BridgeError as e:
+            log.info("Bridge-Suche fehlgeschlagen, Fallback Web-API: %s", e)
     if web_api.credentials_missing():
         return _SETUP_HINT
     try:
