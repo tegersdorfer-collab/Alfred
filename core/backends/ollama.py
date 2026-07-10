@@ -13,10 +13,24 @@ import config
 log = logging.getLogger(__name__)
 
 
+def _normalize_keep_alive(v):
+    """Ollama erwartet Ganzzahl-Sekunden (bzw. -1 = für immer) ODER einen Dauer-
+    String ('5m'). Ein reiner Integer-String wie '-1' muss als int übergeben werden,
+    sonst parst der Server ihn als Dauer OHNE Einheit → HTTP 400. ('0' funktioniert
+    als Go-Sonderfall, '-1' nicht — deshalb hier generell normalisieren.)"""
+    if isinstance(v, str):
+        s = v.strip()
+        try:
+            return int(s)
+        except ValueError:
+            return s  # echte Dauer wie '5m', '1h'
+    return v
+
+
 class OllamaBackend(AgentBackend):
     def __init__(self, model: str | None = None, keep_alive: str | None = None):
         self._model = model or config.AGENT_MODEL_STRONG
-        self._keep_alive = keep_alive or config.OLLAMA_KEEP_ALIVE
+        self._keep_alive = _normalize_keep_alive(keep_alive or config.OLLAMA_KEEP_ALIVE)
         self._client = _ollama.AsyncClient(host=config.OLLAMA_BASE_URL)
 
     @property

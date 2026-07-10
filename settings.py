@@ -28,7 +28,10 @@ class MantisSettings(BaseSettings):
     OLLAMA_BASE_URL: str = "http://localhost:11434"
     OLLAMA_KEEP_ALIVE: str = "0"
     AGENT_MODEL_FAST: str = "qwen3.5:9b"
-    AGENT_MODEL_STRONG: str = "qwen3.5:9b"
+    # Interaktiver Haupt-Agent (Telegram/Dashboard-Chat). Benchmark 2026-07-09:
+    # gemma4:e2b erreicht ~gleiche Chat-Qualität wie die 9B-Modelle, ist aber 3×
+    # schneller — und teilt sich das Modell mit dem Voice-Agent (immer warm).
+    AGENT_MODEL_STRONG: str = "gemma4:e2b"
     # Kleines, schnelles Modell für Ja/Nein-Klassifikation (z.B. Voice-Adress-Check).
     # Auf einem 24-Fälle-Testset verglichen: qwen3.5:2b (12/24), qwen2.5:3b-instruct
     # (16/24, ~1.1s), qwen3.5:4b (21/24, ~3.1s), qwen3.5:9b (21/24, ~6.0s),
@@ -45,13 +48,17 @@ class MantisSettings(BaseSettings):
     VOICE_AGENT_KEEP_ALIVE: str = "-1"
     ANTHROPIC_API_KEY: str = ""
     CLAUDE_CHAT_MODEL: str = "claude-haiku-4-5-20251001"
+    # Voll-lokaler Betrieb: ignoriert den ANTHROPIC_API_KEY und nutzt überall Ollama
+    # (kein Cloud-Call, keine Claude-Fallbacks). Der Key bleibt für Tools/Benchmarks nutzbar.
+    LLM_LOCAL_ONLY: bool = False
     # ── Background-LLM Routing ────────────────────────────────────────────────
     # Default: qwen3.5:9b für Memory, Review, Konsolidierung
     BG_DEFAULT_MODEL: str = ""          # leer = OLLAMA_MODEL
     # Reasoning-Spezialist für Briefings, Insights, Pattern-Detection
     BG_REASONING_MODEL: str = "deepseek-r1:14b"
-    # Code-Spezialist für create_skill / Skill-Factory
-    BG_CODE_MODEL: str = "qwen2.5-coder:7b"
+    # Code-Spezialist für create_skill / Skill-Factory. Benchmark 2026-07-09:
+    # ornith:9b war der beste Coder im Feld (8.7/10) und schneller als qwen3.5.
+    BG_CODE_MODEL: str = "ornith:9b"
     # Vision-Modell für Foto-Analyse (Mahlzeiten)
     VISION_MODEL: str = "qwen3-vl:8b"
 

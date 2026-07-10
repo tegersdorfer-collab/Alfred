@@ -54,23 +54,26 @@ async def main():
     from thermal import ThermalMonitor
     from orchestrator import Orchestrator
 
-    # ── Chat-LLM: Haiku für schnelle Echtzeit-Antworten im Chat ─────────────
-    if cfg.ANTHROPIC_API_KEY:
+    # Voll-lokaler Betrieb (LLM_LOCAL_ONLY) ignoriert den API-Key komplett.
+    use_claude = bool(cfg.ANTHROPIC_API_KEY) and not cfg.LLM_LOCAL_ONLY
+    if cfg.LLM_LOCAL_ONLY:
+        log.info("🔒 LLM_LOCAL_ONLY: alle LLMs laufen lokal (Claude deaktiviert)")
+
+    # ── Chat-LLM ────────────────────────────────────────────────────────────
+    if use_claude:
         from llm.claude import ClaudeProvider
         chat_llm = ClaudeProvider(model=cfg.CLAUDE_CHAT_MODEL)
         log.info(f"💬 Chat-LLM: {cfg.CLAUDE_CHAT_MODEL}")
     else:
         chat_llm = OllamaProvider()
-        log.info(f"💬 Chat-LLM: Ollama {cfg.OLLAMA_MODEL} (kein API-Key)")
+        log.info(f"💬 Chat-LLM: Ollama {cfg.OLLAMA_MODEL} (lokal)")
 
-    # ── Agent-Backend: Claude primär (interaktiver Chat braucht schnelle Antwort) ─
-    # Der lokale 9B-Ollama-Agent kann auf diesem 16GB-Mac bis zu 166s brauchen
-    # (Cold-Reload bei jedem Call). Für interaktive Dashboard/Telegram-Antworten
-    # ist das nicht akzeptabel. Ollama-primär ist nur für Aufgaben ok, bei denen
-    # Geschwindigkeit egal ist, weil sie im Hintergrund laufen (Reflection,
-    # proaktive Nachrichten) — die laufen bereits separat über bg_llm.
+    # ── Agent-Backend: interaktiver Haupt-Agent (Telegram/Dashboard-Chat) ────────
+    # Lokal: gemma4:e2b (AGENT_MODEL_STRONG) — laut Benchmark ~9B-Chatqualität bei 3×
+    # Speed. keep_alive="-1" hält es dauerhaft im RAM; da der Voice-Agent dasselbe
+    # Modell nutzt, ist gemma immer warm → keine Cold-Reload-Latenz mehr.
     from core.backends.ollama import OllamaBackend
-    if cfg.ANTHROPIC_API_KEY:
+    if use_claude:
         from core.backends.claude import ClaudeBackend
         from core.backends.fallback import FallbackBackend
         agent_backend = FallbackBackend(
@@ -79,24 +82,21 @@ async def main():
         )
         log.info(f"🔧 Agent-Backend: Claude {cfg.CLAUDE_CHAT_MODEL} → Fallback Ollama {cfg.AGENT_MODEL_STRONG} (lokal)")
     else:
-        agent_backend = OllamaBackend()
-        log.info(f"🔧 Agent-Backend: Ollama ({cfg.AGENT_MODEL_STRONG}, kein API-Key)")
+        agent_backend = OllamaBackend(model=cfg.AGENT_MODEL_STRONG, keep_alive="-1")
+        log.info(f"🔧 Agent-Backend: Ollama {cfg.AGENT_MODEL_STRONG} (lokal, dauerhaft geladen)")
 
     # ── Voice-Agent-Backend: kleines, dauerhaft geladenes Modell ────────────────
-    # Eigenes, leichtgewichtiges Backend nur für Voice-Antworten — dasselbe Modell
-    # wie ADDRESS_CHECK_MODEL (bereits für den Adress-Check im Einsatz), aber mit
-    # KEEP_ALIVE="-1" dauerhaft im Speicher statt bei jedem Call neu geladen zu
-    # werden. Claude bleibt als Fallback, falls die Qualität für eine bestimmte
-    # Anfrage nicht reicht oder Ollama ausfällt.
-    if cfg.ANTHROPIC_API_KEY:
+    if use_claude:
+        from core.backends.fallback import FallbackBackend
+        from core.backends.claude import ClaudeBackend
         voice_agent_backend = FallbackBackend(
             primary=OllamaBackend(model=cfg.VOICE_AGENT_MODEL, keep_alive=cfg.VOICE_AGENT_KEEP_ALIVE),
             fallback=ClaudeBackend(model=cfg.CLAUDE_CHAT_MODEL),
         )
-        log.info(f"🎙️  Voice-Agent-Backend: Ollama {cfg.VOICE_AGENT_MODEL} (dauerhaft geladen) → Fallback {cfg.CLAUDE_CHAT_MODEL}")
+        log.info(f"🎙️  Voice-Agent-Backend: Ollama {cfg.VOICE_AGENT_MODEL} (dauerhaft) → Fallback {cfg.CLAUDE_CHAT_MODEL}")
     else:
         voice_agent_backend = OllamaBackend(model=cfg.VOICE_AGENT_MODEL, keep_alive=cfg.VOICE_AGENT_KEEP_ALIVE)
-        log.info(f"🎙️  Voice-Agent-Backend: Ollama ({cfg.VOICE_AGENT_MODEL}, kein API-Key)")
+        log.info(f"🎙️  Voice-Agent-Backend: Ollama {cfg.VOICE_AGENT_MODEL} (lokal, dauerhaft geladen)")
 
     # ── Background-LLM: Routed (Spezialisten je nach Aufgabe) ─────────────────
     from llm.routed import RoutedLLMProvider
