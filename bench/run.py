@@ -19,7 +19,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import config
 from bench import models as M
-from bench.tasks import ALL_TASKS, tasks_for_category
+from bench.tasks import tasks_for_category
 
 RESULTS_DIR = os.path.join(os.path.dirname(__file__), "results")
 RAW_PATH = os.path.join(RESULTS_DIR, "raw.jsonl")
