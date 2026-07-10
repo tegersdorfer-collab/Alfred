@@ -21,12 +21,16 @@ _MAX_ITEMS = 60  # Deckel gegen zu viele LLM-/Geocode-Calls pro Lauf
 _CACHE_PATH = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
                           "data", "news_cache.json")
 _CONFIG_PATH = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
-                           "config", "news_sources.json")
+                           "data", "news_sources.json")
 
+# Sinnvolle Defaults, falls data/news_sources.json fehlt (data/ ist gitignored,
+# also greift das out-of-the-box). Timo kann die Datei anlegen, um zu überschreiben.
 _DEFAULT_CONFIG = {
     "feeds": [
         "https://www.tagesschau.de/index~rss2.xml",
         "https://feeds.bbci.co.uk/news/world/rss.xml",
+        "https://www.reutersagency.com/feed/?best-topics=top-news&post_type=best",
+        "https://rss.dw.com/rdf/rss-en-world",
     ],
     "topics": [],
 }

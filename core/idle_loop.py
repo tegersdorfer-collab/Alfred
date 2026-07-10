@@ -59,6 +59,7 @@ class IdleLoop:
         self._last_pattern_run: datetime | None = None
         self._last_insight_run: datetime | None = None
         self._last_plan_check: datetime | None = None
+        self._last_news_refresh: datetime | None = None
 
     def resume(self) -> None:
         self._state = "idle"
@@ -93,6 +94,7 @@ class IdleLoop:
                 await self._tick_patterns()
                 await self._tick_insights()
                 await self._tick_plan()
+                await self._tick_news()
 
             await asyncio.sleep(self._next_delay())
 
@@ -111,6 +113,19 @@ class IdleLoop:
         except Exception as e:
             log.debug(f"Reflexion: {e}")
             db.log_error("Reflexion", e)
+
+    async def _tick_news(self) -> None:
+        """Stündlich den News-Globus aktualisieren (Feeds → geolokalisieren → Cache)."""
+        now = datetime.now()
+        if _elapsed_since(self._last_news_refresh, now) < 3600:
+            return
+        self._last_news_refresh = now
+        try:
+            from core import news_globe
+            await news_globe.refresh()
+        except Exception as e:
+            log.debug(f"News-Globus-Refresh: {e}")
+            db.log_error("News-Globus-Refresh", e)
 
     async def _tick_plan(self) -> None:
         """Alle 6h prüfen, ob ein neuer Trainingsplan fällig ist (≥42 Tage / keiner)."""
