@@ -28,6 +28,7 @@ from . import (
     vision,
     robot,
     flipper,
+    spotify,
 )
 
 # REGISTRY in die ursprüngliche Reihenfolge bringen (select_tools byte-identisch).

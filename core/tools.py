@@ -164,6 +164,10 @@ _CATEGORY_KEYWORDS = {
                      "autonom", "patrouill", "fahr los", "fahr vor", "fahr zurück"],
     "flipper":      ["lampe", "licht", "schreibtischlampe", "flipper", "infrarot",
                      "ir ", "fernbedienung", "mach das licht", "schalt das licht"],
+    "spotify":      ["musik", "spotify", "song", "playlist", "lautstärke", "lauter",
+                     "leiser", "abspielen", "pausier", "was läuft", "nächstes lied",
+                     "spiel mal", "spiel was", "spiel etwas", "spiel mir",
+                     "spiel den", "spiel die", "spiel das"],
 }
 
 # Generelle Aktionsverben → es soll etwas GETAN werden

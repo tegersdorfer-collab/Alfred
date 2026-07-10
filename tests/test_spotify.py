@@ -158,3 +158,73 @@ def test_token_is_cached():
     asyncio.run(web_api.search("a"))
     asyncio.run(web_api.search("a"))
     assert len(token_calls) == 1  # zweiter Call nutzt den gecachten Token
+
+
+# ── Registriertes Tool ────────────────────────────────────────────────────────
+
+def test_skill_status_stopped():
+    calls: list = []
+    _patch_osa(calls, reply="stopped")
+    from core.skills.spotify import _spotify
+    assert asyncio.run(_spotify("status")) == "🔇 Gerade läuft nichts."
+
+
+def test_skill_status_playing():
+    def reply(script):
+        return "playing" if "player state" in script else "Kids\nMGMT\nOracular"
+    _patch_osa([], reply=reply)
+    from core.skills.spotify import _spotify
+    assert asyncio.run(_spotify("status")) == "🎵 Kids — MGMT · Oracular"
+
+
+def test_skill_pause_and_volume():
+    calls: list = []
+    _patch_osa(calls)
+    from core.skills.spotify import _spotify
+    assert asyncio.run(_spotify("pause")) == "⏸️ Pausiert"
+    assert asyncio.run(_spotify("volume", volume=40)) == "🔊 Lautstärke 40 %"
+    assert asyncio.run(_spotify("volume")) == "❌ Bitte volume 0-100 angeben."
+
+
+def test_skill_spiel_without_credentials_gives_setup_hint():
+    from core.skills import spotify as skill
+    old = (cfg.SPOTIFY_CLIENT_ID, cfg.SPOTIFY_CLIENT_SECRET)
+    try:
+        cfg.SPOTIFY_CLIENT_ID, cfg.SPOTIFY_CLIENT_SECRET = "", ""
+        out = asyncio.run(skill._spotify("spiel", query="kids"))
+        assert "developer.spotify.com" in out
+    finally:
+        cfg.SPOTIFY_CLIENT_ID, cfg.SPOTIFY_CLIENT_SECRET = old
+
+
+def test_skill_spiel_plays_best_hit():
+    _reset_webapi()
+    calls: list = []
+    _patch_osa(calls)
+    _patch_http({"tracks": {"items": [{"uri": "spotify:track:t1", "name": "Kids",
+                                       "artists": [{"name": "MGMT"}]}]}})
+    from core.skills import spotify as skill
+    old = (cfg.SPOTIFY_CLIENT_ID, cfg.SPOTIFY_CLIENT_SECRET)
+    try:
+        cfg.SPOTIFY_CLIENT_ID, cfg.SPOTIFY_CLIENT_SECRET = "id", "secret"
+        out = asyncio.run(skill._spotify("spiel", query="kids"))
+    finally:
+        cfg.SPOTIFY_CLIENT_ID, cfg.SPOTIFY_CLIENT_SECRET = old
+    assert out == "▶️ Kids — MGMT"
+    assert calls[-1] == 'tell application "Spotify" to play track "spotify:track:t1"'
+
+
+def test_skill_osascript_error_is_friendly():
+    async def broken(script):
+        raise sp.SpotifyError("kaputt")
+    sp._osascript = broken
+    from core.skills.spotify import _spotify
+    out = asyncio.run(_spotify("play"))
+    assert out.startswith("❌ Spotify nicht steuerbar")
+
+
+def test_spotify_tool_is_registered():
+    import core.skills  # noqa: F401 — löst Registrierung aus
+    from core import tools as T
+    assert "spotify" in T.REGISTRY
+    assert T.REGISTRY["spotify"].category == "spotify"
