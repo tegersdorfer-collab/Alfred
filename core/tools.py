@@ -171,6 +171,9 @@ _CATEGORY_KEYWORDS = {
     "uiauto":       ["bediene", "steuere die app", "klick auf", "klicke auf", "navigiere",
                      "in der app", "im fenster", "button", "knopf", "menü", "ui-automatik",
                      "bedien die", "mach in der app"],
+    "geo":          ["wo ist", "wo liegt", "wo befindet", "koordinaten", "globus",
+                     "weltkarte", "auf der karte", "schlagzeilen", "was ist in der welt",
+                     "weltlage", "news-globus", "welche news", "was gibts an news"],
 }
 
 # Generelle Aktionsverben → es soll etwas GETAN werden

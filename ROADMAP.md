@@ -478,6 +478,32 @@ Code: `tools/flipper/`, `core/skills/flipper.py` · Gedächtnis: `[[mantis-flipp
 
 ---
 
+## News-Globus + OSM (2026-07-10)
+
+Code: `tools/geo/nominatim.py`, `tools/news/` (feeds + geolocate), `core/news_globe.py`,
+`web/routers/globe.py`, `core/skills/geo.py`, Globus/Karten-Views in `web/index.html` ·
+Spec: `docs/superpowers/specs/2026-07-10-news-globe-design.md`
+
+**Fertig (Code + Tests, 740 grün; Pipeline live verifiziert):**
+- [x] **Nominatim-Client** (Geocoding + Ortssuche, Cache, Policy-Drossel, ASCII-User-Agent).
+- [x] **RSS/Atom-Aggregator** (feedparser, Dedup, HTML-Clean).
+- [x] **Geolokalisierung** — Ort aus Schlagzeile via qwen → Nominatim → Koordinate, gecacht.
+      Live getestet: Spanien/Philippinen/Südafrika/Houston korrekt erkannt (5/6 verortet).
+- [x] **News-Globus-Aggregator** (`refresh`/`cache`) + **stündlicher Idle-Loop-Tick**.
+- [x] **API**: `/api/globe/news`, `/api/geo/search` (beide live). Agent-Tools `where_is`, `news_briefing`.
+- [x] **Globus-View** (globe.gl) mit News-Punkten + Klick-Popup + Ortssuche-Anflug.
+- [x] **2D-Karte** (Leaflet, OSM-Kacheln, circleMarker) als eigene View.
+- [x] Config-Defaults (`data/news_sources.json` bzw. `news_sources.example.json`).
+
+**Offen:**
+- [ ] **Visueller Check** von Globus + Karte im Browser (Render, Interaktion) — nur mit Timos Augen.
+- [ ] Themen-News (`topics`) über `web_search` anbinden (aktuell Platzhalter).
+- [ ] Globe.gl/Leaflet per CDN eingebunden (wie chart.js/vis-network); bei Bedarf lokal vendored.
+
+**Später (eigener Spec):** Karten-Analysen.
+
+---
+
 ## UI-Automatik + Spicetify-Bridge (2026-07-10)
 
 Code: `tools/uiauto/` (engine + safety), `core/skills/uiauto.py`, `tools/spotify/bridge.py`,

@@ -1,0 +1,10 @@
+{
+  "_hinweis": "Vorlage für den News-Globus. Nach data/news_sources.json kopieren und anpassen (data/ ist gitignored → deine persönliche Feed-/Themenliste bleibt lokal). Fehlt die Datei, greifen die Defaults in core/news_globe.py.",
+  "feeds": [
+    "https://www.tagesschau.de/index~rss2.xml",
+    "https://feeds.bbci.co.uk/news/world/rss.xml",
+    "https://www.reutersagency.com/feed/?best-topics=top-news&post_type=best",
+    "https://rss.dw.com/rdf/rss-en-world"
+  ],
+  "topics": ["KI", "Formel 1", "Bitcoin"]
+}
