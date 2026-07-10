@@ -196,6 +196,9 @@ class Orchestrator:
         self._bg_tasks = []
         self._register_services()
         await self._init_db()
+        # Ab jetzt (DB bereit) WARNING/ERROR-Logs auch ins Fehler-Widget spiegeln.
+        from core import log_observability
+        log_observability.install()
         await self._init_skills()
         await self._restore_memory()
         await self._warmup()
