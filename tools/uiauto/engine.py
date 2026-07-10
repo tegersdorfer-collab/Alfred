@@ -28,8 +28,10 @@ ACTIONABLE_ROLES: frozenset[str] = frozenset({
     "AXLink", "AXRow", "AXCell", "AXTab",
 })
 
-# Zuletzt erzeugter Snapshot (rohe atomacos-Elemente) — act(ref) findet sie hier.
+# Zuletzt erzeugter Snapshot — act(ref) nutzt die rohen atomacos-Elemente,
+# element(ref) die Dict-Sicht (für den Safety-Check im Skill).
 _last_elements: list = []
+_last_dicts: list[dict] = []
 
 
 # ── atomacos-Grenze (nur live; Tests mocken diese Helfer) ─────────────────────
@@ -140,9 +142,18 @@ def snapshot(app: str | None = None) -> list[dict]:
             "enabled": bool(_attr(raw, "AXEnabled", True)),
         })
         kept.append(raw)
-    global _last_elements
+    global _last_elements, _last_dicts
     _last_elements = kept
+    _last_dicts = out
     return out
+
+
+def element(ref: int) -> dict | None:
+    """Dict-Sicht des Elements aus dem letzten Snapshot (oder None bei ungültigem
+    ref) — für den Safety-Check, bevor act() aufgerufen wird."""
+    if 0 <= ref < len(_last_dicts):
+        return _last_dicts[ref]
+    return None
 
 
 def act(ref: int, action: str = "AXPress") -> None:
