@@ -32,6 +32,7 @@ from . import (
     spotify,
     uiauto,
     geo,
+    email,
 )
 
 # REGISTRY in die ursprüngliche Reihenfolge bringen (select_tools byte-identisch).

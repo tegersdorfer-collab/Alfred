@@ -75,7 +75,15 @@ class _Service:
     def users(self): return self._u
 
 
+# Echte API-Funktionen beim Import sichern — test_email_skill patcht sie global;
+# hier stellen wir sie vor jedem Test wieder her (Test-Isolation).
+_REAL = {n: getattr(gc, n) for n in ("list_unread", "search", "get_message",
+                                     "mark_read", "archive", "send")}
+
+
 def _fake(ids, msgs):
+    for n, f in _REAL.items():
+        setattr(gc, n, f)
     store = {"ids": ids, "msgs": msgs}
     m = _Messages(store)
     gc._get_service = lambda: _Service(m)

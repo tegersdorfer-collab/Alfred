@@ -175,6 +175,9 @@ _CATEGORY_KEYWORDS = {
     "geo":          ["wo ist", "wo liegt", "wo befindet", "koordinaten", "globus",
                      "weltkarte", "auf der karte", "schlagzeilen", "was ist in der welt",
                      "weltlage", "news-globus", "welche news", "was gibts an news"],
+    "email":        ["email", "e-mail", "mail", "mails", "posteingang", "ungelesen",
+                     "postfach", "gmail", "schreib eine mail", "schick eine mail",
+                     "neue mails", "gibt es neue"],
 }
 
 # Generelle Aktionsverben → es soll etwas GETAN werden
