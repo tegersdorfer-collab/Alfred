@@ -82,3 +82,79 @@ def test_current_track_playing():
     t = asyncio.run(sp.current_track())
     assert t is not None
     assert (t.title, t.artist, t.album, t.state) == ("Kids", "MGMT", "Oracular Spectacular", "playing")
+
+from settings import cfg
+from tools.spotify import web_api
+
+
+def _reset_webapi():
+    web_api._token = None
+    web_api._token_expires = 0.0
+
+
+def _patch_http(search_json, token_calls=None):
+    async def fake_token():
+        if token_calls is not None:
+            token_calls.append(1)
+        return {"access_token": "tok123", "expires_in": 3600}
+
+    async def fake_search(params, token):
+        assert token == "tok123"
+        fake_search.last_params = params
+        return search_json
+    web_api._http_post_token = fake_token
+    web_api._http_get_search = fake_search
+    return fake_search
+
+
+# ── Web-API-Suche ─────────────────────────────────────────────────────────────
+
+def test_credentials_missing_detection():
+    old = (cfg.SPOTIFY_CLIENT_ID, cfg.SPOTIFY_CLIENT_SECRET)
+    try:
+        cfg.SPOTIFY_CLIENT_ID, cfg.SPOTIFY_CLIENT_SECRET = "", ""
+        assert web_api.credentials_missing() is True
+        cfg.SPOTIFY_CLIENT_ID, cfg.SPOTIFY_CLIENT_SECRET = "id", "secret"
+        assert web_api.credentials_missing() is False
+    finally:
+        cfg.SPOTIFY_CLIENT_ID, cfg.SPOTIFY_CLIENT_SECRET = old
+
+
+def test_search_prefers_track_and_formats_name():
+    _reset_webapi()
+    _patch_http({
+        "tracks": {"items": [{"uri": "spotify:track:t1", "name": "Kids",
+                              "artists": [{"name": "MGMT"}]}]},
+        "albums": {"items": [{"uri": "spotify:album:a1", "name": "Oracular"}]},
+    })
+    uri, name = asyncio.run(web_api.search("kids"))
+    assert uri == "spotify:track:t1"
+    assert name == "Kids — MGMT"
+
+
+def test_search_type_hint_playlist():
+    _reset_webapi()
+    fake = _patch_http({
+        "playlists": {"items": [{"uri": "spotify:playlist:p1", "name": "Focus Mix"}]},
+    })
+    uri, name = asyncio.run(web_api.search("focus", typ="playlist"))
+    assert uri == "spotify:playlist:p1"
+    assert name == "Focus Mix"
+    assert fake.last_params["type"] == "playlist"
+
+
+def test_search_no_results_returns_none():
+    _reset_webapi()
+    _patch_http({"tracks": {"items": []}, "albums": {"items": []},
+                 "playlists": {"items": []}, "artists": {"items": []}})
+    assert asyncio.run(web_api.search("qqqxyz")) is None
+
+
+def test_token_is_cached():
+    _reset_webapi()
+    token_calls: list = []
+    _patch_http({"tracks": {"items": [{"uri": "spotify:track:t1", "name": "A",
+                                       "artists": [{"name": "B"}]}]}}, token_calls)
+    asyncio.run(web_api.search("a"))
+    asyncio.run(web_api.search("a"))
+    assert len(token_calls) == 1  # zweiter Call nutzt den gecachten Token
