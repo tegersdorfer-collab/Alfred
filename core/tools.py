@@ -168,6 +168,9 @@ _CATEGORY_KEYWORDS = {
                      "leiser", "abspielen", "pausier", "was läuft", "nächstes lied",
                      "spiel mal", "spiel was", "spiel etwas", "spiel mir",
                      "spiel den", "spiel die", "spiel das"],
+    "uiauto":       ["bediene", "steuere die app", "klick auf", "klicke auf", "navigiere",
+                     "in der app", "im fenster", "button", "knopf", "menü", "ui-automatik",
+                     "bedien die", "mach in der app"],
 }
 
 # Generelle Aktionsverben → es soll etwas GETAN werden

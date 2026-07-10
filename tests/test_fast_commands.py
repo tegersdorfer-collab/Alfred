@@ -174,3 +174,28 @@ def test_spiel_control_words_not_query():
     # reine Steuerkommandos landen im play/pause-Pfad oder beim Agenten, nicht als Suche
     assert _m("spiel musik") == ("spotify", {"action": "play"})   # Musik-Kontext → play
     assert match("spiel weiter") is None                          # reines Steuerwort, kein Query
+
+
+# ── Positive: UI-Automatik-Entry (gemma wählt computer_task sonst unzuverlässig) ─
+
+def test_computer_task_routing():
+    fc = match("bediene die app notizen und erstelle eine neue notiz")
+    assert fc is not None
+    assert fc.tool == "computer_task"
+    assert "notizen" in fc.args["goal"].lower()
+
+
+def test_computer_task_steuere():
+    fc = match("steuere die app safari")
+    assert fc and fc.tool == "computer_task"
+
+
+# ── Negativ: kein Fehlalarm ───────────────────────────────────────────────────
+
+def test_uiauto_needs_app_word():
+    assert match("bediene dich am buffet") is None      # kein 'app'
+    assert match("steuere die heizung") is None          # kein 'app'
+
+
+def test_uiauto_question_not_command():
+    assert match("welche app soll ich bedienen?") is None

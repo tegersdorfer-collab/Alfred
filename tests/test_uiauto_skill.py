@@ -1,0 +1,106 @@
+"""Tests für den UI-Automatik-Skill (core/skills/uiauto.py).
+
+Engine gemockt; geprüft werden: Safety-Gate im ui_click (Redline-Element wird
+NICHT an die Engine gereicht), Fehlerbehandlung, und dass computer_task ohne
+Bedienungshilfen-Recht sofort die Setup-Meldung liefert statt den qwen-Loop zu
+starten.
+"""
+
+import asyncio
+import os
+import sys
+
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+from tools.uiauto import engine
+from core.skills import uiauto
+
+
+def _run(coro):
+    return asyncio.run(coro)
+
+
+# ── ui_inspect ────────────────────────────────────────────────────────────────
+
+def test_ui_inspect_formats_elements():
+    engine.snapshot = lambda app=None: [
+        {"ref": 0, "role": "AXButton", "title": "OK", "value": "", "enabled": True},
+        {"ref": 1, "role": "AXTextField", "title": "Suche", "value": "hi", "enabled": True},
+    ]
+    out = _run(uiauto._ui_inspect("Notizen"))
+    assert "ref 0" in out and "OK" in out
+    assert "ref 1" in out and "Suche" in out
+
+
+def test_ui_inspect_reports_permission_error():
+    def boom(app=None):
+        raise engine.UIAutoError("Kein Bedienungshilfen-Recht.")
+    engine.snapshot = boom
+    out = _run(uiauto._ui_inspect(""))
+    assert "❌" in out and "recht" in out.lower()
+
+
+# ── ui_click Safety-Gate ──────────────────────────────────────────────────────
+
+def test_ui_click_blocks_redline():
+    engine.element = lambda ref: {"ref": ref, "role": "AXButton", "title": "Löschen",
+                                   "value": "", "enabled": True}
+    acted = []
+    engine.act = lambda ref, action="AXPress": acted.append(ref)
+    out = _run(uiauto._ui_click(3))
+    assert "⛔" in out
+    assert acted == []          # Engine wurde NICHT aufgerufen
+
+
+def test_ui_click_blocks_secure_field():
+    engine.element = lambda ref: {"ref": ref, "role": "AXSecureTextField", "title": "Passwort",
+                                  "value": "", "enabled": True}
+    acted = []
+    engine.act = lambda ref, action="AXPress": acted.append(ref)
+    out = _run(uiauto._ui_click(0))
+    assert "⛔" in out and acted == []
+
+
+def test_ui_click_performs_normal():
+    engine.element = lambda ref: {"ref": ref, "role": "AXButton", "title": "Weiter",
+                                  "value": "", "enabled": True}
+    acted = []
+    engine.act = lambda ref, action="AXPress": acted.append(ref)
+    out = _run(uiauto._ui_click(2))
+    assert acted == [2] and ("✓" in out or "geklickt" in out.lower())
+
+
+def test_ui_click_invalid_ref():
+    engine.element = lambda ref: None
+    out = _run(uiauto._ui_click(99))
+    assert "❌" in out
+
+
+def test_ui_type_and_key_delegate():
+    calls = []
+    engine.type_text = lambda t: calls.append(("type", t))
+    engine.press_key = lambda c: calls.append(("key", c))
+    _run(uiauto._ui_type("hallo"))
+    _run(uiauto._ui_key("cmd+k"))
+    assert calls == [("type", "hallo"), ("key", "cmd+k")]
+
+
+# ── computer_task ─────────────────────────────────────────────────────────────
+
+def test_computer_task_without_permission_gives_setup():
+    engine.is_trusted = lambda: False
+    built = []
+    uiauto._run_ui_agent = lambda goal, app: built.append(1) or "sollte nicht laufen"
+    out = _run(uiauto._computer_task("irgendwas"))
+    assert "bedienungshilfe" in out.lower() or "recht" in out.lower()
+    assert built == []          # qwen-Loop wurde NICHT gestartet
+
+
+def test_computer_task_runs_agent_when_trusted():
+    engine.is_trusted = lambda: True
+
+    async def fake_agent(goal, app):
+        return f"Habe '{goal}' erledigt (app={app})."
+    uiauto._run_ui_agent = fake_agent
+    out = _run(uiauto._computer_task("Notiz öffnen", app="Notizen"))
+    assert "erledigt" in out and "Notizen" in out

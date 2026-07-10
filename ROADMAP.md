@@ -478,6 +478,37 @@ Code: `tools/flipper/`, `core/skills/flipper.py` · Gedächtnis: `[[mantis-flipp
 
 ---
 
+## UI-Automatik + Spicetify-Bridge (2026-07-10)
+
+Code: `tools/uiauto/` (engine + safety), `core/skills/uiauto.py`, `tools/spotify/bridge.py`,
+`tools/spotify/spicetify_ext/mantis-bridge.js`, `web/routers/spicetify.py` ·
+Spec: `docs/superpowers/specs/2026-07-10-ui-automation-design.md` · Setup: `docs/ui-automation-setup.md`
+
+**Fertig (Code + Tests, 718 grün):**
+- [x] **Generelle UI-Automatik** über die Accessibility-API (OSS-Engine **atomacos**,
+      statt selbst gebaut). Tool `computer_task(goal, app)` startet einen ReAct-Loop
+      auf **qwen3.5:9b** (stärker als gemma) mit den Low-Level-Tools ui_inspect/
+      ui_click/ui_type/ui_key. Electron-Apps werden per `AXManualAccessibility` geweckt.
+- [x] **Rote Linien** (`tools/uiauto/safety.py`): destruktive/riskante Elemente
+      (Löschen/Senden/Kaufen/Passwortfelder) werden in der Primitivschicht hart
+      verweigert — nicht dem Modell überlassen. Token-Matching (keine Teilwort-Fehler).
+- [x] **Fast-Path** für computer_task (gemma wählte es sonst nicht).
+- [x] **Spicetify-Bridge**: Extension (`mantis-bridge.js`) verbindet sich per WebSocket
+      mit `/spicetify/ws`, liefert strukturierte Suche/Track über Spotifys interne APIs
+      (`CosmosAsync`/`Player`) — kein Developer-Key nötig. spotify-Skill bevorzugt die
+      Bridge, fällt sonst auf AppleScript/Web-API zurück.
+- [x] **Engine-Lese-Pfad live verifiziert** (182 echte AX-Elemente gelesen, read-only).
+
+**Offen (braucht Timo am Mac — siehe `docs/ui-automation-setup.md`):**
+- [ ] Bedienungshilfen-Recht für den Mantis-Python-Prozess vergeben → Schreib-Pfad live.
+- [ ] Spicetify-Extension installieren (`spicetify apply`) → Bridge-Handshake live.
+- [ ] qwen-Loop beim ersten echten Einsatz tunen (Element-Wahl, Schrittzahl).
+
+**Bewusst NICHT gebaut:** Vision-Fallback (Screenshot + Koordinaten-Klick) — beide
+gebauten Wege liefern strukturierte Daten; Vision bleibt späterer Notnagel.
+
+---
+
 ## Spotify-Steuerung (2026-07-10)
 
 Code: `tools/spotify/` (applescript + web_api), `core/skills/spotify.py` ·

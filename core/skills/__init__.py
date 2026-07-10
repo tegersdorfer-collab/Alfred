@@ -29,6 +29,7 @@ from . import (
     robot,
     flipper,
     spotify,
+    uiauto,
 )
 
 # REGISTRY in die ursprüngliche Reihenfolge bringen (select_tools byte-identisch).
