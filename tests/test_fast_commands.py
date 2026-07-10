@@ -126,7 +126,9 @@ def test_weiter_in_conversation_not_music():
 
 
 def test_music_question_never_matches():
-    assert match("läuft gerade musik?") is None
+    # "welches lied ist das?" fragt nach Identifikation, nicht nach dem
+    # Wiedergabe-Status → kein Fast-Path. ("läuft gerade musik?" ist dagegen ein
+    # echter Status-Query, siehe test_music_status.)
     assert match("welches lied ist das?") is None
 
 
@@ -135,7 +137,40 @@ def test_music_statement_not_command():
     assert match("ich höre gerade musik und mach dann weiter") is None
 
 
-def test_music_with_query_goes_to_agent():
-    # „von" signalisiert eine Such-Anfrage → Agent (braucht Web-API-Suche)
+def test_music_play_with_source_goes_to_agent():
+    # „mach die musik von queen an" — Steuer-Phrasierung mit Quelle: bleibt beim
+    # Agenten (nur „spiel [X]" wird als Suche deterministisch gefangen).
     assert match("mach die musik von queen an") is None
-    assert match("spiel bohemian rhapsody von queen") is None
+
+
+# ── Positive: Status & Spiel (deterministisch statt unzuverlässiges gemma) ────
+
+def test_music_status():
+    assert _m("was läuft gerade") == ("spotify", {"action": "status"})
+    assert _m("was läuft gerade?") == ("spotify", {"action": "status"})  # Frage → trotzdem Status
+    assert _m("was spielt gerade") == ("spotify", {"action": "status"})
+    assert _m("läuft gerade musik?") == ("spotify", {"action": "status"})
+    assert _m("welches lied läuft") == ("spotify", {"action": "status"})
+
+
+def test_spiel_query():
+    assert _m("spiel kids von mgmt") == ("spotify", {"action": "spiel", "query": "kids von mgmt"})
+    assert _m("spiele bohemian rhapsody") == ("spotify", {"action": "spiel", "query": "bohemian rhapsody"})
+
+
+def test_spiel_playlist_type_hint():
+    assert _m("spiel die playlist focus mix") == (
+        "spotify", {"action": "spiel", "query": "die playlist focus mix", "typ": "playlist"})
+
+
+# ── Negativ: Status/Spiel kapern keine Konversation ──────────────────────────
+
+def test_status_not_general_laeuft():
+    assert match("wie läuft dein tag?") is None      # 'läuft' ohne was/musik/welches
+    assert match("wie läuft es bei dir") is None
+
+
+def test_spiel_control_words_not_query():
+    # reine Steuerkommandos landen im play/pause-Pfad oder beim Agenten, nicht als Suche
+    assert _m("spiel musik") == ("spotify", {"action": "play"})   # Musik-Kontext → play
+    assert match("spiel weiter") is None                          # reines Steuerwort, kein Query
