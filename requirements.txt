@@ -51,3 +51,6 @@ bleak>=3.0.0
 # UI-Automatik — macOS Accessibility (App-Fernsteuerung). Nur macOS; zieht pyobjc.
 # Lazy importiert (tools/uiauto/engine.py) → Mantis startet auch ohne das Paket.
 atomacos>=3.3.0
+
+# News-Globus — RSS/Atom-Parsing
+feedparser>=6.0
