@@ -478,6 +478,30 @@ Code: `tools/flipper/`, `core/skills/flipper.py` · Gedächtnis: `[[mantis-flipp
 
 ---
 
+## Spotify-Steuerung (2026-07-10)
+
+Code: `tools/spotify/` (applescript + web_api), `core/skills/spotify.py` ·
+Spec: `docs/2026-07-10-spotify-control-design.md`
+
+**Fertig:**
+- [x] **Playback lokal per AppleScript** — Tool `spotify` mit play/pause/next/previous,
+      Lautstärke, status („was läuft"), spiel („spiel [X]" via Web-API-Suche). Trotz
+      Spicetify voll steuerbar (nur UI gepatcht). 27 Tests grün, End-to-End live
+      verifiziert (echter Track, next, pause).
+- [x] **Deterministische Fast-Paths** — play/pause/next/prev, status UND „spiel [X]"
+      laufen ohne LLM: Live-Test zeigte, dass gemma bei status Erfolg vortäuscht und
+      „spiel [Song]" gar nicht als Tool anbietet. Status wird vor dem Fragezeichen-Guard
+      gefangen, „spiel [X]" extrahiert den Suchbegriff selbst.
+
+**Offen:**
+- [ ] **Spotify-Web-API-Credentials in `.env`** — für „spiel [X]": kostenlose App auf
+      developer.spotify.com, `SPOTIFY_CLIENT_ID`/`SPOTIFY_CLIENT_SECRET` eintragen.
+      Ohne Credentials liefert „spiel [X]" einen Setup-Hinweis; alles andere läuft.
+- [ ] Free-Tier spielt bei „spiel [Track]" den Album-Kontext (Spotify-Verhalten, kein
+      Bug); auf Premium exakt der Song.
+
+---
+
 ## Offen — externe Abhängigkeiten
 
 Diese Items brauchen externe Infrastruktur oder Hardware die nicht im Code lösbar ist:

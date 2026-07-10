@@ -84,3 +84,93 @@ def test_unrelated_conversation():
 
 def test_empty():
     assert match("") is None
+
+
+# ── Positive: Musik (Spotify) ─────────────────────────────────────────────────
+
+def test_music_play():
+    assert _m("musik an") == ("spotify", {"action": "play"})
+    assert _m("musik weiter") == ("spotify", {"action": "play"})
+    assert _m("spiel musik") == ("spotify", {"action": "play"})
+    assert _m("mach die musik wieder an") == ("spotify", {"action": "play"})
+
+
+def test_music_pause():
+    assert _m("musik pause") == ("spotify", {"action": "pause"})
+    assert _m("stopp die musik") == ("spotify", {"action": "pause"})
+    assert _m("mach die musik aus") == ("spotify", {"action": "pause"})
+
+
+def test_music_next_prev():
+    assert _m("nächstes lied") == ("spotify", {"action": "next"})
+    assert _m("nächster song") == ("spotify", {"action": "next"})
+    assert _m("musik zurück") == ("spotify", {"action": "previous"})
+
+
+def test_music_single_word_commands():
+    assert _m("pause") == ("spotify", {"action": "pause"})
+    assert _m("skip") == ("spotify", {"action": "next"})
+    assert _m("next") == ("spotify", {"action": "next"})
+
+
+# ── Negativ: Musik kapert keine Konversation ─────────────────────────────────
+
+def test_pause_in_sentence_not_music():
+    assert match("ich mach mal pause") is None
+    assert match("lass uns eine pause machen") is None
+
+
+def test_weiter_in_conversation_not_music():
+    assert match("weiter gehts mit dem projekt") is None
+    assert match("erzähl weiter") is None
+
+
+def test_music_question_never_matches():
+    # "welches lied ist das?" fragt nach Identifikation, nicht nach dem
+    # Wiedergabe-Status → kein Fast-Path. ("läuft gerade musik?" ist dagegen ein
+    # echter Status-Query, siehe test_music_status.)
+    assert match("welches lied ist das?") is None
+
+
+def test_music_statement_not_command():
+    assert match("die musik ist aus") is None
+    assert match("ich höre gerade musik und mach dann weiter") is None
+
+
+def test_music_play_with_source_goes_to_agent():
+    # „mach die musik von queen an" — Steuer-Phrasierung mit Quelle: bleibt beim
+    # Agenten (nur „spiel [X]" wird als Suche deterministisch gefangen).
+    assert match("mach die musik von queen an") is None
+
+
+# ── Positive: Status & Spiel (deterministisch statt unzuverlässiges gemma) ────
+
+def test_music_status():
+    assert _m("was läuft gerade") == ("spotify", {"action": "status"})
+    assert _m("was läuft gerade?") == ("spotify", {"action": "status"})  # Frage → trotzdem Status
+    assert _m("was spielt gerade") == ("spotify", {"action": "status"})
+    assert _m("läuft gerade musik?") == ("spotify", {"action": "status"})
+    assert _m("welches lied läuft") == ("spotify", {"action": "status"})
+
+
+def test_spiel_query():
+    assert _m("spiel kids von mgmt") == ("spotify", {"action": "spiel", "query": "kids von mgmt"})
+    assert _m("spiele bohemian rhapsody") == ("spotify", {"action": "spiel", "query": "bohemian rhapsody"})
+
+
+def test_spiel_playlist_type_hint():
+    assert _m("spiel die playlist focus mix") == (
+        "spotify", {"action": "spiel", "query": "die playlist focus mix", "typ": "playlist"})
+
+
+# ── Negativ: Status/Spiel kapern keine Konversation ──────────────────────────
+
+def test_status_not_general_laeuft():
+    assert match("wie läuft dein tag?") is None      # 'läuft' ohne was/musik/welches
+    assert match("wie läuft es bei dir") is None
+
+
+def test_spiel_control_words_not_query():
+    # reine Steuerkommandos landen im play/pause-Pfad oder beim Agenten, nicht als Suche
+    assert _m("spiel musik") == ("spotify", {"action": "play"})   # Musik-Kontext → play
+    assert match("spiel weiter") is None                          # reines Steuerwort, kein Query
