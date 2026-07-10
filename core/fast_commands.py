@@ -37,6 +37,9 @@ _FAN = {"ventilator", "lüfter", "luefter", "fan"}
 _FAN_UP = {"stärker", "staerker", "schneller", "höher", "hoch"}
 _FAN_DOWN = {"schwächer", "schwaecher", "langsamer", "niedriger", "runter"}
 
+_EMAIL = {"mail", "mails", "email", "emails", "postfach", "posteingang"}
+_EMAIL_NEW = {"neue", "neuen", "ungelesene", "ungelesen", "neu"}
+
 _ROBOT = {"roboter", "robot", "droide", "droid", "x5"}
 _STOP = {"stopp", "stop", "stoppen", "halt", "anhalten"}
 _HARD_STOP = {"notaus", "notstopp", "nothalt", "notstop"}
@@ -70,6 +73,12 @@ def match(text: str) -> FastCommand | None:
     # statt den echten Track abzufragen.
     if (w & _MUSIC_STATUS) and ("was" in w or "welches" in w or "welcher" in w or w & _MUSIC):
         return FastCommand("spotify", {"action": "status"}, "musik-status")
+
+    # ── Email-Lese-Abfrage ("neue mails?") ────────────────────────────────────
+    # Ebenfalls inhärent eine Frage → vor dem Fragezeichen-Guard. Nur die Lese-
+    # Absicht (unread/Posteingang); Senden/Suchen brauchen Parameter → Agent.
+    if (w & _EMAIL) and (w & _EMAIL_NEW or "posteingang" in w):
+        return FastCommand("email_unread", {}, "email-unread")
 
     if "?" in text:
         return None  # Fragen sind keine Befehle

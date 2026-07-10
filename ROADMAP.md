@@ -478,6 +478,26 @@ Code: `tools/flipper/`, `core/skills/flipper.py` · Gedächtnis: `[[mantis-flipp
 
 ---
 
+## Ventilator-IR + Gmail (Vorbereitung, 2026-07-10)
+
+Code: `core/skills/ventilator.py`, `tools/flipper/remotes.json`; `domains/gmail_client.py`,
+`core/skills/email.py`, `scripts/gmail_auth.py` · Spec: `docs/superpowers/specs/2026-07-10-fan-gmail-prep-design.md` ·
+Setup: `docs/fan-gmail-setup.md`
+
+**Fertig (Scaffolding, Tests grün, degradiert live sauber):**
+- [x] **Ventilator per Flipper-IR** — Tool `ventilator` (an/aus/stärker/schwächer + schritte) +
+      Fast-Paths, klont Lampen-Muster. remotes.json-Platzhalter (`learned:false`) → „nicht
+      angelernt"-Meldung, bis Timo die Codes einträgt.
+- [x] **Gmail** — `gmail_client.py` (OAuth-Spiegel von gcal, Scope modify+send): list/search/
+      read/mark_read/archive/send. `email_*`-Tools; **Senden über Entwurf-Gate** (confirm).
+      `scripts/gmail_auth.py` (Port 8082). Fast-Path für „neue mails?" → email_unread.
+
+**Offen (braucht Timos Daten — siehe `docs/fan-gmail-setup.md`):**
+- [ ] Ventilator: echte IR-Codes aufnehmen, in remotes.json eintragen (`learned:true`).
+- [ ] Gmail: Gmail-API in der Cloud Console aktivieren, `python scripts/gmail_auth.py` ausführen.
+
+---
+
 ## News-Globus + OSM (2026-07-10)
 
 Code: `tools/geo/nominatim.py`, `tools/news/` (feeds + geolocate), `core/news_globe.py`,

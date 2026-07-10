@@ -218,3 +218,18 @@ def test_fan_speed():
 def test_fan_negatives():
     assert match("läuft der ventilator?") is None            # Frage
     assert match("ich hätte gern einen ventilator") is None  # kein Kommando-Verb, zu lang
+
+
+# ── Positive: Email-Lese-Abfrage (inhärent Frage; gemma erfindet sonst) ────────
+
+def test_email_unread_query():
+    assert _m("hab ich neue mails?") == ("email_unread", {})
+    assert _m("ungelesene mails") == ("email_unread", {})
+    assert _m("zeig mir den posteingang") == ("email_unread", {})
+    assert _m("gibt es neue emails?") == ("email_unread", {})
+
+
+def test_email_negatives():
+    assert match("schreib eine mail an bob") is None       # Senden → Agent (braucht Params)
+    assert match("wie war dein tag?") is None
+    assert match("ist die mail von der bank wichtig?") is None  # kein neu/posteingang
