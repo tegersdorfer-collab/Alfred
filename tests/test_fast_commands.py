@@ -199,3 +199,37 @@ def test_uiauto_needs_app_word():
 
 def test_uiauto_question_not_command():
     assert match("welche app soll ich bedienen?") is None
+
+
+# ── Positive: Ventilator ──────────────────────────────────────────────────────
+
+def test_fan_on_off():
+    assert _m("ventilator an") == ("ventilator", {"action": "an"})
+    assert _m("ventilator aus") == ("ventilator", {"action": "aus"})
+    assert _m("mach den ventilator an") == ("ventilator", {"action": "an"})
+
+
+def test_fan_speed():
+    assert _m("ventilator stärker") == ("ventilator", {"action": "staerker"})
+    assert _m("ventilator schwächer") == ("ventilator", {"action": "schwaecher"})
+    assert _m("mach den ventilator schneller") == ("ventilator", {"action": "staerker"})
+
+
+def test_fan_negatives():
+    assert match("läuft der ventilator?") is None            # Frage
+    assert match("ich hätte gern einen ventilator") is None  # kein Kommando-Verb, zu lang
+
+
+# ── Positive: Email-Lese-Abfrage (inhärent Frage; gemma erfindet sonst) ────────
+
+def test_email_unread_query():
+    assert _m("hab ich neue mails?") == ("email_unread", {})
+    assert _m("ungelesene mails") == ("email_unread", {})
+    assert _m("zeig mir den posteingang") == ("email_unread", {})
+    assert _m("gibt es neue emails?") == ("email_unread", {})
+
+
+def test_email_negatives():
+    assert match("schreib eine mail an bob") is None       # Senden → Agent (braucht Params)
+    assert match("wie war dein tag?") is None
+    assert match("ist die mail von der bank wichtig?") is None  # kein neu/posteingang

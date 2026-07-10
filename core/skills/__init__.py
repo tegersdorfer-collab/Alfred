@@ -28,9 +28,11 @@ from . import (
     vision,
     robot,
     flipper,
+    ventilator,
     spotify,
     uiauto,
     geo,
+    email,
 )
 
 # REGISTRY in die ursprüngliche Reihenfolge bringen (select_tools byte-identisch).

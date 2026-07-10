@@ -13,5 +13,16 @@
       "gruen":     {"protocol": "NECext", "address": "EF00", "command": "FA05"},
       "blau":      {"protocol": "NECext", "address": "EF00", "command": "F906"}
     }
+  },
+  "ventilator": {
+    "label": "Ventilator",
+    "note": "Codes NOCH NICHT angelernt. Per Flipper 'ir rx' aufnehmen, protocol/address/command füllen und learned auf true setzen.",
+    "learned": false,
+    "signals": {
+      "an":         {"protocol": "", "address": "", "command": ""},
+      "aus":        {"protocol": "", "address": "", "command": ""},
+      "staerker":   {"protocol": "", "address": "", "command": ""},
+      "schwaecher": {"protocol": "", "address": "", "command": ""}
+    }
   }
 }
