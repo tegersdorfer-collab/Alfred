@@ -14,9 +14,16 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from core import news_globe
 from tools.news import feeds, geolocate
 
+# Echte Implementierungen beim Import sichern — andere Testmodule patchen
+# cached/cached_geo global; hier stellen wir sie wieder her (Test-Isolation).
+_REAL_CACHED = news_globe.cached
+_REAL_CACHED_GEO = news_globe.cached_geo
+
 
 def _setup(raw_items, geo_map):
     store = {"data": []}
+    news_globe.cached = _REAL_CACHED
+    news_globe.cached_geo = _REAL_CACHED_GEO
     news_globe._write_cache = lambda items: store.__setitem__("data", items)
     news_globe._read_cache = lambda: store["data"]
 
