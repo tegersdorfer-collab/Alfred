@@ -54,8 +54,10 @@ class MantisSettings(BaseSettings):
     # ── Background-LLM Routing ────────────────────────────────────────────────
     # Default: qwen3.5:9b für Memory, Review, Konsolidierung
     BG_DEFAULT_MODEL: str = ""          # leer = OLLAMA_MODEL
-    # Reasoning-Spezialist für Briefings, Insights, Pattern-Detection
-    BG_REASONING_MODEL: str = "deepseek-r1:14b"
+    # Reasoning-Spezialist für Briefings, Insights, Pattern-Detection.
+    # Benchmark 2026-07-09: qwen3.5:9b (8.4/10 @ 7s) schlug deepseek-r1:14b sowohl
+    # ohne (6.6 @ 70s) als auch MIT Thinking (7.2 @ 37s) — bei 4-5× weniger Latenz.
+    BG_REASONING_MODEL: str = "qwen3.5:9b"
     # Code-Spezialist für create_skill / Skill-Factory. Benchmark 2026-07-09:
     # ornith:9b war der beste Coder im Feld (8.7/10) und schneller als qwen3.5.
     BG_CODE_MODEL: str = "ornith:9b"
