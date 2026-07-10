@@ -13,6 +13,7 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/marked@9.1.6/marked.min.js"></script>
 <script src="https://unpkg.com/vis-network@9.1.9/standalone/umd/vis-network.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/globe.gl@2.46.1/dist/globe.gl.min.js"></script>
 <style>
 /* ── Design Tokens ──────────────────────────────────── */
 :root{
@@ -339,7 +340,8 @@ const API=location.origin; let CUR='home'; let charts={};
 const NAV=[['home','⌂','Home'],['chat','◎','Chat'],['body','♡','Health'],['habits','▣','Habits'],
   ['tasks','◻','Tasks'],['calendar','⊟','Kalender'],['nutrition','⊕','Ernährung'],
   ['journal','▤','Journal'],['goals','◈','Ziele'],['brain','⬡','Brain'],
-  ['memory','◈','Memory'],['mind','◬','A.I. Mind'],['analytics','⌇','Analytics'],['settings','⚙','Settings']];
+  ['memory','◈','Memory'],['mind','◬','A.I. Mind'],['analytics','⌇','Analytics'],
+  ['globe','🌍','Globus'],['settings','⚙','Settings']];
 
 const $=(s,r=document)=>r.querySelector(s);
 const el=(h)=>{const d=document.createElement('div');d.innerHTML=h.trim();return d.firstChild;};
@@ -2060,6 +2062,48 @@ async function brainSortInbox(){
   }catch(e){toast('Fehler beim Sortieren');}
   if(btn)btn.textContent='⟳ Inbox sortieren';
 }
+
+VIEWS.globe=async(root)=>{
+  root.innerHTML=`
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;flex-wrap:wrap">
+      <h2 style="margin:0;font-size:17px">🌍 News-Globus</h2>
+      <span id="gStatus" style="font-size:12px;color:var(--t2)">lädt…</span>
+      <div style="flex:1"></div>
+      <input id="gSearch" placeholder="Ort suchen…" style="height:32px;width:150px;background:var(--s1);border:1px solid var(--bd);border-radius:6px;color:var(--tx);padding:0 10px;font-size:13px">
+      <button class="btn-g" id="gGo" style="height:32px">Flieg hin</button>
+    </div>
+    <div id="globeBox" style="width:100%;height:70vh;min-height:360px;border:1px solid var(--bd);border-radius:12px;overflow:hidden;background:#000;position:relative"></div>
+    <div style="font-size:11px;color:var(--t2);margin-top:6px">Punkte = geolokalisierte Schlagzeilen · Klick öffnet die Quelle · Karten © OpenStreetMap/Nominatim</div>`;
+  const box=$('#globeBox',root);
+  if(typeof Globe==='undefined'){ box.innerHTML='<div style="padding:20px;color:var(--t2)">Globus-Bibliothek konnte nicht geladen werden (offline?).</div>'; return; }
+  let items=[];
+  try{ const r=await api('/api/globe/news'); items=r.items||[]; }catch(e){}
+  $('#gStatus',root).textContent = items.length ? `${items.length} verortete Meldungen` : 'noch keine verorteten News';
+  const w=box.clientWidth||800, h=box.clientHeight||480;
+  const g=Globe()(box)
+    .width(w).height(h)
+    .globeImageUrl('https://cdn.jsdelivr.net/npm/three-globe/example/img/earth-blue-marble.jpg')
+    .bumpImageUrl('https://cdn.jsdelivr.net/npm/three-globe/example/img/earth-topology.png')
+    .backgroundImageUrl('https://cdn.jsdelivr.net/npm/three-globe/example/img/night-sky.png')
+    .pointsData(items)
+    .pointLat('lat').pointLng('lon')
+    .pointColor(()=> '#00e5a0')
+    .pointAltitude(0.02).pointRadius(0.4)
+    .pointLabel(d=>`<div style="font:12px Inter,sans-serif;color:#fff;max-width:220px"><b>${esc(d.title)}</b><br><span style="opacity:.7">${esc(d.place||'')} · ${esc(d.source||'')}</span></div>`)
+    .onPointClick(d=>{
+      sheet(`<div class="sheet-handle"></div><div style="font-size:12px;color:var(--t2);margin-bottom:4px">${esc(d.place||'')} · ${esc(d.source||'')}</div><div style="font-size:15px;font-weight:600;margin-bottom:10px;line-height:1.35">${esc(d.title)}</div><div style="font-size:13px;color:var(--t2);margin-bottom:16px;line-height:1.5">${esc((d.summary||'').slice(0,240))}</div>${d.link?`<a href="${esc(d.link)}" target="_blank" rel="noopener" class="btn-g" style="display:inline-flex;align-items:center;height:36px;padding:0 14px;text-decoration:none">Quelle öffnen ↗</a>`:''}`);
+    });
+  try{ g.controls().autoRotate=true; g.controls().autoRotateSpeed=0.35; }catch(e){}
+  async function flyTo(){
+    const q=$('#gSearch',root).value.trim(); if(!q)return;
+    try{ const r=await api('/api/geo/search?q='+encodeURIComponent(q)); const hit=(r.results||[])[0];
+      if(hit){ g.pointOfView({lat:hit.lat,lng:hit.lon,altitude:1.6},1200); toast('📍 '+hit.display_name.split(',')[0]); }
+      else toast('Ort nicht gefunden'); }catch(e){ toast('Suche fehlgeschlagen'); }
+  }
+  $('#gGo',root).onclick=flyTo;
+  $('#gSearch',root).onkeydown=e=>{ if(e.key==='Enter')flyTo(); };
+  root._cleanup=()=>{ try{ g.pauseAnimation(); g._destructor&&g._destructor(); }catch(e){} };
+};
 
 VIEWS.settings=async(root)=>{
   const s=await api('/api/settings');const tools=await api('/api/tools');const cats={};tools.forEach(t=>(cats[t.category]=cats[t.category]||[]).push(t));

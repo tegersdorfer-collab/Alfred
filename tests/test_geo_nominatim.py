@@ -53,3 +53,8 @@ def test_search_returns_list():
     assert len(res) == 2
     assert res[0]["display_name"].startswith("New York")
     assert res[0]["lat"] == 40.7 and "type" in res[0]
+
+
+def test_user_agent_is_ascii():
+    # HTTP-Header müssen ASCII sein — sonst UnicodeEncodeError beim Request (live gefangen).
+    nominatim._USER_AGENT.encode("ascii")

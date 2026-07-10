@@ -14,7 +14,7 @@ import httpx
 
 log = logging.getLogger("core.news")
 
-_USER_AGENT = "Mantis/1.0 (persönlicher Assistent)"
+_USER_AGENT = "Mantis/1.0 (personal assistant)"  # ASCII — HTTP-Header dürfen kein ö/ä
 _TAG_RE = re.compile(r"<[^>]+>")
 
 

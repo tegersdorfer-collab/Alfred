@@ -17,7 +17,7 @@ import httpx
 log = logging.getLogger("core.geo")
 
 _BASE = "https://nominatim.openstreetmap.org/search"
-_USER_AGENT = "Mantis/1.0 (persönlicher Assistent; lokaler Betrieb)"
+_USER_AGENT = "Mantis/1.0 (personal assistant; local)"  # ASCII — HTTP-Header dürfen kein ö/ä
 _MIN_INTERVAL = 1.1  # Sekunden zwischen Live-Calls (Policy)
 
 _CACHE_PATH = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(

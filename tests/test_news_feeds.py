@@ -76,3 +76,7 @@ def test_fetch_all_dedups_by_link():
 def test_fetch_feed_empty_on_blank():
     _patch({})
     assert asyncio.run(feeds.fetch_feed("nope")) == []
+
+
+def test_user_agent_is_ascii():
+    feeds._USER_AGENT.encode("ascii")
