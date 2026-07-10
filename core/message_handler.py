@@ -10,7 +10,7 @@ import time
 from communication.base import IncomingMessage
 from core.background_review import run_background_review
 from core.status import BUS
-from core import skills, db, ui_state
+from core import skills, db, ui_state, fast_commands
 
 log = logging.getLogger(__name__)
 
@@ -155,6 +155,19 @@ class MessageHandler:
                           stream_cb=None, agent=None) -> tuple[str, list]:
         """Prompt bauen, Tools wählen, Agent laufen lassen — mit Fehler-Fallback."""
         agent = agent or self.agent
+
+        # Deterministischer Fast-Path für kritische Fixbefehle (Licht, Not-Stopp):
+        # ruft das Tool DIREKT, ohne LLM — 100% zuverlässig, sofort, modellunabhängig.
+        # (Kleine Modelle täuschen sonst unter dem großen Prompt Erfolg vor.)
+        fast = fast_commands.match(text)
+        if fast is not None:
+            try:
+                result = await skills.T.execute(fast.tool, fast.args)
+            except Exception as e:
+                result = f"❌ {fast.tool} fehlgeschlagen: {e}"
+            log.info("⚡ Fast-Path %s → %s(%s)", fast.label, fast.tool, fast.args)
+            return result, [{"tool": fast.tool, "args": fast.args, "result": result[:500]}]
+
         system = await self.prompt_builder.build(text)
         allowed = skills.T.select_tools(text)
         force_tools = bool(allowed) and skills.T.is_action(text)
