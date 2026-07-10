@@ -77,19 +77,19 @@ Zuerst die volle Ideen-Sammlung nach Thema, danach die Priorisierung nach **Effe
 
 ### 🏆 Priorisierung nach Effekt
 
-**Tier 1 — Jetzt (höchster Hebel, meist geringes Risiko)**
-1. **Branch → main mergen** — 29 Commits Wert (inkl. aller Bugfixes) stranden auf einem Feature-Branch; null Aufwand, hoher Verlust-Regret. Muss zuerst.
-2. **CI: Tests automatisch** — 593 Tests nützen nichts, wenn sie nicht bei jedem Commit laufen; multipliziert die gesamte Test-Arbeit, verhindert Regressionen.
-3. **Backup-Restore verifizieren** — Datenverlust ist der Worst Case für ein Gedächtnis-System; ungetesteter Restore = Scheinsicherheit.
-4. **Externer Trigger-/Not-Stopp-Endpunkt** — schaltet gleich mehrere offene Punkte frei (Robot-Not-Stopp, Automationen); heute nur per Neustart lösbar.
-5. **Bluetooth-Patch-Automatik** — sonst bricht die ganze Robot-Integration still bei jedem Python-Update.
+**Tier 1 — ✅ ERLEDIGT (2026-07-09)**
+1. ✅ **Branch → main mergen** — 30 Commits per Fast-Forward auf main, gepusht.
+2. ✅ **CI: Tests automatisch** — GitHub Actions (pytest, in frischem venv validiert), grün.
+3. ✅ **Backup-Restore verifizieren** — Restore in Wegwerf-DB + Sanity-Check, wöchentlich automatisch, live bewiesen.
+4. ✅ **Externer Trigger-/Not-Stopp-Endpunkt** — POST /api/trigger/estop (Token), 0.04s.
+5. ✅ **Bluetooth-Patch-Automatik** — Crash-Schutz (erkennt fehlendes Entitlement) + scripts/fix_bluetooth.sh.
 
-**Tier 2 — Bald (hoher UX-/Reliability-Effekt)**
-6. **Streaming LLM→TTS** — größter spürbarer Latenz-Hebel im täglichen Sprachbetrieb.
-7. **Type-Checking + Linting in CI** — hätte mehrere der 8 gefundenen Bugs vorab gefangen (falsche Spalten, dict/dataclass).
-8. **Fehler-Observability** — die stillen Degradationen sichtbar machen, bevor sie (wie die 5 toten Features) monatelang unbemerkt bleiben.
-9. **Wake-Word + Silero VAD** — macht Voice erst wirklich hands-free/alltagstauglich.
-10. **Memory-Konfliktauflösung** — verhindert, dass das Gedächtnis über Zeit widersprüchlich wird (Kern des Produkts).
+**Tier 2 — teilweise erledigt**
+6. **Streaming LLM→TTS** — größter spürbarer Latenz-Hebel. ⏸ Braucht Live-Audio-Test (mit Timo am Mikrofon).
+7. ✅ **Linting in CI** — ruff-Gate (F/E9), Codebase bereinigt (601 tote Imports, 1× F821 gefunden). Type-Checking (mypy) noch offen (Code untypisiert → separater Annotations-Aufwand).
+8. ✅ **Fehler-Observability** — WARNING/ERROR-Logs fließen dedupliziert ins Dashboard-Fehler-Widget.
+9. **Wake-Word + Silero VAD** — hands-free. ⏸ Braucht Live-Audio-Test.
+10. ✅ **Memory-Konfliktauflösung** — überholte Fakten werden abgewertet statt akkumuliert (ADD-only-treu).
 
 **Tier 3 — Später (konkrete Features, klarer Nutzen)**
 11. X5 Weck-Routine — der emotional greifbarste HW-Use-Case.
