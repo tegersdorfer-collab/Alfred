@@ -18,4 +18,5 @@ bleak>=3.0.0
 icalendar>=5.0
 python-telegram-bot>=21.0
 psutil>=5.9
+feedparser>=6.0
 pytest>=8.0
