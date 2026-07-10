@@ -253,7 +253,7 @@ class MemoryExtractor:
                     continue
 
                 # ── 6. Neu speichern ───────────────────────────────────────
-                await asyncio.to_thread(
+                new_id = await asyncio.to_thread(
                     self._lzg.save,
                     text, embedding, category, confidence,
                     {"source": "auto_extract"},
@@ -261,6 +261,16 @@ class MemoryExtractor:
                 existing_texts.append(text)   # Intra-Batch-Dedup aktualisieren
                 saved += 1
                 log.info(f"🧠 Neues Gedächtnis [{category}]: {text}")
+
+                # ── 6b. Konfliktauflösung: überholt der neue Fakt einen alten? ──
+                # (z.B. Umzug → alter Wohnort abwerten). Guarded: darf die
+                # Extraktion nie kippen.
+                try:
+                    from memory import conflict
+                    judge = conflict.make_llm_judge(self._client, config.AGENT_MODEL_FAST)
+                    await conflict.resolve(self._lzg, new_id, text, embedding, judge)
+                except Exception as e:
+                    log.debug(f"Konfliktauflösung übersprungen: {e}")
 
             except Exception as e:
                 log.debug(f"Extraktor Vektor-Schritt fehlgeschlagen: {e}")

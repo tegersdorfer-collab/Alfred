@@ -274,6 +274,19 @@ class LZG:
             (confidence, memory_id),
         )
 
+    def supersede(self, old_id: int, new_id: int, factor: float = 0.4) -> None:
+        """Wertet einen überholten Fakt ab, statt ihn zu löschen (ADD-only-treu).
+
+        Die Konfidenz wird multiplikativ gesenkt (Untergrenze 0.05, damit die
+        Historie erhalten bleibt), und in metadata wird `superseded_by` vermerkt.
+        Dadurch verliert der alte Fakt im Recall gegen den neuen, ohne dass Wissen
+        hart verloren geht."""
+        _db.execute(
+            "UPDATE memories SET confidence = GREATEST(0.05, confidence * %s), "
+            "metadata = COALESCE(metadata, '{}'::jsonb) || %s::jsonb WHERE id = %s",
+            (factor, json.dumps({"superseded_by": new_id}), old_id),
+        )
+
     def delete(self, memory_id: int) -> None:
         _db.execute("DELETE FROM memories WHERE id = %s", (memory_id,))
 
