@@ -22,19 +22,42 @@
     return;
   }
 
-  function bestHit(json, preferred) {
-    const order = preferred ? [preferred] : ["track", "album", "playlist", "artist"];
+  function nameOf(d) {
+    let n = d.name || (d.profile && d.profile.name) || "";
+    const arts = d.artists && d.artists.items;
+    if (arts && arts.length) {
+      n += " — " + arts.map((a) => (a.profile && a.profile.name) || a.name || "")
+        .filter(Boolean).join(", ");
+    }
+    return n || "?";
+  }
+
+  function _itemData(it) {
+    return (it && it.item && it.item.data) || (it && it.data) || it;
+  }
+
+  // Gezielter Parser auf die searchV2-Trefferlisten. Bevorzugt Tracks, dann
+  // Album/Playlist/Artist, dann Top-Result. `typ` erzwingt eine Kategorie.
+  function pickBest(data, typ) {
+    const s = data && (data.searchV2 || data.search || data.searchModalResults || data);
+    if (!s) return null;
+    const buckets = {
+      track: s.tracksV2 && s.tracksV2.items,
+      album: (s.albumsV2 || s.albums) && (s.albumsV2 || s.albums).items,
+      playlist: (s.playlistsV2 || s.playlists) && (s.playlistsV2 || s.playlists).items,
+      artist: (s.artistsV2 || s.artists) && (s.artistsV2 || s.artists).items,
+    };
+    const order = typ ? [typ] : ["track", "album", "playlist", "artist"];
     for (const kind of order) {
-      const items = (json[kind + "s"] && json[kind + "s"].items) || [];
-      for (const it of items) {
-        if (it && it.uri) {
-          let name = it.name || "?";
-          if (kind === "track" && it.artists && it.artists.length) {
-            name += " — " + it.artists.map((a) => a.name).join(", ");
-          }
-          return { uri: it.uri, name };
-        }
+      for (const it of buckets[kind] || []) {
+        const d = _itemData(it);
+        if (d && d.uri) return { uri: d.uri, name: nameOf(d) };
       }
+    }
+    const top = s.topResults && (s.topResults.itemsV2 || s.topResults.items);
+    for (const it of top || []) {
+      const d = _itemData(it);
+      if (d && d.uri) return { uri: d.uri, name: nameOf(d) };
     }
     return null;
   }
@@ -43,13 +66,24 @@
     const P = Spicetify.Player;
     switch (method) {
       case "search": {
-        const q = encodeURIComponent(params.query || "");
-        const types = params.typ || "track,album,playlist,artist";
-        const url =
-          "https://api.spotify.com/v1/search?q=" + q +
-          "&type=" + types + "&limit=3&market=from_token";
-        const json = await Spicetify.CosmosAsync.get(url);
-        return bestHit(json, params.typ);
+        // Interne GraphQL-Suche (externe fetch()->api.spotify.com wird vom Client
+        // geblockt: code 429 'Failed to fetch').
+        const GQL = Spicetify.GraphQL;
+        if (!GQL || !GQL.Definitions) throw new Error("Spicetify.GraphQL fehlt");
+        const def = GQL && GQL.Definitions &&
+          (GQL.Definitions.searchModalResults || GQL.Definitions.searchDesktop);
+        // Ohne Definition oder bei Fehler: als "nicht verfügbar" werfen → Mantis
+        // fällt sauber auf den Web-API-Weg zurück (statt Fehler-Spam).
+        if (!def) throw new Error("Client-Suche nicht verfügbar");
+        let res;
+        try {
+          res = await GQL.Request(def, {
+            searchTerm: params.query || "", offset: 0, limit: 8, numberOfTopResults: 5,
+          });
+        } catch (e) {
+          throw new Error("Client-Suche nicht verfügbar (GraphQL)");
+        }
+        return pickBest(res && res.data, params.typ);  // null = kein Treffer
       }
       case "now_playing": {
         const d = P.data || {};
