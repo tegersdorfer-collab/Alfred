@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { filterGraph, neighborsOf } from './knowledge-graph-overlay';
+import { filterGraph, neighborsOf, forceLayout } from './knowledge-graph-overlay';
 
 const G = {
   nodes: [
@@ -23,6 +23,29 @@ describe('filterGraph', () => {
 
   it('leere Auswahl = alles', () => {
     expect(filterGraph(G, []).nodes.length).toBe(3);
+  });
+});
+
+describe('forceLayout', () => {
+  it('platziert jeden Knoten innerhalb der Bounds', () => {
+    const pos = forceLayout(G.nodes, G.edges, 1000, 680, 40);
+    expect(pos.size).toBe(3);
+    for (const p of pos.values()) {
+      expect(p.x).toBeGreaterThanOrEqual(0);
+      expect(p.x).toBeLessThanOrEqual(1000);
+      expect(p.y).toBeGreaterThanOrEqual(0);
+      expect(p.y).toBeLessThanOrEqual(680);
+    }
+  });
+
+  it('ist deterministisch (gleicher Input → gleiches Layout)', () => {
+    const a = forceLayout(G.nodes, G.edges, 1000, 680, 40);
+    const b = forceLayout(G.nodes, G.edges, 1000, 680, 40);
+    expect([...a.entries()]).toEqual([...b.entries()]);
+  });
+
+  it('leerer Graph → leere Positionen', () => {
+    expect(forceLayout([], [], 1000, 680).size).toBe(0);
   });
 });
 

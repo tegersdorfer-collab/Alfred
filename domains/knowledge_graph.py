@@ -40,6 +40,23 @@ def find_mentions(notes: list[dict], entities: list[dict]) -> list[dict]:
     return mentions
 
 
+def similar_edges(candidates: list[dict], max_dist: float = 0.35) -> list[dict]:
+    """Embedding-Nachbarn zu ungerichteten Ähnlichkeits-Kanten verdichten:
+    Selbstkanten raus, symmetrische Duplikate zusammenfassen, Distanz-Schwelle."""
+    seen: set[tuple] = set()
+    out: list[dict] = []
+    for c in candidates:
+        a, b = c["from_id"], c["to_id"]
+        if a == b or c.get("dist", 0.0) > max_dist:
+            continue
+        key = (a, b) if a < b else (b, a)
+        if key in seen:
+            continue
+        seen.add(key)
+        out.append({"from_id": key[0], "to_id": key[1]})
+    return out
+
+
 def unified_graph(
     notes: list[dict],
     entities: list[dict],
@@ -47,6 +64,7 @@ def unified_graph(
     note_links: list[dict],
     relations: list[dict],
     mentions: list[dict],
+    similar: list[dict] | None = None,
     kinds: set[str] | None = None,
 ) -> dict:
     """→ {"nodes": [...], "edges": [...]} mit knoten-`kind` (note|entity|fact) und
@@ -96,5 +114,7 @@ def unified_graph(
                  rel.get("predicate"))
     for men in mentions:
         add_edge(f"note:{men['note_id']}", f"entity:{men['entity_id']}", "mention")
+    for sim in similar or []:
+        add_edge(f"note:{sim['from_id']}", f"note:{sim['to_id']}", "similar")
 
     return {"nodes": nodes, "edges": edges}

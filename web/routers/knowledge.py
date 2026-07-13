@@ -8,7 +8,7 @@ from pathlib import Path
 from fastapi import APIRouter, Request
 
 from core import db
-from domains.knowledge_graph import find_mentions, unified_graph
+from domains.knowledge_graph import find_mentions, similar_edges, unified_graph
 
 from web.routers._helpers import _jsonable
 
@@ -75,8 +75,29 @@ def build_router(orch=None) -> APIRouter:
                  if link["from_id"] in note_ids and link["to_id"] in note_ids]
         relations = db.query("SELECT subject_id, object_id, predicate FROM kg_relations")
         mentions = find_mentions(notes, entities)
+        # Ähnlichkeits-Kanten: je Notiz die 3 nächsten via Embedding (pgvector).
+        # Robust gekapselt — ohne pgvector/Embeddings bleibt der Graph einfach ohne.
+        similar: list[dict] = []
+        try:
+            sim_rows = db.query(
+                """
+                SELECT a.id AS from_id, b.id AS to_id, (a.embedding <=> b.embedding) AS dist
+                FROM brain_notes a
+                CROSS JOIN LATERAL (
+                    SELECT id, embedding FROM brain_notes
+                    WHERE id <> a.id AND embedding IS NOT NULL AND status='active'
+                    ORDER BY a.embedding <=> embedding LIMIT 3
+                ) b
+                WHERE a.embedding IS NOT NULL AND a.status='active'
+                """
+            )
+            similar = similar_edges(
+                [{"from_id": r["from_id"], "to_id": r["to_id"], "dist": float(r["dist"])}
+                 for r in sim_rows if r["from_id"] in note_ids and r["to_id"] in note_ids])
+        except Exception as e:  # noqa: BLE001
+            log.info("Ähnlichkeits-Kanten übersprungen: %s", e)
         graph = unified_graph(notes, entities, facts, links, relations, mentions,
-                              kinds=kind_set or None)
+                              similar=similar, kinds=kind_set or None)
         return _jsonable(graph)
 
     @router.get("/api/knowledge/heatmap")
