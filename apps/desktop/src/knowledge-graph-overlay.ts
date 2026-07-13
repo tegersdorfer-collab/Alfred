@@ -1,0 +1,132 @@
+// Wissensgraph-Overlay — Vollbild-Ansicht des vereinten Graphen (Notizen +
+// Entitäten + Fakten). Holt /api/knowledge/graph, rendert ein Knoten-Kanten-Bild
+// mit Kind-Filter + Klick-Detail. Öffnen per Cmd/Ctrl+K-Kachel "Wissen" oder
+// CustomEvent 'open-knowledge'. Reine Helfer (filterGraph/neighborsOf) sind getestet.
+
+export type GNode = { id: string; kind: string; label: string; group: string; color: string; size: number };
+export type GEdge = { from: string; to: string; kind: string; label?: string };
+export type Graph = { nodes: GNode[]; edges: GEdge[] };
+
+const KINDS = ['note', 'entity', 'fact'] as const;
+const KIND_LABELS: Record<string, string> = { note: 'Notizen', entity: 'Entitäten', fact: 'Fakten' };
+const EDGE_COLORS: Record<string, string> = {
+  link: 'rgba(0,229,255,0.35)', relation: 'rgba(245,196,81,0.4)', mention: 'rgba(126,224,129,0.35)',
+};
+
+export function filterGraph(data: Graph, kinds: string[]): Graph {
+  if (!kinds || kinds.length === 0) return data;
+  const set = new Set(kinds);
+  const nodes = data.nodes.filter((n) => set.has(n.kind));
+  const present = new Set(nodes.map((n) => n.id));
+  const edges = data.edges.filter((e) => present.has(e.from) && present.has(e.to));
+  return { nodes, edges };
+}
+
+export function neighborsOf(nodeId: string, data: Graph): { id: string; kind: string; dir: 'in' | 'out' }[] {
+  const out: { id: string; kind: string; dir: 'in' | 'out' }[] = [];
+  for (const e of data.edges) {
+    if (e.from === nodeId) out.push({ id: e.to, kind: e.kind, dir: 'out' });
+    else if (e.to === nodeId) out.push({ id: e.from, kind: e.kind, dir: 'in' });
+  }
+  return out;
+}
+
+function layout(nodes: GNode[], w: number, h: number): Map<string, { x: number; y: number }> {
+  // Nach Kind gruppiert auf einem Kreis — deterministisch, gleiche Arten benachbart.
+  const ordered = [...nodes].sort((a, b) => a.kind.localeCompare(b.kind) || a.id.localeCompare(b.id));
+  const cx = w / 2, cy = h / 2, r = Math.min(w, h) / 2 - 60;
+  const pos = new Map<string, { x: number; y: number }>();
+  ordered.forEach((n, i) => {
+    const ang = (2 * Math.PI * i) / Math.max(1, ordered.length);
+    pos.set(n.id, { x: cx + r * Math.cos(ang), y: cy + r * Math.sin(ang) });
+  });
+  return pos;
+}
+
+function graphSvg(data: Graph): string {
+  const W = 1000, H = 680;
+  const pos = layout(data.nodes, W, H);
+  const lines = data.edges.map((e) => {
+    const a = pos.get(e.from), b = pos.get(e.to);
+    if (!a || !b) return '';
+    return `<line x1="${a.x.toFixed(1)}" y1="${a.y.toFixed(1)}" x2="${b.x.toFixed(1)}" y2="${b.y.toFixed(1)}" stroke="${EDGE_COLORS[e.kind] ?? '#555'}" stroke-width="1.2"/>`;
+  }).join('');
+  const circles = data.nodes.map((n) => {
+    const p = pos.get(n.id)!;
+    const r = Math.max(5, n.size / 2);
+    return `<g class="kg-node" data-node-id="${n.id}" style="cursor:pointer">
+      <circle cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="${r}" fill="${n.color}"/>
+      <text x="${p.x.toFixed(1)}" y="${(p.y + r + 9).toFixed(1)}" text-anchor="middle" font-size="9" fill="#cfe6e0">${escapeHtml(n.label)}</text>
+    </g>`;
+  }).join('');
+  return `<svg viewBox="0 0 ${W} ${H}" width="100%" height="100%" preserveAspectRatio="xMidYMid meet">${lines}${circles}</svg>`;
+}
+
+function escapeHtml(s: string): string {
+  return (s || '').replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' })[c] as string);
+}
+
+export function initKnowledgeGraphOverlay(baseUrl: string, fetchImpl: typeof fetch = fetch): { open: () => void } {
+  const overlay = document.createElement('div');
+  overlay.id = 'knowledge-overlay';
+  overlay.style.cssText =
+    'position:fixed;inset:0;z-index:200;display:none;background:rgba(8,14,18,0.97);' +
+    'color:#e8fbf7;font-family:-apple-system,sans-serif';
+  document.body.appendChild(overlay);
+
+  let data: Graph = { nodes: [], edges: [] };
+  const active = new Set<string>(KINDS);
+
+  const close = (): void => { overlay.style.display = 'none'; };
+
+  function render(detail = ''): void {
+    const view = filterGraph(data, [...active]);
+    const chips = KINDS.map((k) =>
+      `<button class="kg-chip" data-kind="${k}" style="opacity:${active.has(k) ? 1 : 0.4}">${KIND_LABELS[k]}</button>`).join('');
+    overlay.innerHTML =
+      `<div style="display:flex;justify-content:space-between;align-items:center;padding:16px 24px">
+         <h2 style="margin:0">Wissensgraph <span style="opacity:.5;font-size:13px">${view.nodes.length} Knoten · ${view.edges.length} Kanten</span></h2>
+         <div style="display:flex;gap:8px;align-items:center">${chips}<button data-action="close" style="margin-left:12px">✕</button></div>
+       </div>
+       <div style="display:flex;height:calc(100% - 64px)">
+         <div id="kg-canvas" style="flex:1;min-width:0">${graphSvg(view)}</div>
+         <div id="kg-detail" style="width:280px;border-left:1px solid #1c3038;padding:16px;overflow:auto">${detail || '<p style="opacity:.5">Klick einen Knoten für Details.</p>'}</div>
+       </div>`;
+    overlay.querySelectorAll<HTMLElement>('.kg-chip').forEach((c) =>
+      c.addEventListener('click', () => {
+        const k = c.dataset.kind!;
+        active.has(k) ? active.delete(k) : active.add(k);
+        render();
+      }));
+    overlay.querySelector('[data-action="close"]')?.addEventListener('click', close);
+    overlay.querySelectorAll<HTMLElement>('.kg-node').forEach((g) =>
+      g.addEventListener('click', () => render(detailHtml(g.dataset.nodeId!, view))));
+  }
+
+  function detailHtml(nodeId: string, view: Graph): string {
+    const node = view.nodes.find((n) => n.id === nodeId);
+    if (!node) return '';
+    const byId = new Map(view.nodes.map((n) => [n.id, n]));
+    const neigh = neighborsOf(nodeId, view)
+      .map((x) => `<li>${x.dir === 'in' ? '←' : '→'} ${escapeHtml(byId.get(x.id)?.label ?? x.id)} <em style="opacity:.5">(${x.kind})</em></li>`)
+      .join('') || '<li style="opacity:.5">keine Verbindungen</li>';
+    return `<div style="font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:#7f96a0">${node.kind} · ${escapeHtml(node.group)}</div>
+      <h3 style="margin:4px 0 12px">${escapeHtml(node.label)}</h3>
+      <div style="font-size:11px;color:#9fb2ba">Verbindungen</div><ul style="margin:6px 0;padding-left:16px;font-size:12px;line-height:1.6">${neigh}</ul>`;
+  }
+
+  async function open(): Promise<void> {
+    overlay.style.display = 'block';
+    render();
+    try {
+      data = await (await fetchImpl(`${baseUrl}/api/knowledge/graph`)).json();
+      render();
+    } catch {
+      overlay.innerHTML = '<div style="padding:24px">Wissensgraph nicht erreichbar.</div>';
+    }
+  }
+
+  document.addEventListener('open-knowledge', () => void open());
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape') close(); });
+  return { open };
+}

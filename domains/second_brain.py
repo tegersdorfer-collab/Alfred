@@ -38,6 +38,58 @@ CATEGORY_LABELS = {
 
 WIKI_LINK_RE = re.compile(r"\[\[([^\]]{1,300})\]\]")
 
+# ── Luhmann-Folgezettel-IDs (1 → 1a → 1a1 → 1a1a …) ───────────────────────────
+
+def _zettel_segments(zid: str) -> list[str]:
+    """'1a10' → ['1','a','10'] (abwechselnd Zahl/Buchstaben-Läufe)."""
+    return re.findall(r"[0-9]+|[a-z]+", zid or "")
+
+
+def _letters_to_int(s: str) -> int:
+    """Spaltenweise wie Tabellen: a→1, z→26, aa→27."""
+    n = 0
+    for c in s:
+        n = n * 26 + (ord(c) - 96)
+    return n
+
+
+def _int_to_letters(n: int) -> str:
+    s = ""
+    while n > 0:
+        n, r = divmod(n - 1, 26)
+        s = chr(97 + r) + s
+    return s
+
+
+def next_zettel_id(existing: list[str], parent: str | None = None) -> str:
+    """Nächste freie Folgezettel-ID.
+
+    Ohne parent: nächste Top-Level-Zahl. Mit parent: Kind-ID — endet der Elternteil
+    auf eine Zahl, ist das Kind ein Buchstabe (1 → 1a), endet er auf einen
+    Buchstaben, ist das Kind eine Zahl (1a → 1a1). Alterniert also nach Tiefe.
+    """
+    ids = set(existing or [])
+    if parent is None:
+        tops = [int(i) for i in ids if i.isdigit()]
+        return str(max(tops) + 1) if tops else "1"
+
+    psegs = _zettel_segments(parent)
+    child_depth = len(psegs) + 1
+    child_last = []
+    for i in ids:
+        segs = _zettel_segments(i)
+        if len(segs) == child_depth and segs[:-1] == psegs:
+            child_last.append(segs[-1])
+
+    if psegs[-1].isdigit():  # Kind = Buchstabe
+        if not child_last:
+            return parent + "a"
+        return parent + _int_to_letters(max(_letters_to_int(c) for c in child_last) + 1)
+    # Kind = Zahl
+    if not child_last:
+        return parent + "1"
+    return parent + str(max(int(c) for c in child_last) + 1)
+
 
 @dataclass
 class BrainNote:
@@ -62,8 +114,10 @@ def add_note(
     tags: list[str] | None = None,
     pinned: bool = False,
     embedding_fn=None,
+    parent_id: int | None = None,
 ) -> int:
-    """Legt eine neue Notiz an. embedding_fn(text) → list[float] optional."""
+    """Legt eine neue Notiz an. embedding_fn(text) → list[float] optional.
+    parent_id → Folgezettel-Kind-ID unter diesem Elternzettel (Luhmann)."""
     if category not in CATEGORIES:
         category = "inbox"
     emb = None
@@ -73,20 +127,33 @@ def add_note(
         except Exception as e:
             log.warning(f"Brain-Embedding fehlgeschlagen: {e}")
 
+    zid = _assign_zettel_id(parent_id)
+
     with _db.cursor(vector=bool(emb)) as cur:
         cur.execute(
             """
-            INSERT INTO brain_notes (title, content, category, tags, pinned, embedding)
-            VALUES (%s, %s, %s, %s, %s, %s)
+            INSERT INTO brain_notes (title, content, category, tags, pinned, embedding, zettel_id)
+            VALUES (%s, %s, %s, %s, %s, %s, %s)
             RETURNING id
             """,
             (title, content, category, tags or [], pinned,
-             emb if emb is not None else None),
+             emb if emb is not None else None, zid),
         )
         note_id = cur.fetchone()["id"]
 
     _resolve_wiki_links(note_id, content)
     return note_id
+
+
+def _assign_zettel_id(parent_id: int | None) -> str:
+    """Berechnet die nächste freie Folgezettel-ID (optional als Kind von parent_id)."""
+    existing = [r["zettel_id"] for r in
+                _db.query("SELECT zettel_id FROM brain_notes WHERE zettel_id IS NOT NULL")]
+    parent_zettel = None
+    if parent_id:
+        prow = _db.query_one("SELECT zettel_id FROM brain_notes WHERE id=%s", (parent_id,))
+        parent_zettel = prow["zettel_id"] if prow else None
+    return next_zettel_id(existing, parent=parent_zettel)
 
 
 def update_note(
@@ -175,6 +242,20 @@ def get_by_category(category: str, limit: int = 200) -> list[BrainNote]:
 
 def get_inbox() -> list[BrainNote]:
     return get_by_category("inbox")
+
+
+def get_backlinks(note_id: int) -> list[BrainNote]:
+    """Notizen, die AUF diese verweisen ('was verweist hierher')."""
+    rows = _db.query(
+        """
+        SELECT n.* FROM brain_notes n
+        JOIN brain_links l ON n.id = l.from_id
+        WHERE l.to_id = %s AND n.status = 'active'
+        ORDER BY n.updated_at DESC
+        """,
+        (note_id,),
+    )
+    return _rows_to_notes(rows)
 
 
 def get_all(limit: int = 500) -> list[BrainNote]:
@@ -391,13 +472,20 @@ def brain_tool_daily_log(entry: str) -> str:
 # ── Wiki-Links ────────────────────────────────────────────────────────────────
 
 def _resolve_wiki_links(note_id: int, content: str) -> None:
-    """Findet [[Titel]]-Links im Content und legt brain_links-Einträge an."""
-    titles = WIKI_LINK_RE.findall(content)
-    for title in titles:
-        row = _db.query_one(
-            "SELECT id FROM brain_notes WHERE title ILIKE %s AND id != %s LIMIT 1",
-            (title.strip(), note_id),
-        )
+    """Findet [[Titel]]- UND [[zettel_id]]-Links im Content und legt brain_links an."""
+    for target in WIKI_LINK_RE.findall(content):
+        t = target.strip()
+        row = None
+        if re.fullmatch(r"[0-9][a-z0-9]*", t):  # sieht wie eine Folgezettel-ID aus
+            row = _db.query_one(
+                "SELECT id FROM brain_notes WHERE zettel_id=%s AND id != %s LIMIT 1",
+                (t, note_id),
+            )
+        if not row:
+            row = _db.query_one(
+                "SELECT id FROM brain_notes WHERE title ILIKE %s AND id != %s LIMIT 1",
+                (t, note_id),
+            )
         if row:
             try:
                 _db.execute(

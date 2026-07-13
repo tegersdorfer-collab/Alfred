@@ -451,6 +451,8 @@ MIGRATIONS = [
     "ALTER TABLE memories ADD COLUMN IF NOT EXISTS recall_count INTEGER DEFAULT 0;",
     "ALTER TABLE memories ADD COLUMN IF NOT EXISTS last_recalled TIMESTAMPTZ;",
     "ALTER TABLE memories ADD COLUMN IF NOT EXISTS kg_linked BOOLEAN DEFAULT FALSE;",
+    "ALTER TABLE brain_notes ADD COLUMN IF NOT EXISTS zettel_id TEXT;",
+    "CREATE UNIQUE INDEX IF NOT EXISTS brain_notes_zettel_idx ON brain_notes(zettel_id) WHERE zettel_id IS NOT NULL;",
     "CREATE INDEX IF NOT EXISTS agenda_status_idx ON agenda(status, run_after);",
     "CREATE INDEX IF NOT EXISTS events_log_created_idx ON events_log(created_at DESC);",
     "CREATE INDEX IF NOT EXISTS chat_messages_created_idx ON chat_messages(created_at DESC);",

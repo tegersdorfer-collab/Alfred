@@ -16,6 +16,7 @@ export function initNavOverlay(baseUrl: string): void {
     (t) => `<button class="nav-tile" data-widget-type="${t}">${LABELS[t]}</button>`
   ).join('')
     + `<button class="nav-tile" data-action="health">Health</button>`
+    + `<button class="nav-tile" data-action="knowledge">Wissen</button>`
     + `<button class="nav-tile" data-widget-type="">Home</button>`;
   overlay.innerHTML = `<div class="nav-grid">${tiles}</div>`;
   document.body.appendChild(overlay);
@@ -33,6 +34,11 @@ export function initNavOverlay(baseUrl: string): void {
     tile.addEventListener('click', () => {
       if (tile.dataset.action === 'health') {
         document.dispatchEvent(new CustomEvent('open-health'));
+        close();
+        return;
+      }
+      if (tile.dataset.action === 'knowledge') {
+        document.dispatchEvent(new CustomEvent('open-knowledge'));
         close();
         return;
       }

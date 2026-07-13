@@ -8,6 +8,7 @@ import type { VoiceSegmentResult } from './voice-capture';
 import { startVoiceCaptureStream } from './voice-capture-stream';
 import { initNavOverlay } from './nav-overlay';
 import { initHealthOverlay, widgetHtml as healthWidgetHtml } from './health-overlay';
+import { initKnowledgeGraphOverlay } from './knowledge-graph-overlay';
 import { initChatInput } from './chat-input';
 import { initSettingsPanel } from './settings-panel';
 import { subscribeStatus } from './status-stream';
@@ -418,6 +419,7 @@ export async function initVoiceCapture(
 initVoiceCapture(getBaseUrl(), renderVoiceStatus);
 initNavOverlay(getBaseUrl());
 initHealthOverlay(getBaseUrl());
+initKnowledgeGraphOverlay(getBaseUrl());
 
 export function triggerSpeakingState(durationMs = 2000): void {
   const ring = document.getElementById('hud-ring');
