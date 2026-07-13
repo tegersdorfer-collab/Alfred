@@ -50,6 +50,10 @@ _MUSIC_PREV = {"vorheriges", "vorheriger", "vorherige", "zurück", "previous"}
 _MUSIC_PAUSE = {"pause", "pausiere", "pausieren", "stopp", "stop", "aus", "ausmachen"}
 _MUSIC_PLAY = {"an", "play", "weiter", "abspielen", "spiel", "spiele", "anmachen"}
 _MUSIC_STATUS = {"läuft", "spielt"}  # Wiedergabe-Status
+_HEALTH_STATUS = {"recovery", "gesundheitszustand", "gesundheitlich", "regeneration",
+                  "erholung", "health"}
+_HEALTH_ASK = {"wie", "status"}
+
 _UIAUTO_VERBS = {"bediene", "bedien", "steuere", "steuer"}
 # Alle reinen Steuerwörter zusammen — dient der Abgrenzung „spiel [X]" (Suche)
 # von „spiel weiter"/„spiel musik" (Steuerung).
@@ -79,6 +83,13 @@ def match(text: str) -> FastCommand | None:
     # Absicht (unread/Posteingang); Senden/Suchen brauchen Parameter → Agent.
     if (w & _EMAIL) and (w & _EMAIL_NEW or "posteingang" in w):
         return FastCommand("email_unread", {}, "email-unread")
+
+    # ── Health-Status ("wie ist meine recovery?") ─────────────────────────────
+    # Inhärent eine Frage → vor dem Fragezeichen-Guard. Frage-Rahmen (wie/status/?)
+    # nötig, damit "spiel recovery von X" (Musik) nicht gekapert wird. Deterministisch,
+    # weil das kleine Modell sonst gern Gesundheitswerte frei erfindet.
+    if (w & _HEALTH_STATUS) and (w & _HEALTH_ASK or "?" in text):
+        return FastCommand("get_health_scores", {}, "health-scores")
 
     if "?" in text:
         return None  # Fragen sind keine Befehle

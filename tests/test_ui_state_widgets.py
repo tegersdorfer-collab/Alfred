@@ -218,7 +218,7 @@ class TestBrainGraphWidgetPayload:
 
 
 class TestWidgetMapAndTypes:
-    def test_widget_map_enthaelt_alle_sechs_typen(self):
+    def test_widget_map_enthaelt_alle_typen(self):
         assert WIDGET_MAP == {
             "get_health": "sleep",
             "recent_workouts": "training",
@@ -226,12 +226,13 @@ class TestWidgetMapAndTypes:
             "get_calendar": "calendar",
             "nutrition_today": "nutrition",
             "list_habits": "habits",
+            "get_health_scores": "health",
         }
 
-    def test_widget_types_enthaelt_alle_elf(self):
+    def test_widget_types_enthaelt_alle_typen(self):
         assert WIDGET_TYPES == {
             "sleep", "training", "tasks", "calendar", "nutrition", "habits",
-            "system", "brain", "skills", "weather", "brain_graph",
+            "system", "brain", "skills", "weather", "brain_graph", "health",
         }
 
 

@@ -25,6 +25,7 @@ WIDGET_MAP: dict[str, str] = {
     "get_calendar": "calendar",
     "nutrition_today": "nutrition",
     "list_habits": "habits",
+    "get_health_scores": "health",
 }
 
 # Begrenztes Set an Layout-Vorlagen — jede definiert ihre verfügbaren Slots.
@@ -59,6 +60,28 @@ def sleep_widget_payload(dashboard: Any, days: int = 7) -> dict:
             for r in rows
         ],
     }
+
+
+def health_widget_payload(dashboard: Any, days: int = 90) -> dict:
+    """Domain-Scores (Recovery/Sleep/Activity) + Body-Trend fürs Health-Glance-
+    Widget — direkt aus der Scoring-Engine, degradiert ehrlich bei fehlenden Daten."""
+    from domains.health_scores import compute_body_trend, health_narrative, score_history
+    rows = [
+        {"date": str(r.date), "steps": r.steps, "active_calories": r.active_calories,
+         "exercise_minutes": r.exercise_minutes, "sleep_duration": r.sleep_duration,
+         "sleep_deep": r.sleep_deep, "resting_hr": r.resting_hr, "hrv": r.hrv,
+         "weight": r.weight, "blood_oxygen": getattr(r, "blood_oxygen", None)}
+        for r in dashboard.get_recent_health(days=days)
+    ]
+    hist = score_history(rows)
+    if not hist:
+        return {"widget": "health", "domains": {}, "body": None, "narrative": None}
+    today = hist[-1]
+    body = compute_body_trend(rows)
+    domains = {k: {"score": v["score"], "status": v["status"]}
+               for k, v in today["domains"].items()}
+    return {"widget": "health", "domains": domains, "body": body,
+            "narrative": health_narrative(today, body)}
 
 
 def training_widget_payload(limit: int = 8) -> dict:
@@ -216,6 +239,7 @@ def brain_graph_widget_payload(limit: int = 30) -> dict:
 _DASHBOARD_BUILDERS = {
     "sleep": sleep_widget_payload,
     "calendar": calendar_widget_payload,
+    "health": health_widget_payload,
 }
 
 # Widget-Typen, die keine externe Abhängigkeit brauchen (holen sich ihre Daten
