@@ -594,6 +594,28 @@ Diese Items brauchen externe Infrastruktur oder Hardware die nicht im Code lösb
 
 ---
 
+## Native Mac-App-Migration + Health-Overview (2026-07-13)
+
+Weg vom Web-Dashboard, hin zur Tauri-Mac-App (`apps/desktop/`) — ohne Nav-Leiste, nur
+Voice + Cmd/Ctrl+K-Hidden-Menu. Zerlegt in 4 Sub-Projekte (Shell/Navigation, Feature-
+Parität, Memory-Overhaul+Wissensgraph, Health-Overview). Umbrella-Scope:
+`docs/superpowers/specs/2026-07-13-native-app-migration-scope.md`.
+
+**SP4 — Health-Overview mit Domain-Scores (zuerst, in Arbeit).** 4 Domain-Scores
+(Recovery/Sleep/Activity/Body) + Metrik-Graphen + Mantis-Klartext, transparent
+aufschlüsselbar, Ring-Hero-Layout. Spec: `2026-07-13-health-overview-scores-design.md`.
+
+- [ ] **BodyOS-Health-Sync reparieren** — HRV/Ruhepuls/Schlafphasen/Kalorien fließen
+      aktuell nicht (nur 3/14 Tage, Kernmetriken leer, COROS Pace 4). Ursache untersuchen:
+      BodyOS-HealthKit-Background-Delivery, COROS→Apple-Health-Freigaben, `/api/health/push`,
+      DB. **Kein Blocker für SP4** (Overview wird mit Graceful-Degradation gebaut) — aber
+      nötig, damit die Scores echte Werte zeigen.
+- [ ] SP1 App-Shell & Navigation (Overlay-Framework generalisieren)
+- [ ] SP2 Feature-Parität (goals/journal/insights/fitness/globe … als Widgets/Overlays)
+- [ ] SP3 Memory-Overhaul (Obsidian/Zettelkasten) + Wissensgraph-Overlay
+
+---
+
 ## Architektur-Prinzipien
 
 1. **Lokal first** — Daten verlassen den Mac nicht (außer explizite Cloud-Tools wie Claude API)
