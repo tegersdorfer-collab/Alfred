@@ -6,7 +6,7 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from domains.knowledge_graph import find_mentions, unified_graph
+from domains.knowledge_graph import find_mentions, similar_edges, unified_graph
 
 NOTES = [{"id": 1, "title": "Auto", "category": "inbox", "pinned": False},
          {"id": 2, "title": "Reise", "category": "project", "pinned": True}]
@@ -41,6 +41,21 @@ def test_relation_edge_carries_predicate_label():
 def test_mention_edge_bridges_note_and_entity():
     g = unified_graph(NOTES, ENTITIES, [], [], [], [{"note_id": 1, "entity_id": 5}])
     assert {"from": "note:1", "to": "entity:5", "kind": "mention"} in g["edges"]
+
+
+def test_similarity_edge_between_notes():
+    g = unified_graph(NOTES, [], [], [], [], [], similar=[{"from_id": 1, "to_id": 2}])
+    assert {"from": "note:1", "to": "note:2", "kind": "similar"} in g["edges"]
+
+
+def test_similar_edges_dedupes_symmetric_and_applies_threshold():
+    cands = [
+        {"from_id": 1, "to_id": 2, "dist": 0.1},
+        {"from_id": 2, "to_id": 1, "dist": 0.1},   # symmetrisches Duplikat
+        {"from_id": 1, "to_id": 1, "dist": 0.0},   # Selbstkante
+        {"from_id": 1, "to_id": 3, "dist": 0.9},   # über Schwelle
+    ]
+    assert similar_edges(cands, max_dist=0.35) == [{"from_id": 1, "to_id": 2}]
 
 
 def test_kind_filter_drops_nodes_and_their_edges():

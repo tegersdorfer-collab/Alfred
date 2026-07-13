@@ -31,21 +31,63 @@ export function neighborsOf(nodeId: string, data: Graph): { id: string; kind: st
   return out;
 }
 
-function layout(nodes: GNode[], w: number, h: number): Map<string, { x: number; y: number }> {
-  // Nach Kind gruppiert auf einem Kreis — deterministisch, gleiche Arten benachbart.
-  const ordered = [...nodes].sort((a, b) => a.kind.localeCompare(b.kind) || a.id.localeCompare(b.id));
-  const cx = w / 2, cy = h / 2, r = Math.min(w, h) / 2 - 60;
+// Force-Directed-Layout (Fruchterman-Reingold): Abstoßung aller Knoten +
+// Federzug entlang Kanten + Zentrums-Gravitation. Deterministisch (Kreis-Seed,
+// kein Zufall) → reproduzierbar & testbar.
+export function forceLayout(
+  nodes: GNode[], edges: GEdge[], w: number, h: number, iterations = 180,
+): Map<string, { x: number; y: number }> {
+  const n = nodes.length;
   const pos = new Map<string, { x: number; y: number }>();
-  ordered.forEach((n, i) => {
-    const ang = (2 * Math.PI * i) / Math.max(1, ordered.length);
-    pos.set(n.id, { x: cx + r * Math.cos(ang), y: cy + r * Math.sin(ang) });
+  if (n === 0) return pos;
+  const k = Math.sqrt((w * h) / n) * 0.8;
+  nodes.forEach((nd, i) => {
+    const a = (2 * Math.PI * i) / n;
+    pos.set(nd.id, { x: w / 2 + (w / 3) * Math.cos(a), y: h / 2 + (h / 3) * Math.sin(a) });
   });
+  const idx = new Map(nodes.map((nd, i) => [nd.id, i]));
+  const adj = edges.filter((e) => idx.has(e.from) && idx.has(e.to));
+  const iters = n > 120 ? 60 : iterations;
+  let temp = w / 10;
+  for (let it = 0; it < iters; it++) {
+    const disp = nodes.map(() => ({ x: 0, y: 0 }));
+    for (let i = 0; i < n; i++) {
+      for (let j = i + 1; j < n; j++) {
+        const pi = pos.get(nodes[i].id)!, pj = pos.get(nodes[j].id)!;
+        const dx = pi.x - pj.x, dy = pi.y - pj.y;
+        const d = Math.hypot(dx, dy) || 0.01;
+        const f = (k * k) / d;
+        disp[i].x += (dx / d) * f; disp[i].y += (dy / d) * f;
+        disp[j].x -= (dx / d) * f; disp[j].y -= (dy / d) * f;
+      }
+    }
+    for (const e of adj) {
+      const i = idx.get(e.from)!, j = idx.get(e.to)!;
+      const pi = pos.get(e.from)!, pj = pos.get(e.to)!;
+      const dx = pi.x - pj.x, dy = pi.y - pj.y;
+      const d = Math.hypot(dx, dy) || 0.01;
+      const f = (d * d) / k;
+      disp[i].x -= (dx / d) * f; disp[i].y -= (dy / d) * f;
+      disp[j].x += (dx / d) * f; disp[j].y += (dy / d) * f;
+    }
+    for (let i = 0; i < n; i++) {
+      const p = pos.get(nodes[i].id)!;
+      disp[i].x += (w / 2 - p.x) * 0.01;
+      disp[i].y += (h / 2 - p.y) * 0.01;
+      const dl = Math.hypot(disp[i].x, disp[i].y) || 0.01;
+      p.x += (disp[i].x / dl) * Math.min(dl, temp);
+      p.y += (disp[i].y / dl) * Math.min(dl, temp);
+      p.x = Math.max(20, Math.min(w - 20, p.x));
+      p.y = Math.max(20, Math.min(h - 20, p.y));
+    }
+    temp *= 0.97;
+  }
   return pos;
 }
 
 function graphSvg(data: Graph): string {
   const W = 1000, H = 680;
-  const pos = layout(data.nodes, W, H);
+  const pos = forceLayout(data.nodes, data.edges, W, H);
   const lines = data.edges.map((e) => {
     const a = pos.get(e.from), b = pos.get(e.to);
     if (!a || !b) return '';
