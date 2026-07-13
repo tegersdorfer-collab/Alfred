@@ -8,6 +8,7 @@ from pathlib import Path
 from fastapi import APIRouter, Request
 
 from core import db
+from domains.knowledge_graph import find_mentions, unified_graph
 
 from web.routers._helpers import _jsonable
 
@@ -57,6 +58,26 @@ def build_router(orch=None) -> APIRouter:
     @router.delete("/api/knowledge/relation/{rid}")
     def del_kg_relation(rid: int):
         db.execute("DELETE FROM kg_relations WHERE id=%s", (rid,)); return {"ok": True}
+
+    @router.get("/api/knowledge/graph")
+    def unified_knowledge_graph(kinds: str = "note,entity,fact", limit: int = 400):
+        """Vereinter Wissensgraph: Notizen + Entitäten + Fakten in EINEM Bild.
+        Notiz→Entität-Kanten (mentions) werden automatisch erkannt. `kinds` filtert."""
+        kind_set = {k.strip() for k in kinds.split(",") if k.strip()}
+        notes = db.query(
+            "SELECT id, title, category, pinned, content FROM brain_notes "
+            "WHERE status='active' ORDER BY updated_at DESC LIMIT %s", (limit,))
+        entities = db.query("SELECT id, name, type, aliases FROM kg_entities LIMIT %s", (limit,))
+        facts = db.query(
+            "SELECT id, content, category FROM memories ORDER BY created_at DESC LIMIT %s", (limit,))
+        note_ids = {n["id"] for n in notes}
+        links = [link for link in db.query("SELECT from_id, to_id FROM brain_links")
+                 if link["from_id"] in note_ids and link["to_id"] in note_ids]
+        relations = db.query("SELECT subject_id, object_id, predicate FROM kg_relations")
+        mentions = find_mentions(notes, entities)
+        graph = unified_graph(notes, entities, facts, links, relations, mentions,
+                              kinds=kind_set or None)
+        return _jsonable(graph)
 
     @router.get("/api/knowledge/heatmap")
     def knowledge_heatmap():
