@@ -233,3 +233,18 @@ def test_email_negatives():
     assert match("schreib eine mail an bob") is None       # Senden → Agent (braucht Params)
     assert match("wie war dein tag?") is None
     assert match("ist die mail von der bank wichtig?") is None  # kein neu/posteingang
+
+
+# ── Positive/Negative: Health-Status ──────────────────────────────────────────
+
+def test_health_status_query():
+    assert _m("wie ist meine recovery heute") == ("get_health_scores", {})
+    assert _m("wie ist mein gesundheitszustand?") == ("get_health_scores", {})
+    assert _m("wie geht es mir gesundheitlich?") == ("get_health_scores", {})
+
+
+def test_health_status_negatives():
+    # 'spiel recovery ...' ist Musik-Suche, keine Health-Frage.
+    assert _m("spiel recovery von frank ocean") != ("get_health_scores", {})
+    # Ohne Frage-Rahmen kein Health-Fast-Path.
+    assert _m("öffne die health app") is None

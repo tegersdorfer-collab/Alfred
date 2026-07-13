@@ -7,6 +7,7 @@ import { startVoiceCapture } from './voice-capture';
 import type { VoiceSegmentResult } from './voice-capture';
 import { startVoiceCaptureStream } from './voice-capture-stream';
 import { initNavOverlay } from './nav-overlay';
+import { initHealthOverlay, widgetHtml as healthWidgetHtml } from './health-overlay';
 import { initChatInput } from './chat-input';
 import { initSettingsPanel } from './settings-panel';
 import { subscribeStatus } from './status-stream';
@@ -338,6 +339,9 @@ function renderWidget(container: HTMLElement, slot: WidgetSlot): void {
     case 'brain_graph':
       renderGraph(container, 'Second Brain — Graph', p.nodes ?? [], p.edges ?? []);
       break;
+    case 'health':
+      container.innerHTML = healthWidgetHtml(p);
+      break;
     default:
       container.innerHTML = '<div class="widget-title">unbekannt</div>';
   }
@@ -413,6 +417,7 @@ export async function initVoiceCapture(
 
 initVoiceCapture(getBaseUrl(), renderVoiceStatus);
 initNavOverlay(getBaseUrl());
+initHealthOverlay(getBaseUrl());
 
 export function triggerSpeakingState(durationMs = 2000): void {
   const ring = document.getElementById('hud-ring');

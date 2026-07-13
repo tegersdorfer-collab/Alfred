@@ -14,7 +14,9 @@ export function initNavOverlay(baseUrl: string): void {
   overlay.id = 'nav-overlay';
   const tiles = WIDGET_TYPES.map(
     (t) => `<button class="nav-tile" data-widget-type="${t}">${LABELS[t]}</button>`
-  ).join('') + `<button class="nav-tile" data-widget-type="">Home</button>`;
+  ).join('')
+    + `<button class="nav-tile" data-action="health">Health</button>`
+    + `<button class="nav-tile" data-widget-type="">Home</button>`;
   overlay.innerHTML = `<div class="nav-grid">${tiles}</div>`;
   document.body.appendChild(overlay);
 
@@ -29,6 +31,11 @@ export function initNavOverlay(baseUrl: string): void {
 
   overlay.querySelectorAll<HTMLButtonElement>('.nav-tile').forEach((tile) => {
     tile.addEventListener('click', () => {
+      if (tile.dataset.action === 'health') {
+        document.dispatchEvent(new CustomEvent('open-health'));
+        close();
+        return;
+      }
       const widgetType = tile.dataset.widgetType;
       if (widgetType) {
         fetch(`${baseUrl}/api/ui/select`, {

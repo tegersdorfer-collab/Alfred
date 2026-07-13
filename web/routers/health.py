@@ -10,6 +10,7 @@ from fastapi import APIRouter, Request
 from fastapi.responses import JSONResponse
 
 from core import db
+from domains.health_scores import compute_body_trend, health_narrative, score_history
 
 from web.routers._helpers import _jsonable, _health_dict
 
@@ -25,6 +26,25 @@ def build_router(orch=None) -> APIRouter:
         if not orch:
             return []
         return [_health_dict(h) for h in orch._dashboard.get_recent_health(days=days)]
+
+    @router.get("/api/health/scores")
+    def health_scores(days: int = 90):
+        """Domain-Scores (Recovery/Sleep/Activity) je Tag + 'heute'.
+
+        Baseline über das ganze Fenster; degradiert ehrlich bei fehlenden Daten
+        (status='insufficient_data'). Reiner Adapter über die Scoring-Engine.
+        """
+        if not orch:
+            return {"days": [], "today": None}
+        rows = [_health_dict(h) for h in orch._dashboard.get_recent_health(days=days)]
+        hist = score_history(rows)
+        body = compute_body_trend(rows)
+        return {
+            "days": hist,
+            "today": hist[-1] if hist else None,
+            "body": body,
+            "narrative": health_narrative(hist[-1], body) if hist else None,
+        }
 
     @router.post("/api/health/import")
     async def health_import():
