@@ -417,9 +417,10 @@ export async function initVoiceCapture(
 }
 
 initVoiceCapture(getBaseUrl(), renderVoiceStatus);
-initNavOverlay(getBaseUrl());
+// Overlays zuerst — sie registrieren sich, bevor nav-overlay die Registry liest.
 initHealthOverlay(getBaseUrl());
 initKnowledgeGraphOverlay(getBaseUrl());
+initNavOverlay(getBaseUrl());
 
 export function triggerSpeakingState(durationMs = 2000): void {
   const ring = document.getElementById('hud-ring');
