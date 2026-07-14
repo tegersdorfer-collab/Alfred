@@ -43,6 +43,12 @@ def test_mention_edge_bridges_note_and_entity():
     assert {"from": "note:1", "to": "entity:5", "kind": "mention"} in g["edges"]
 
 
+def test_fact_mention_edge_bridges_fact_and_entity():
+    g = unified_graph([], ENTITIES, FACTS, [], [], [],
+                      fact_mentions=[{"fact_id": 9, "entity_id": 5}])
+    assert {"from": "fact:9", "to": "entity:5", "kind": "mention"} in g["edges"]
+
+
 def test_similarity_edge_between_notes():
     g = unified_graph(NOTES, [], [], [], [], [], similar=[{"from_id": 1, "to_id": 2}])
     assert {"from": "note:1", "to": "note:2", "kind": "similar"} in g["edges"]
