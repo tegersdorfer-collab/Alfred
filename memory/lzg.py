@@ -44,7 +44,7 @@ class LZG:
                 CREATE TABLE IF NOT EXISTS memories (
                     id           SERIAL PRIMARY KEY,
                     content      TEXT NOT NULL,
-                    embedding    vector(768),
+                    embedding    vector(1024),
                     category     TEXT DEFAULT 'fact',
                     confidence   FLOAT DEFAULT 0.8,
                     created_at   TIMESTAMPTZ DEFAULT NOW(),

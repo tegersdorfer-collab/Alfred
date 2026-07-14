@@ -75,6 +75,8 @@ def build_router(orch=None) -> APIRouter:
                  if link["from_id"] in note_ids and link["to_id"] in note_ids]
         relations = db.query("SELECT subject_id, object_id, predicate FROM kg_relations")
         mentions = find_mentions(notes, entities)
+        fact_mentions = [{"fact_id": m["note_id"], "entity_id": m["entity_id"]}
+                         for m in find_mentions(facts, entities)]
         # Ähnlichkeits-Kanten: je Notiz die 3 nächsten via Embedding (pgvector).
         # Robust gekapselt — ohne pgvector/Embeddings bleibt der Graph einfach ohne.
         similar: list[dict] = []
@@ -97,7 +99,7 @@ def build_router(orch=None) -> APIRouter:
         except Exception as e:  # noqa: BLE001
             log.info("Ähnlichkeits-Kanten übersprungen: %s", e)
         graph = unified_graph(notes, entities, facts, links, relations, mentions,
-                              similar=similar, kinds=kind_set or None)
+                              similar=similar, fact_mentions=fact_mentions, kinds=kind_set or None)
         return _jsonable(graph)
 
     @router.get("/api/knowledge/heatmap")

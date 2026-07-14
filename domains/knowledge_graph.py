@@ -65,6 +65,7 @@ def unified_graph(
     relations: list[dict],
     mentions: list[dict],
     similar: list[dict] | None = None,
+    fact_mentions: list[dict] | None = None,
     kinds: set[str] | None = None,
 ) -> dict:
     """→ {"nodes": [...], "edges": [...]} mit knoten-`kind` (note|entity|fact) und
@@ -116,5 +117,7 @@ def unified_graph(
         add_edge(f"note:{men['note_id']}", f"entity:{men['entity_id']}", "mention")
     for sim in similar or []:
         add_edge(f"note:{sim['from_id']}", f"note:{sim['to_id']}", "similar")
+    for fm in fact_mentions or []:
+        add_edge(f"fact:{fm['fact_id']}", f"entity:{fm['entity_id']}", "mention")
 
     return {"nodes": nodes, "edges": edges}

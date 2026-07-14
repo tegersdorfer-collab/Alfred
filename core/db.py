@@ -509,7 +509,7 @@ MIGRATIONS = [
         tags        TEXT[] DEFAULT '{}',
         status      TEXT NOT NULL DEFAULT 'active',
         pinned      BOOLEAN DEFAULT FALSE,
-        embedding   vector(768),
+        embedding   vector(1024),
         created_at  TIMESTAMPTZ DEFAULT NOW(),
         updated_at  TIMESTAMPTZ DEFAULT NOW()
     );
