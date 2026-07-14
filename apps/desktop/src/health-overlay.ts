@@ -5,6 +5,8 @@
 // Reine Render-Funktionen (overviewHtml/drilldownHtml) sind vom Fetch/Init
 // getrennt und per vitest getestet. Ehrlich bei fehlenden Daten: "—" statt Fake.
 
+import { createOverlay, registerOverlay } from './overlay';
+
 type Domain = { score: number | null; status: string; coverage: number; components: any[] };
 type ScoresData = {
   narrative?: string | null;
@@ -92,44 +94,33 @@ export function drilldownHtml(key: string, dom: Domain, _days: any[]): string {
 }
 
 export function initHealthOverlay(baseUrl: string, fetchImpl: typeof fetch = fetch): { open: () => void } {
-  const overlay = document.createElement('div');
-  overlay.id = 'health-overlay';
-  overlay.style.cssText =
-    'position:fixed;inset:0;z-index:200;display:none;overflow:auto;padding:32px 40px;' +
-    'background:rgba(8,14,18,0.96);color:#e8fbf7;font-family:-apple-system,sans-serif';
-  document.body.appendChild(overlay);
   let data: ScoresData | null = null;
-
-  const close = (): void => {
-    overlay.style.display = 'none';
-  };
-
-  function showOverview(): void {
-    overlay.innerHTML = data ? overviewHtml(data) : '<div class="ho-empty">Lade …</div>';
-    overlay.querySelectorAll<HTMLElement>('.ho-ring[data-domain]').forEach((el) => {
-      el.addEventListener('click', () => {
-        const key = el.dataset.domain!;
-        overlay.innerHTML = drilldownHtml(key, data!.today!.domains[key], data!.days ?? []);
-        overlay.querySelector('[data-action="overview"]')?.addEventListener('click', showOverview);
-      });
-    });
-    overlay.querySelector('[data-action="close"]')?.addEventListener('click', close);
-  }
-
-  async function open(): Promise<void> {
-    overlay.style.display = 'block';
-    showOverview();
-    try {
-      data = await (await fetchImpl(`${baseUrl}/api/health/scores`)).json();
+  const { el, open } = createOverlay({
+    id: 'health-overlay',
+    openEvent: 'open-health',
+    background: 'rgba(8,14,18,0.96)',
+    render: async (container, { close }) => {
+      const showOverview = (): void => {
+        container.innerHTML = data ? overviewHtml(data) : '<div class="ho-empty">Lade …</div>';
+        container.querySelectorAll<HTMLElement>('.ho-ring[data-domain]').forEach((ring) => {
+          ring.addEventListener('click', () => {
+            const key = ring.dataset.domain!;
+            container.innerHTML = drilldownHtml(key, data!.today!.domains[key], data!.days ?? []);
+            container.querySelector('[data-action="overview"]')?.addEventListener('click', showOverview);
+          });
+        });
+        container.querySelector('[data-action="close"]')?.addEventListener('click', close);
+      };
       showOverview();
-    } catch {
-      overlay.innerHTML = '<div class="ho-empty">Health-Daten nicht erreichbar.</div>';
-    }
-  }
-
-  document.addEventListener('open-health', () => void open());
-  document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape') close();
+      try {
+        data = await (await fetchImpl(`${baseUrl}/api/health/scores`)).json();
+        showOverview();
+      } catch {
+        container.innerHTML = '<div class="ho-empty">Health-Daten nicht erreichbar.</div>';
+      }
+    },
   });
+  el.style.padding = '32px 40px';
+  registerOverlay({ key: 'health', label: 'Health', openEvent: 'open-health' });
   return { open };
 }

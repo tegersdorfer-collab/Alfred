@@ -1,5 +1,6 @@
 import { applyPanelChrome } from './fx/panel-chrome';
 import { staggerIn } from './motion';
+import { getOverlays } from './overlay';
 
 const WIDGET_TYPES = ['sleep', 'training', 'tasks', 'calendar', 'nutrition', 'habits', 'brain', 'system', 'skills', 'weather', 'brain_graph'] as const;
 const LABELS: Record<string, string> = {
@@ -12,11 +13,15 @@ const LABELS: Record<string, string> = {
 export function initNavOverlay(baseUrl: string): void {
   const overlay = document.createElement('div');
   overlay.id = 'nav-overlay';
+  // Overlay-Kacheln kommen aus der Registry (overlay.ts) — ein neues Overlay
+  // taucht hier automatisch auf, sobald es sich registriert hat.
+  const overlayTiles = getOverlays()
+    .map((o) => `<button class="nav-tile" data-open-event="${o.openEvent}">${o.label}</button>`)
+    .join('');
   const tiles = WIDGET_TYPES.map(
     (t) => `<button class="nav-tile" data-widget-type="${t}">${LABELS[t]}</button>`
   ).join('')
-    + `<button class="nav-tile" data-action="health">Health</button>`
-    + `<button class="nav-tile" data-action="knowledge">Wissen</button>`
+    + overlayTiles
     + `<button class="nav-tile" data-widget-type="">Home</button>`;
   overlay.innerHTML = `<div class="nav-grid">${tiles}</div>`;
   document.body.appendChild(overlay);
@@ -32,13 +37,8 @@ export function initNavOverlay(baseUrl: string): void {
 
   overlay.querySelectorAll<HTMLButtonElement>('.nav-tile').forEach((tile) => {
     tile.addEventListener('click', () => {
-      if (tile.dataset.action === 'health') {
-        document.dispatchEvent(new CustomEvent('open-health'));
-        close();
-        return;
-      }
-      if (tile.dataset.action === 'knowledge') {
-        document.dispatchEvent(new CustomEvent('open-knowledge'));
+      if (tile.dataset.openEvent) {
+        document.dispatchEvent(new CustomEvent(tile.dataset.openEvent));
         close();
         return;
       }
