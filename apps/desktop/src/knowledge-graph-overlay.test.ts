@@ -47,6 +47,17 @@ describe('forceLayout', () => {
   it('leerer Graph → leere Positionen', () => {
     expect(forceLayout([], [], 1000, 680).size).toBe(0);
   });
+
+  it('platziert unverbundene Knoten aufgeräumt und in den Bounds', () => {
+    const nodes = [...G.nodes, { id: 'fact:99', kind: 'fact', label: 'allein', group: 'g', color: '#f', size: 5 }];
+    const pos = forceLayout(nodes, G.edges, 1000, 680, 30);
+    expect(pos.size).toBe(4);
+    const p = pos.get('fact:99')!;
+    expect(p.x).toBeGreaterThanOrEqual(0);
+    expect(p.x).toBeLessThanOrEqual(1000);
+    expect(p.y).toBeGreaterThanOrEqual(0);
+    expect(p.y).toBeLessThanOrEqual(680);
+  });
 });
 
 describe('neighborsOf', () => {

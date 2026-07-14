@@ -37,23 +37,40 @@ export function neighborsOf(nodeId: string, data: Graph): { id: string; kind: st
 export function forceLayout(
   nodes: GNode[], edges: GEdge[], w: number, h: number, iterations = 180,
 ): Map<string, { x: number; y: number }> {
-  const n = nodes.length;
   const pos = new Map<string, { x: number; y: number }>();
-  if (n === 0) return pos;
-  const k = Math.sqrt((w * h) / n) * 0.8;
-  nodes.forEach((nd, i) => {
-    const a = (2 * Math.PI * i) / n;
-    pos.set(nd.id, { x: w / 2 + (w / 3) * Math.cos(a), y: h / 2 + (h / 3) * Math.sin(a) });
-  });
-  const idx = new Map(nodes.map((nd, i) => [nd.id, i]));
+  if (nodes.length === 0) return pos;
+  const idx = new Map(nodes.map((nd) => [nd.id, nd]));
   const adj = edges.filter((e) => idx.has(e.from) && idx.has(e.to));
-  const iters = n > 120 ? 60 : iterations;
+  const deg = new Map(nodes.map((nd) => [nd.id, 0]));
+  for (const e of adj) { deg.set(e.from, deg.get(e.from)! + 1); deg.set(e.to, deg.get(e.to)! + 1); }
+  const isolated = nodes.filter((nd) => deg.get(nd.id) === 0);
+  const connected = nodes.filter((nd) => deg.get(nd.id)! > 0);
+
+  // Unverbundene Knoten: aufgeräumtes Raster im unteren Streifen (statt von der
+  // Physik an die Kante gedrückt zu werden).
+  const cols = Math.max(1, Math.floor((w - 80) / 220));
+  const rows = Math.ceil(isolated.length / cols);
+  const areaH = h - (isolated.length ? rows * 30 + 24 : 0);
+  const colW = cols > 1 ? (w - 80) / (cols - 1) : 0;
+  isolated.forEach((nd, i) => {
+    pos.set(nd.id, { x: 40 + (i % cols) * colW, y: areaH + 26 + Math.floor(i / cols) * 30 });
+  });
+
+  const cn = connected.length;
+  if (cn === 0) return pos;
+  const k = Math.sqrt((w * areaH) / cn) * 0.9;
+  connected.forEach((nd, i) => {
+    const a = (2 * Math.PI * i) / cn;
+    pos.set(nd.id, { x: w / 2 + (w / 3) * Math.cos(a), y: areaH / 2 + (areaH / 3) * Math.sin(a) });
+  });
+  const ci = new Map(connected.map((nd, i) => [nd.id, i]));
+  const iters = cn > 120 ? 60 : iterations;
   let temp = w / 10;
   for (let it = 0; it < iters; it++) {
-    const disp = nodes.map(() => ({ x: 0, y: 0 }));
-    for (let i = 0; i < n; i++) {
-      for (let j = i + 1; j < n; j++) {
-        const pi = pos.get(nodes[i].id)!, pj = pos.get(nodes[j].id)!;
+    const disp = connected.map(() => ({ x: 0, y: 0 }));
+    for (let i = 0; i < cn; i++) {
+      for (let j = i + 1; j < cn; j++) {
+        const pi = pos.get(connected[i].id)!, pj = pos.get(connected[j].id)!;
         const dx = pi.x - pj.x, dy = pi.y - pj.y;
         const d = Math.hypot(dx, dy) || 0.01;
         const f = (k * k) / d;
@@ -62,7 +79,7 @@ export function forceLayout(
       }
     }
     for (const e of adj) {
-      const i = idx.get(e.from)!, j = idx.get(e.to)!;
+      const i = ci.get(e.from)!, j = ci.get(e.to)!;
       const pi = pos.get(e.from)!, pj = pos.get(e.to)!;
       const dx = pi.x - pj.x, dy = pi.y - pj.y;
       const d = Math.hypot(dx, dy) || 0.01;
@@ -70,15 +87,15 @@ export function forceLayout(
       disp[i].x -= (dx / d) * f; disp[i].y -= (dy / d) * f;
       disp[j].x += (dx / d) * f; disp[j].y += (dy / d) * f;
     }
-    for (let i = 0; i < n; i++) {
-      const p = pos.get(nodes[i].id)!;
-      disp[i].x += (w / 2 - p.x) * 0.01;
-      disp[i].y += (h / 2 - p.y) * 0.01;
+    for (let i = 0; i < cn; i++) {
+      const p = pos.get(connected[i].id)!;
+      disp[i].x += (w / 2 - p.x) * 0.012;
+      disp[i].y += (areaH / 2 - p.y) * 0.012;
       const dl = Math.hypot(disp[i].x, disp[i].y) || 0.01;
       p.x += (disp[i].x / dl) * Math.min(dl, temp);
       p.y += (disp[i].y / dl) * Math.min(dl, temp);
       p.x = Math.max(20, Math.min(w - 20, p.x));
-      p.y = Math.max(20, Math.min(h - 20, p.y));
+      p.y = Math.max(20, Math.min(areaH - 20, p.y));
     }
     temp *= 0.97;
   }
