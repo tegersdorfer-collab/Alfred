@@ -53,7 +53,7 @@ _MUSIC_STATUS = {"läuft", "spielt"}  # Wiedergabe-Status
 _HEALTH_STATUS = {"recovery", "gesundheitszustand", "gesundheitlich", "regeneration",
                   "erholung", "health"}
 _HEALTH_ASK = {"wie", "status"}
-_SKILLTREE = {"skilltree", "level", "fortschritt", "quest", "quests"}
+_SKILLTREE = {"skilltree", "level", "quest", "quests"}
 
 _UIAUTO_VERBS = {"bediene", "bedien", "steuere", "steuer"}
 # Alle reinen Steuerwörter zusammen — dient der Abgrenzung „spiel [X]" (Suche)
