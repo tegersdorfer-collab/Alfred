@@ -47,3 +47,20 @@ def test_axis_xp_ignores_unknown_kind():
     now = date(2026, 7, 20)
     sigs = [{"axis": "koerper", "kind": "unknown", "value": 1.0, "ts": "2026-07-20", "source": "x", "count": 1}]
     assert axis_xp(sigs, AXIS, now) == 0.0
+
+
+def test_axis_xp_only_counts_own_axis():
+    now = date(2026, 7, 20)
+    axis_k = {"key": "koerper", "label": "Körper", "components": {
+        "training": {"weight": 10.0, "retention": "fast"}}}
+    sigs = [
+        {"axis": "koerper", "kind": "training", "value": 1.0, "ts": "2026-07-20", "source": "h", "count": 1},
+        {"axis": "wissen", "kind": "training", "value": 1.0, "ts": "2026-07-20", "source": "x", "count": 1},
+    ]
+    assert axis_xp(sigs, axis_k, now) == 10.0  # fremde Achse mit gleichem kind zählt nicht
+
+
+def test_retention_unknown_class_raises():
+    import pytest
+    with pytest.raises(ValueError):
+        retention_decay("fastt", 5)

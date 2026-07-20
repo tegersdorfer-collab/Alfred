@@ -20,24 +20,31 @@ RETENTION_HALFLIFE: dict[str, float | None] = {
 def retention_decay(retention: str, elapsed_days: float) -> float:
     """Multiplikativer Faktor 0..1 für ein Signal, das `elapsed_days` alt ist.
 
-    permanent → 1.0. Sonst exponentiell: 0.5 ** (elapsed / halflife).
+    permanent → 1.0 (kein Zerfall). fast/slow → exponentiell 0.5 ** (elapsed / halflife).
+    Unbekannte Retention-Klasse → ValueError (Fehlkonfiguration nicht still schlucken).
     """
+    if retention == "permanent":
+        return 1.0
     halflife = RETENTION_HALFLIFE.get(retention)
     if halflife is None:
-        return 1.0
+        raise ValueError(f"Unbekannte Retention-Klasse: {retention!r}")
     if elapsed_days <= 0:
         return 1.0
     return round(0.5 ** (elapsed_days / halflife), 6)
 
 
 def axis_xp(signals: list[dict], axis_cfg: dict, now: date) -> float:
-    """Gewichtete, zeit-gedämpfte XP-Summe der Signale dieser Achse.
+    """Gewichtete, zeit-gedämpfte XP-Summe der Signale DIESER Achse.
 
-    Signale mit unbekanntem `kind` (nicht in der Achsen-Config) fallen raus.
+    Signale anderer Achsen (`axis` != axis_cfg["key"]) und Signale mit unbekanntem
+    `kind` (nicht in der Achsen-Config) fallen raus.
     """
     comps = axis_cfg.get("components", {})
+    key = axis_cfg["key"]
     total = 0.0
     for s in signals:
+        if s["axis"] != key:
+            continue
         comp = comps.get(s["kind"])
         if not comp:
             continue
