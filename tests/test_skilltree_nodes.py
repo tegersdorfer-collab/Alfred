@@ -25,3 +25,8 @@ def test_node_stays_unlocked_even_if_later_value_lower():
 
 def test_no_signal_no_unlock():
     assert unlocked_nodes([], NODES) == []
+
+def test_node_ignores_same_kind_other_axis():
+    # gleicher signal_kind auf fremder Achse darf ein Node nicht freischalten
+    sigs = [{"axis": "wissen", "kind": "deadlift", "value": 200.0, "ts": "2026-05-01", "source": "x", "count": 1}]
+    assert unlocked_nodes(sigs, NODES) == []

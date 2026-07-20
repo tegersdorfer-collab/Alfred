@@ -11,7 +11,8 @@ def unlocked_nodes(signals: list[dict], node_defs: list[dict]) -> list[dict]:
     """Alle Nodes, deren Schwelle in der History je erreicht wurde."""
     out: list[dict] = []
     for nd in node_defs:
-        vals = [s["value"] for s in signals if s["kind"] == nd["signal_kind"]]
+        vals = [s["value"] for s in signals
+                if s["kind"] == nd["signal_kind"] and s["axis"] == nd["axis"]]
         if vals and max(vals) >= nd["threshold"]:
             out.append({"key": nd["key"], "label": nd["label"], "axis": nd["axis"]})
     return out
