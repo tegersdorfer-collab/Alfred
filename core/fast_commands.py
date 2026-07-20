@@ -53,6 +53,7 @@ _MUSIC_STATUS = {"läuft", "spielt"}  # Wiedergabe-Status
 _HEALTH_STATUS = {"recovery", "gesundheitszustand", "gesundheitlich", "regeneration",
                   "erholung", "health"}
 _HEALTH_ASK = {"wie", "status"}
+_SKILLTREE = {"skilltree", "level", "fortschritt", "quest", "quests"}
 
 _UIAUTO_VERBS = {"bediene", "bedien", "steuere", "steuer"}
 # Alle reinen Steuerwörter zusammen — dient der Abgrenzung „spiel [X]" (Suche)
@@ -90,6 +91,12 @@ def match(text: str) -> FastCommand | None:
     # weil das kleine Modell sonst gern Gesundheitswerte frei erfindet.
     if (w & _HEALTH_STATUS) and (w & _HEALTH_ASK or "?" in text):
         return FastCommand("get_health_scores", {}, "health-scores")
+
+    # ── Skilltree-Status ("wie ist mein level?") ──────────────────────────────
+    # Inhärent eine Frage → vor dem Fragezeichen-Guard. Frage-Rahmen (wie/status/?)
+    # nötig, damit "spiel level up" (Musik) nicht gekapert wird.
+    if (w & _SKILLTREE) and (w & _HEALTH_ASK or "?" in text):
+        return FastCommand("get_skilltree", {}, "skilltree")
 
     if "?" in text:
         return None  # Fragen sind keine Befehle

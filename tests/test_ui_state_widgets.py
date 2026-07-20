@@ -227,12 +227,14 @@ class TestWidgetMapAndTypes:
             "nutrition_today": "nutrition",
             "list_habits": "habits",
             "get_health_scores": "health",
+            "get_skilltree": "skilltree",
         }
 
     def test_widget_types_enthaelt_alle_typen(self):
         assert WIDGET_TYPES == {
             "sleep", "training", "tasks", "calendar", "nutrition", "habits",
             "system", "brain", "skills", "weather", "brain_graph", "health",
+            "skilltree",
         }
 
 
