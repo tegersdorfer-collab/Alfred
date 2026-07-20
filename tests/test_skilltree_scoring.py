@@ -64,3 +64,52 @@ def test_retention_unknown_class_raises():
     import pytest
     with pytest.raises(ValueError):
         retention_decay("fastt", 5)
+
+
+# ── xp_to_level: abflachende Kurve (höhere Level kosten mehr XP) ───────────────
+
+from domains.skilltree.scoring import axis_level, xp_to_level
+
+
+def test_zero_xp_is_level_zero():
+    assert xp_to_level(0.0) == 0
+
+
+def test_level_grows_with_sqrt_of_xp():
+    # curve_k=100 → Level = floor(sqrt(xp/100)); 400 XP → Level 2
+    assert xp_to_level(400.0) == 2
+    assert xp_to_level(900.0) == 3
+
+
+def test_level_is_monotonic():
+    assert xp_to_level(100.0) <= xp_to_level(101.0)
+
+
+# ── axis_level: XP + Level + 7-Tage-Trend in einem axis_state ──────────────────
+
+AXIS2 = {"key": "koerper", "label": "Körper", "components": {
+    "training": {"weight": 100.0, "retention": "slow"},
+}}
+
+
+def test_axis_level_reports_state_shape():
+    now = date(2026, 7, 20)
+    sigs = [{"axis": "koerper", "kind": "training", "value": 4.0, "ts": "2026-07-20", "source": "h", "count": 1}]
+    st = axis_level(sigs, AXIS2, now)
+    assert st["axis"] == "koerper"
+    assert st["label"] == "Körper"
+    assert st["xp"] == 400.0
+    assert st["level"] == 2
+    assert "trend" in st
+
+
+def test_axis_level_trend_positive_when_recent_activity():
+    now = date(2026, 7, 20)
+    # frisches Signal → XP jetzt > XP vor 7 Tagen → trend > 0
+    sigs = [{"axis": "koerper", "kind": "training", "value": 4.0, "ts": "2026-07-18", "source": "h", "count": 1}]
+    assert axis_level(sigs, AXIS2, now)["trend"] > 0
+
+
+def test_empty_axis_is_level_zero_trend_zero():
+    st = axis_level([], AXIS2, date(2026, 7, 20))
+    assert st["level"] == 0 and st["xp"] == 0.0 and st["trend"] == 0.0

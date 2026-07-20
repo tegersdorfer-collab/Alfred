@@ -7,7 +7,7 @@ Achse an Daten, ist sie ehrlich Level 0 — nie geraten.
 """
 from __future__ import annotations
 
-from datetime import date
+from datetime import date, timedelta
 
 # Halbwertszeit in Tagen je Retention-Klasse. permanent → kein Zerfall.
 RETENTION_HALFLIFE: dict[str, float | None] = {
@@ -52,3 +52,28 @@ def axis_xp(signals: list[dict], axis_cfg: dict, now: date) -> float:
         factor = retention_decay(comp["retention"], elapsed)
         total += s["value"] * s.get("count", 1) * comp["weight"] * factor
     return round(total, 1)
+
+
+def xp_to_level(xp: float, curve_k: float = 100.0) -> int:
+    """Monoton, abflachend: Level = floor(sqrt(xp / curve_k)). 0 XP → Level 0."""
+    if xp <= 0:
+        return 0
+    return int((xp / curve_k) ** 0.5)
+
+
+def axis_level(signals: list[dict], axis_cfg: dict, now: date, curve_k: float = 100.0) -> dict:
+    """XP + Level + 7-Tage-Trend für eine Achse (→ axis_state).
+
+    Trend = XP(jetzt) − XP(vor 7 Tagen), auf denselben Signalen mit verschobenem
+    `now` gerechnet (ältere Signale zählen dann stärker gedämpft / gar nicht).
+    """
+    xp_now = axis_xp(signals, axis_cfg, now)
+    xp_prev = axis_xp([s for s in signals if s["ts"] <= (now - timedelta(days=7)).isoformat()],
+                      axis_cfg, now - timedelta(days=7))
+    return {
+        "axis": axis_cfg["key"],
+        "label": axis_cfg["label"],
+        "xp": xp_now,
+        "level": xp_to_level(xp_now, curve_k),
+        "trend": round(xp_now - xp_prev, 1),
+    }
