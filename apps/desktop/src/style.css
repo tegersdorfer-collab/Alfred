@@ -619,3 +619,136 @@ body::after {
   text-align: right;
   margin-top: 4px;
 }
+
+/* Skilltree-Overlay */
+.st-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 20px;
+}
+.st-head h2 {
+  margin: 0;
+  font-size: var(--fs-hero);
+  color: var(--c-idle);
+  font-weight: normal;
+}
+.st-axes {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 24px;
+}
+.st-axis {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  border: 1px solid rgba(0, 229, 255, 0.13);
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 150ms ease-out, box-shadow 150ms ease-out;
+}
+.st-axis:hover {
+  background: rgba(0, 229, 255, 0.06);
+  box-shadow: var(--glow-idle);
+}
+.st-alabel {
+  font-size: var(--fs-value);
+  flex: 1;
+}
+.st-alevel {
+  font-size: var(--fs-body);
+  color: var(--c-idle-dim);
+  letter-spacing: 0.5px;
+}
+.st-atrend {
+  font-size: var(--fs-value);
+  width: 24px;
+  text-align: center;
+}
+.st-section {
+  font-size: var(--fs-label);
+  letter-spacing: 0.5px;
+  color: var(--c-idle);
+  text-transform: uppercase;
+  opacity: 0.7;
+  margin-bottom: 8px;
+}
+.st-quests {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 24px;
+}
+.st-quest {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: var(--fs-body);
+  color: #e0f7ff;
+  padding: 6px 0;
+}
+.st-qlabel {
+  flex: 0 0 220px;
+}
+.st-qtrack {
+  flex: 1;
+  display: inline-block;
+  height: 6px;
+  background: rgba(0, 229, 255, 0.1);
+  border-radius: 3px;
+  overflow: hidden;
+}
+.st-qfill {
+  display: block;
+  height: 100%;
+  background: var(--c-active);
+  transition: width 300ms ease-out;
+}
+.st-qpct {
+  flex: 0 0 40px;
+  text-align: right;
+  color: var(--c-idle-dim);
+}
+.st-nodes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.st-node {
+  font-size: var(--fs-body);
+  color: #e0f7ff;
+  border: 1px solid rgba(0, 229, 255, 0.2);
+  border-radius: 4px;
+  padding: 6px 10px;
+}
+.st-empty {
+  font-size: var(--fs-body);
+  color: var(--c-idle-dim);
+  padding: 12px 0;
+}
+.st-drill h2 {
+  font-size: var(--fs-hero);
+  color: var(--c-idle);
+  font-weight: normal;
+  margin: 16px 0 4px;
+}
+.st-why {
+  font-size: var(--fs-body);
+  color: var(--c-idle-dim);
+  margin-bottom: 16px;
+}
+.st-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  justify-content: center;
+}
+.st-chip {
+  font-size: var(--fs-label);
+  color: #e0f7ff;
+  border: 1px solid rgba(0, 229, 255, 0.33);
+  border-radius: 12px;
+  padding: 4px 10px;
+}

@@ -12,6 +12,7 @@ from core.skill_context import SkillContext, CTX, bind
 # Reihenfolge = Kategorie-Erstauftritt im ursprünglichen skills.py
 from . import (
     knowledge,
+    skilltree,
     memory,
     productivity,
     health,

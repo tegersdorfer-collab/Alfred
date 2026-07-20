@@ -8,6 +8,7 @@ import type { VoiceSegmentResult } from './voice-capture';
 import { startVoiceCaptureStream } from './voice-capture-stream';
 import { initNavOverlay } from './nav-overlay';
 import { initHealthOverlay, widgetHtml as healthWidgetHtml } from './health-overlay';
+import { initSkilltreeOverlay, widgetHtml as skilltreeWidgetHtml } from './skilltree-overlay';
 import { initKnowledgeGraphOverlay } from './knowledge-graph-overlay';
 import { initChatInput } from './chat-input';
 import { initSettingsPanel } from './settings-panel';
@@ -343,6 +344,9 @@ function renderWidget(container: HTMLElement, slot: WidgetSlot): void {
     case 'health':
       container.innerHTML = healthWidgetHtml(p);
       break;
+    case 'skilltree':
+      container.innerHTML = skilltreeWidgetHtml(p);
+      break;
     default:
       container.innerHTML = '<div class="widget-title">unbekannt</div>';
   }
@@ -420,6 +424,7 @@ initVoiceCapture(getBaseUrl(), renderVoiceStatus);
 // Overlays zuerst — sie registrieren sich, bevor nav-overlay die Registry liest.
 initHealthOverlay(getBaseUrl());
 initKnowledgeGraphOverlay(getBaseUrl());
+initSkilltreeOverlay(getBaseUrl());
 initNavOverlay(getBaseUrl());
 
 export function triggerSpeakingState(durationMs = 2000): void {

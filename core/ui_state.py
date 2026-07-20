@@ -26,6 +26,7 @@ WIDGET_MAP: dict[str, str] = {
     "nutrition_today": "nutrition",
     "list_habits": "habits",
     "get_health_scores": "health",
+    "get_skilltree": "skilltree",
 }
 
 # Begrenztes Set an Layout-Vorlagen — jede definiert ihre verfügbaren Slots.
@@ -82,6 +83,17 @@ def health_widget_payload(dashboard: Any, days: int = 90) -> dict:
                for k, v in today["domains"].items()}
     return {"widget": "health", "domains": domains, "body": body,
             "narrative": health_narrative(today, body)}
+
+
+def skilltree_widget_payload(dashboard: Any, days: int = 90) -> dict:
+    """HUD-Glance: Achsen-Level + Top-Quest. Aus dem Skilltree-Service abgeleitet."""
+    from datetime import date, timedelta
+    from domains.skilltree.service import build_skilltree_state
+    today = date.today()
+    since = (today - timedelta(days=today.weekday())).isoformat()
+    state = build_skilltree_state(dashboard, today, quest_since=since)
+    return {"widget": "skilltree", "axes": state["axes"],
+            "nodes": state["nodes"], "quests": state["quests"]}
 
 
 def training_widget_payload(limit: int = 8) -> dict:
@@ -240,6 +252,7 @@ _DASHBOARD_BUILDERS = {
     "sleep": sleep_widget_payload,
     "calendar": calendar_widget_payload,
     "health": health_widget_payload,
+    "skilltree": skilltree_widget_payload,
 }
 
 # Widget-Typen, die keine externe Abhängigkeit brauchen (holen sich ihre Daten

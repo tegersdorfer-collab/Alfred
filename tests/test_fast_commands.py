@@ -248,3 +248,16 @@ def test_health_status_negatives():
     assert _m("spiel recovery von frank ocean") != ("get_health_scores", {})
     # Ohne Frage-Rahmen kein Health-Fast-Path.
     assert _m("öffne die health app") is None
+
+
+# ── Positive/Negative: Skilltree-Status ───────────────────────────────────────
+
+def test_skilltree_query_matches():
+    fc = match("wie ist mein level?")
+    assert fc is not None and fc.tool == "get_skilltree"
+
+
+def test_fortschritt_does_not_hijack_goals():
+    # "fortschritt" is a goals keyword; a fortschritt question must NOT be force-routed to skilltree
+    fc = match("wie ist mein fortschritt beim ziel?")
+    assert fc is None or fc.tool != "get_skilltree"
